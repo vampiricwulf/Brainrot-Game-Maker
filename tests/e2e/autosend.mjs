@@ -40,6 +40,8 @@ import {
 } from './helpers.mjs';
 
 const file = appFile();
+const LONG_Q =
+  'Name a dog breed: one that was first kept for herding sheep or cattle on farms, or for guarding a house and its yard, or for hunting birds and rabbits in the fields, or that was bred to sit on a lap, whichever comes to mind first, and say it the way it is usually written in a book about dogs.';
 const buzzer = await startBuzzer('buzzer-autosend-');
 const { base } = buzzer;
 
@@ -72,7 +74,8 @@ try {
   // Two ✍ clues.
   const editor = host.getByRole('dialog', { name: 'Edit clue' });
   for (const [i, q] of /** @type {const} */ ([
-    [0, 'Name a dog breed'],
+    // (A long question: on a small phone it doesn't fit, even at its smallest size.)
+    [0, LONG_Q],
     [1, 'Name a cat breed'],
   ])) {
     await host.locator('.tile').nth(i).click();
@@ -143,6 +146,26 @@ try {
     .first()
     .click();
   for (const p of [p1, p2]) await p.getByLabel(/Your answer/).waitFor();
+  // A small phone: the long question takes the room kept for why an answer wasn't taken (none kept under the box), and
+  // one coming (Send answer with nothing typed) moves neither the question nor the box.
+  await p2.setViewportSize({ width: 320, height: 568 });
+  await until(async () => (await p2.locator('#s-buzz.squeezed').count()) === 1, { timeout: 5_000 });
+  const boxAt = () =>
+    p2.evaluate(() =>
+      ['clue', 'answer-in', 'answer-send', 'answer-err'].map((id) =>
+        Math.round(/** @type {HTMLElement} */ (document.getElementById(id)).getBoundingClientRect()[id === 'answer-err' ? 'height' : 'bottom']),
+      ),
+    );
+  const squeezed = await boxAt();
+  await p2.getByRole('button', { name: 'Send answer' }).click();
+  await p2.locator('#answer-err').getByText('Type an answer first.').waitFor();
+  await sleep(300);
+  const withErr = await boxAt();
+  assert(
+    squeezed[3] === 0 && withErr[3] > 0 && JSON.stringify(withErr.slice(0, 3)) === JSON.stringify(squeezed.slice(0, 3)),
+    `a small phone, a long question: no room kept under the box, and a line coming there moves nothing (${squeezed} → ${withErr})`,
+  );
+  await p2.setViewportSize({ width: 360, height: 640 });
   await p1.getByLabel(/Your answer/).fill('line one');
   await p1.getByLabel(/Your answer/).press('Enter');
   await p1.keyboard.insertText('line two');
@@ -191,6 +214,11 @@ try {
   await p1.context().setOffline(true);
   await boardIn(stageBoxIn(host)).locator('.tile[data-row="0"][data-cat="1"]').click();
   for (const p of [p2, p3]) await p.getByLabel(/Your answer/).waitFor();
+  // (A question that fits, on a phone as short: the room under the box stays kept, as its column is centred.)
+  assert(
+    (await p2.locator('#s-buzz.squeezed').count()) === 0 && (await p2.locator('#answer-err').evaluate((e) => e.getBoundingClientRect().height)) > 0,
+    'a short question: the room for a line under the box is kept',
+  );
   const secs = host.getByLabel('Timer seconds');
   await secs.fill('1');
   await secs.press('Enter');

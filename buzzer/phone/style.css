@@ -1118,6 +1118,18 @@ html:has(#s-buzz:not([hidden])) {
   line-height: 1.25;
   min-height: 2.5em;
 }
+/*
+ * A short screen, a question too long to fit even at its smallest size (main.ts refitClue: `squeezed`): no room kept
+ * for why an answer wasn't taken (the box's last line), so the question shows more of itself before ▼ More. One coming
+ * only moves the name line down, never the box: the column fills the screen, and clueRoom counts what's over this room
+ * as below it. (Not a question that fits: its column is centred, and the box would move. Nor the wager's: it's between
+ * the amount and Send wager, which would move under the thumb.)
+ */
+@media (max-height: 640px) {
+  #s-buzz.squeezed #answer-err {
+    min-height: 0;
+  }
+}
 #answer-head {
   font-size: 22px;
   margin: 0;

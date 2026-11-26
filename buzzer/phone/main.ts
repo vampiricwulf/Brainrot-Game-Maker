@@ -76,6 +76,8 @@ const PASS_WAIT_MS = 1500;
 
 /** A mouse (or trackpad) and a screen to hover: a desktop or laptop. The keys get hints there, and "tap" says "click". */
 const fine = matchMedia('(hover: hover) and (pointer: fine)');
+/** A short screen (style.css's, for `squeezed`): a long question takes the room kept under the answer box. */
+const shortScreen = matchMedia('(max-height: 640px)');
 /** "Tap" on a touch screen, "Click" with a mouse. */
 const tap = (s: string): string => (fine.matches ? s.replace(/\bTap\b/g, 'Click').replace(/\btap\b/g, 'click') : s);
 
@@ -1140,11 +1142,13 @@ function refitClue(sec: HTMLElement): void {
     clue.style.removeProperty('--clue-room');
     clue.classList.remove('long');
     cap.classList.remove('long');
+    sec.classList.remove('squeezed');
     return noMore();
   }
   // Between clues, what's around the question counts too (a card opening, a box's notes growing).
   const lobby = view?.phase === 'lobby';
   let room = lobby ? Math.floor(clueRoom(sec, kbd)) : 0;
+  const base = key;
   if (lobby) key += ` ${room}`;
   const fits = () => clue.scrollHeight <= clue.clientHeight;
   if (key === fitKey) {
@@ -1168,6 +1172,26 @@ function refitClue(sec: HTMLElement): void {
   const start = parseFloat(getComputedStyle(clue).fontSize);
   const smallest = Math.min(start, fine.matches ? 16 : 15);
   const floor = Math.ceil(Math.max(start * 2.6, smallest * 3) * 1.3);
+  // (A short screen, the box to type in under the question, no keyboard: a question that doesn't fit even at its
+  // smallest size gets the room kept for why an answer wasn't taken too, `squeezed` in the CSS. Only then: one that
+  // fits has room to spare, its column centred, and a line coming under the box would move it. Decided with that room
+  // kept, so it comes out the same each time.)
+  if (sec.classList.contains('squeezed')) {
+    sec.classList.remove('squeezed');
+    room = Math.floor(clueRoom(sec, kbd));
+  }
+  if (shortScreen.matches && !kbd && box === 'answer-form' && !$('answer-in').hidden && getComputedStyle(sec).display !== 'grid') {
+    clue.style.setProperty('--clue-room', `${Math.max(floor, room)}px`);
+    clue.style.overflow = 'hidden';
+    clue.style.fontSize = `${smallest}px`;
+    if (!fits()) {
+      sec.classList.add('squeezed');
+      room = Math.floor(clueRoom(sec, kbd));
+    }
+    clue.style.removeProperty('font-size');
+  }
+  // (Between clues the room is in the key: as it is now.)
+  if (lobby) fitKey = `${base} ${room}`;
   clue.style.setProperty('--clue-room', `${Math.max(floor, room)}px`);
   // (Measured with no scrollbar: where one takes room, one left from a size that didn't fit would make every size
   // after it look too big.)
