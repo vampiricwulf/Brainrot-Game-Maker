@@ -2199,9 +2199,10 @@
   /* Single window: one height the whole game, the Final's (room for its wagers and reveals), from the board to a clue,
      a Daily Double, a 🤝 partner clue, the RPG and board-game rounds, the Final, the tiebreaker and the results: the
      stage viewers see keeps one size and place all show long. Each moment's rows scroll in it (the action part, the
-     players' chips); the status line stays at its top, the tools row and the fixed bar at its foot. An open 🎲 / 🎡 /
-     🏁 menu, the 📱 phones list or a color box's picker stays inside it too, scrolling if it must (or, on a window too
-     short for even that, goes where there's room). (At most 62% of the window: the stage keeps its floor.) */
+     players' chips); the status line stays at its top, the action part (the main button), the tools row and the fixed
+     bar at its foot. An open 🎲 / 🎡 / 🏁 menu, the 📱 phones list or a color box's picker stays inside it too,
+     scrolling if it must (or, on a window too short for even that, goes where there's room). (At most 62% of the
+     window: the stage keeps its floor.) */
   .panel:not(.dual) {
     flex: none;
     height: min(clamp(280px, 44vh, 440px), 62vh);
@@ -2240,8 +2241,21 @@
       min-height: min(150px, 34vh);
     }
   }
+  /* The action part sits on the tools row, the room to spare above it (between the chips and it): the main button and
+     the flow row stay in one place under the stage whatever the moment (a plain clue or a wheel, dice or 🤫 cards tile,
+     a board-game turn, the Final's steps), as with an audience window. (The Final's reveals fold the tools row away, see
+     .foldtools: the part goes down onto the fixed bar then, once, and stays.) */
   .panel:not(.dual) > .act {
-    margin-bottom: auto;
+    margin-top: auto;
+  }
+  /* (A phone held upright, whose panel takes the screen's height left: the action part stays under the chips there, in
+     the thumb's reach and with no tall gap above it, the room to spare above the tools row. The check before going on
+     is drawn over that part, and a tap where the blue button was presses nothing on it: see GoOnCheck.) */
+  @media (orientation: portrait) and (max-width: 600px) {
+    .panel:not(.dual):not(.side) > .act {
+      margin-top: 0;
+      margin-bottom: auto;
+    }
   }
   .mode-host {
     min-height: 0;
@@ -2799,9 +2813,6 @@
   .panel:not(.side) > .act > .action {
     max-height: 100%;
     overflow: auto;
-  }
-  .panel:not(.dual) > .toolsrow {
-    margin-top: auto;
   }
   /* A situation's box open: the tools row in the ghost look (its words and edges as they are). What's on keeps its
      look (📊 Scoreboard pressed, a deal out, a warning), and under the mouse it's a button as ever. */
