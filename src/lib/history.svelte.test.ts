@@ -687,6 +687,23 @@ describe('undo history: redo or undo just one step', () => {
     expect(history.entries).toHaveLength(4);
   });
 
+  it('↶ Undo just this keeps the marks that still stand for a game on the line', () => {
+    step(null, () => (cats()[0].title = 'Ay'));
+    mark('exported', 'Exported');
+    step(null, () => (cats()[1].title = 'Bee'));
+    mark('played', 'Played');
+    step(null, () => (cats()[2].title = 'Cee'));
+    mark('saved', 'Saved');
+    expect(savedSinceChange()).toBe(true);
+    // Ay taken back on its own: the game just after Bee (with Ay) is no longer on the line; the one saved still is.
+    expect(undoJust(history.entries[0].id)).toBe('done');
+    expect(history.marks.map((m) => [m.kind, m.at])).toEqual([['saved', 3]]);
+    expect(history.index).toBe(2);
+    expect(savedSinceChange()).toBe(false);
+    redo();
+    expect(savedSinceChange()).toBe(true);
+  });
+
   it('keeps the marks that still stand for a game on the line, and the order through a reload', () => {
     step(null, () => (cats()[0].title = 'Ay'));
     mark('saved', 'Saved');
