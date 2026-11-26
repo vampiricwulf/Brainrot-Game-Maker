@@ -4,10 +4,12 @@
 // name, ½ Halve, 0 Nullify, Show wager, ✔ Right, ✘ Wrong), whose ✔ Right / ✘ Wrong stay clear of ½ Halve, 0 Nullify
 // and Show wager where a row wraps; the RPG's and the board game's menus (＋ Screen…, 📍 Send to…, 🗂 Spaces…) at least
 // 28px. A touch screen shows no tooltips, so the bar keeps the words a sign can't say (▭ Scores window, 📺 Audience,
-// 🙈 Hide) at every width, and all of its words where they fit on one line (1100px wide and up); on a phone its buttons
-// wrap one by one (three rows from 320 to 390px wide), on a tablet held upright (768, 820) it's one line. The tools
-// row keeps 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard in words. The stage is the same size as with a mouse, and the
-// fixed bar on screen. With a mouse, nothing changes: the bar's words go to signs at 940–1340px as before, and the
+// 🙈 Hide), and all of its words where they fit on one line (1100px wide and up); on an upright phone its buttons wrap
+// one by one (three rows from 320 to 390px wide, no more than one more than before), on a tablet held upright (768,
+// 820) it's one line; on a phone on its side (740×360) the panel is too short for a second line: signs, one line. The
+// tools row keeps 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard in words, but on an upright phone up to 800px tall
+// (360×740). Each moment's box keeps its room (60px, or all it needs), the stage is the same size as with a mouse, and
+// the fixed bar on screen. With a mouse, nothing changes: the bar's words go to signs at 940–1340px as before, and the
 // tools row's at 1040–1240px.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -136,6 +138,7 @@ try {
     [820, 1180],
     [1024, 768],
     [1280, 800],
+    [740, 360],
   ]) {
     const t = touch(w, h);
     const { ctx, page } = await sample(t);
@@ -145,7 +148,7 @@ try {
       small.length === 0,
       `${say(t)}: every fixed-bar button at least 32×32 (${small.length ? small.map((x) => `${x.name} ${x.w}×${x.h}`).join(', ') : b.buttons.map((x) => x.h).join('/')})`,
     );
-    if (h <= 700) {
+    if (h <= 700 && w < 600) {
       assert(!!b.fold && b.fold.w >= 32 && b.fold.h >= 32, `${say(t)}: ⋯ Tools at least 32×32 (${b.fold ? `${b.fold.w}×${b.fold.h}` : 'none'})`);
       // (It grows into the room above and under the status line: a tap 2px inside its top or foot still lands on it.)
       const edges = await hostPanelIn(page)
@@ -159,7 +162,13 @@ try {
     }
     assert(b.foot <= h, `${say(t)}: the fixed bar on screen (its foot at ${b.foot} of ${h})`);
     const three = [/^Scores window/, /^📺/, /^🙈/].map((re) => wordOf(b, re));
-    assert(three.every(Boolean), `${say(t)}: ▭ Scores window, 📺 Audience and 🙈 Hide keep their words (${three})`);
+    // (A phone on its side: the panel's too short for a second line of the bar, so there they're signs too.)
+    if (h > 500) assert(three.every(Boolean), `${say(t)}: ▭ Scores window, 📺 Audience and 🙈 Hide keep their words (${three})`);
+    else
+      assert(
+        three.every((x) => x === false),
+        `${say(t)}: on its side, ▭ 📺 🙈 as their signs, the bar on one line (${three})`,
+      );
     const rest = [/^↶/, /^↷/, /^📜/, /^👥/, /^⚖/, /^🔊/, /^❔/].map((re) => wordOf(b, re));
     if (w >= 1100) assert(rest.every(Boolean) && b.rows === 1, `${say(t)}: every word shows, on one line (${b.rows} rows)`);
     else

@@ -2992,6 +2992,22 @@
       padding-top: 2px;
     }
   }
+  /* A phone on its side (a touch screen up to 500px tall): the panel under the stage is so short that a second line of
+     the bar would push it off the screen, so there it's signs only, as with a mouse up to 940px (🚪 Exit and ⏸ Cover
+     in words), on one line, 2px under its line. */
+  @media (hover: none) and (max-height: 500px) {
+    .panel:not(.side) > .fixed :is(.word, .txt) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    .panel:not(.side) > .fixed {
+      padding-top: 2px;
+    }
+  }
   /* Beside the stage, a board game's box takes the column's height: its turn part sits at the foot, by the blue button. */
   .side .mode-host.bgame {
     flex: 1 1 0;
