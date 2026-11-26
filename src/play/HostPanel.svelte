@@ -636,6 +636,22 @@
    * Not while a tile's own 🎡 / 🎲 is up. A window with room for all folds nothing.
    */
   const mediaFold = $derived(mayFoldForMedia && mediaRows >= 2 && mediaCrowded);
+  /**
+   * A status-line span cut short to a sliver (its words cut, under 3 characters of them left, on a phone): marked
+   * `data-tiny`, so it's hidden with the "·" before it rather than showing a stray letter. Hidden, it keeps its place
+   * and is measured again as the line's room changes, or its words do (`text`), and shows again once it has room.
+   */
+  function tinyCut(node: HTMLElement, text?: string) {
+    const check = () => {
+      const threeCh = 3 * 0.6 * parseFloat(getComputedStyle(node).fontSize);
+      node.toggleAttribute('data-tiny', node.scrollWidth > node.clientWidth + 1 && node.clientWidth < threeCh);
+    };
+    const ro = new ResizeObserver(check);
+    ro.observe(node);
+    check();
+    void text;
+    return { update: check, destroy: () => ro.disconnect() };
+  }
   /** A short phone held upright (700px tall or less: an iPhone SE, or a bigger phone with its browser's bars showing). */
   const smallPhone = new MediaQuery('(orientation: portrait) and (max-width: 600px) and (max-height: 700px)');
   /**
@@ -1220,7 +1236,7 @@
           {@const k = Math.min(intro.revealed, cats)}
           {@const shown = k && round?.mode === 'board' ? categoryLabel(round.categories[k - 1]) : ''}
           <!-- (A long name is cut short, whole in the tooltip and for screen readers: the line stays one line.) -->
-          <span class="muted" title="Revealing the categories: {k} of {cats}{shown ? `, ${shown}` : ''} · {how}"
+          <span class="muted" title="Revealing the categories: {k} of {cats}{shown ? `, ${shown}` : ''} · {how}" use:tinyCut={how}
             >Revealing the categories: {k} of {cats}{#if shown},{' '}<span class="catname">{shown}</span>{/if}
             <span class="hint">· {how}</span></span
           >
@@ -1228,12 +1244,12 @@
           <!-- (Its own words: the title card gave way to the board, and screen readers hear that.) -->
           <span class="muted" title="Round intro: the board comes up · {goOnSay}">Round intro: the board comes up <span class="hint">· {goOnSay}</span></span>
         {:else}
-          <span class="muted" title="Round intro · {goOnSay}">Round intro <span class="hint">· {goOnSay}</span></span>
+          <span class="muted" title="Round intro · {goOnSay}" use:tinyCut={goOnSay}>Round intro <span class="hint">· {goOnSay}</span></span>
         {/if}
       {:else if done}
         <span class="done">Round complete!</span>
       {:else}
-        <span class="muted how" title={touchScreen.on ? 'Pick a tile on the board.' : 'Pick a tile on the board. (arrows + Enter)'}
+        <span class="muted how" title={touchScreen.on ? 'Pick a tile on the board.' : 'Pick a tile on the board. (arrows + Enter)'} use:tinyCut
           >Pick a tile on the board.{#if !touchScreen.on}{' '}<span class="hint">(arrows + Enter)</span>{/if}</span
         >
       {/if}
@@ -1291,9 +1307,12 @@
         >
       {/if}
       {#if slidePos && !session.revealed}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
-      <span class="muted">·</span>
-      <!-- (Cut short on a narrow window, never wrapping the line: its tooltip has it whole.) -->
-      <span class="say" class:muted={!session.revealed || toolOnly} class:revealed={session.revealed && !toolOnly} title={clueSay}>{clueSay}</span>
+      <span class="muted sep">·</span>
+      <!-- (Cut short on a narrow window, never wrapping the line: its tooltip has it whole. Cut to a sliver, it's hidden
+           with the "·" before it.) -->
+      <span class="say" class:muted={!session.revealed || toolOnly} class:revealed={session.revealed && !toolOnly} title={clueSay} use:tinyCut={clueSay}
+        >{clueSay}</span
+      >
       {#if info.clue.hostNotes && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {info.clue.hostNotes}"
           >📝 {info.clue.hostNotes}</span
         >{/if}
@@ -1301,10 +1320,11 @@
       <b>{finalRound ? finalName(finalRound) : 'Final'}</b>
       {#if session.intro?.stage === 'title'}
         <!-- Its title card is up: viewers don't see the category yet. -->
-        <span class="muted" title="Title card · {goOnSay}">Title card <span class="hint">· {goOnSay}</span></span>
+        <span class="muted" title="Title card · {goOnSay}" use:tinyCut={goOnSay}>Title card <span class="hint">· {goOnSay}</span></span>
       {:else}
         <!-- (Cut short on a narrow window, with the Final's own 🤫 cards' ⚠ chip: its tooltip has it whole.) -->
-        <span class="muted say" title={finalStepText[session.finalStep ?? 'wagers']}>{finalStepText[session.finalStep ?? 'wagers']}</span>
+        {@const step = finalStepText[session.finalStep ?? 'wagers']}
+        <span class="muted say" title={step} use:tinyCut={step}>{step}</span>
       {/if}
       <!-- (Once its answer is up: the notes may give it away while the players are still writing theirs.) -->
       {#if finalRound?.hostNotes?.trim() && !dual && !session.intro && (session.finalStep === 'answer' || session.finalStep === 'reveal')}<span
@@ -1313,20 +1333,20 @@
         >{/if}
     {:else if (session.phase === 'rpg' || session.phase === 'boardgame') && session.intro?.stage === 'title'}
       <b>{round?.name}</b>
-      <span class="muted" title="Title card · {goOnSay}">Title card <span class="hint">· {goOnSay}</span></span>
+      <span class="muted" title="Title card · {goOnSay}" use:tinyCut={goOnSay}>Title card <span class="hint">· {goOnSay}</span></span>
     {:else if session.phase === 'rpg'}
       <b>{round?.name}</b>
       {@const rpgHow = touchScreen.on
         ? 'Move with the pad · tap objects on the stage · drag avatars · drag a box to select several'
         : 'Move with the arrows or the pad (numpad / Alt+arrows) · click objects on the stage · drag avatars · drag a box to select several'}
-      <span class="muted hint" title={rpgHow}>{rpgHow}</span>
+      <span class="muted hint" title={rpgHow} use:tinyCut={rpgHow}>{rpgHow}</span>
     {:else if session.phase === 'boardgame'}
       <b>{round?.name}</b>
-      <span class="muted hint" title={boardHow}>{boardHow}</span>
+      <span class="muted hint" title={boardHow} use:tinyCut={boardHow}>{boardHow}</span>
     {:else if session.phase === 'slides'}
       <b>{round?.name}</b>
       {#if slidePos}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
-      <span class="muted hint" title={slidesHow}>{slidesHow}</span>
+      <span class="muted hint" title={slidesHow} use:tinyCut={slidesHow}>{slidesHow}</span>
       {#if round?.mode === 'slides' && round.hostNotes?.trim() && !dual}<span
           class="notes"
           title="Host notes (viewers can see them in this window): {round.hostNotes}">📝 {round.hostNotes}</span
@@ -1336,7 +1356,7 @@
       {#if slidePos && !answerShowing(session)}<span class="slidepos" data-slidepos>Slide {slidePos.at} of {slidePos.of}</span>{/if}
       <!-- (Who won, by the 🏆 row, then back to the results; points given there may settle it too.) -->
       {@const tbSay = tiebreakLine(session, touchScreen.on)}
-      <span class="muted say" title={tbSay}>{tbSay}</span>
+      <span class="muted say" title={tbSay} use:tinyCut={tbSay}>{tbSay}</span>
       {#if game.tiebreaker?.hostNotes?.trim() && !dual}<span class="notes" title="Host notes (viewers can see them in this window): {game.tiebreaker.hostNotes}"
           >📝 {game.tiebreaker.hostNotes}</span
         >{/if}
@@ -1344,14 +1364,14 @@
       <!-- (Who won and that the show is over, or the tie to settle; cut short on a narrow window, whole in its tooltip.) -->
       {@const said = endLine(session)}
       <b>Game over</b>
-      <span class="muted say" title={said}>{said}</span>
-      <span class="muted hint" title={touchScreen.on ? 'Tap a score to fix it' : 'Click a score to fix it'}>· {clickWord()} a score to fix it</span>
+      <span class="muted say" title={said} use:tinyCut={said}>{said}</span>
+      <span class="muted hint" title={touchScreen.on ? 'Tap a score to fix it' : 'Click a score to fix it'} use:tinyCut>· {clickWord()} a score to fix it</span>
     {/if}
     {#if viewersSee.length}
       <!-- One window: the boxes open say viewers can read them (a card's name, never what's on it; the wager as it's
            typed): one chip, always in view, its whole sentence in its tooltip and for screen readers. -->
       <span class="viewers" data-viewers data-quiet title={viewersSee.join(' ')}
-        ><span aria-hidden="true">⚠ Viewers see this</span><span class="sr-only">{viewersSee.join(' ')}</span></span
+        ><span aria-hidden="true">⚠<span class="vw">{' '}Viewers see this</span></span><span class="sr-only">{viewersSee.join(' ')}</span></span
       >
     {/if}
     {#if app.live.cover}<span class="covered">⏸ Viewers see the cover</span>{/if}
@@ -3078,6 +3098,12 @@
   .clicknote button {
     flex-shrink: 0;
   }
+  /* A status-line span cut to a sliver (tinyCut): hidden, with the "·" before it, rather than a stray letter. (It keeps
+     its place, so it's measured again as the line's room changes.) */
+  .status > :global([data-tiny]),
+  .status > .sep:has(+ :global([data-tiny])) {
+    visibility: hidden;
+  }
   /* (A chip, never wrapping: the status line keeps one line.) */
   .viewers {
     color: var(--warn);
@@ -3088,6 +3114,13 @@
     border-radius: 999px;
     white-space: nowrap;
     flex-shrink: 0;
+  }
+  /* A phone (under 395px wide; nobody streams its screen): the chip is just ⚠, its sentence still in its tooltip and for
+     screen readers, so the moment's own words have the line's room. */
+  @media (max-width: 395px) {
+    .viewers .vw {
+      display: none;
+    }
   }
   .covered,
   .unsaved {

@@ -8,7 +8,7 @@
 //    and after ✔ (a long name, Bartholomew, too);
 // 3. the round nav's last button ("Final Jeopardy! ▶") at 320px stays inside the panel, its ▶ whole (the round picker
 //    gets narrower), nothing scrolling sideways, in both window modes (in one window out from behind ⋯ Tools);
-// 4. a tap's note on a wrapped status line (390px, the Final's wagers not typed) covers the line's first line only:
+// 4. a tap's note on a wrapped status line (320px, the Final's wagers not typed) covers the line's first line only:
 //    ⏱️ Start and the seconds box under it are still hit at their centres;
 // 5. the check before going on (the Final's clock running), opened at 1280×720 then the window made 1920×1080, in one
 //    window and with an audience window: its lines keep their room and its buttons in sight (scrolled to), nothing past the window's
@@ -322,9 +322,9 @@ try {
     await ctx.close();
   }
 
-  section('A tap’s note on a wrapped status line, 390px');
+  section('A tap’s note on a wrapped status line, 320px');
   {
-    const { ctx, page } = await pregame({ width: 390, height: 844 }, { touch: true });
+    const { ctx, page } = await pregame({ width: 320, height: 844 }, { touch: true });
     await start(page);
     await nextRound(page);
     await nextRound(page);
@@ -353,10 +353,10 @@ try {
         seconds: hit(box),
       };
     });
-    assert(seen.lines > 40, `390px: the status line wraps here, on the Final's wagers (${seen.lines}px tall)`);
+    assert(seen.lines > 40, `320px: the status line wraps here, on the Final's wagers (${seen.lines}px tall)`);
     assert(
       seen.start === 'hit' && seen.seconds === 'hit' && seen.note > 0 && seen.note < seen.lines,
-      `390px: the note covers the status line's first line only, ⏱️ Start and the seconds box still hit (${JSON.stringify(seen)})`,
+      `320px: the note covers the status line's first line only, ⏱️ Start and the seconds box still hit (${JSON.stringify(seen)})`,
     );
     await ctx.close();
   }

@@ -684,7 +684,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     buttons and notes behind 👁 Show its buttons). While a box viewers can read is up (a 🤝 partner clue's, a tile's or
     the Final's 🤫 cards, a Daily Double's wager, a ✍ clue's answers), the status line carries one ⚠ Viewers see this
     chip, always in view, saying in its tooltip (and to screen readers) what they can read there; the line keeps one
-    line, a clue's or the Final's words cut short (…) on a narrow window, the whole of them in their tooltip. In a
+    line, a clue's or the Final's words cut short (…) on a narrow window, the whole of them in their tooltip. Words cut
+    to a sliver (under 3 characters of them: a stray letter) are hidden instead, with the "·" before them. Under 395px
+    wide (a phone; nobody streams its screen) the chip is just ⚠, its sentence still in its tooltip and for screen
+    readers, so the moment's words have the line's room. In a
     partner clue's question the blue button is 👁 Reveal answer, then ▦ Done ▶ board, in view while the 🤝 box scrolls
     (on a laptop it fills the action part); the clue row's quiet ▦ Done (a skip) and 🙈 Hide may scroll out of sight
     there (`Esc`, `R` and the stage's menu do them). Windows opened mid-game (?,

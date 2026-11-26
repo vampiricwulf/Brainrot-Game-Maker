@@ -20,7 +20,9 @@
 // it was, and so does a window held upright that's too short for the stage and more (320×454, 360×380, 600×600): its
 // panel ends at the window's foot, the fixed bar in reach. On these phones ⋯ Tools, the clock's buttons and the 🎲 Dice
 // menu's are at least 32px to tap, a clue's player chips are one line each (a 320px phone too), and the panel's words
-// name taps, never a click or keys (a clue, the RPG, the board game, game over).
+// name taps, never a click or keys (a clue, the RPG, the board game, game over). On a slide, a clue, a Daily Double's
+// wager and the Final's wagers no status-line word is cut to a sliver (a stray letter, a "·" with nothing after it:
+// hidden instead), and under 395px wide the ⚠ Viewers see this chip is just ⚠.
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -244,6 +246,69 @@ async function tappable(loc, what) {
 }
 
 /**
+ * The status line's words at a moment, on a phone: one line, and no span cut to a sliver (under 3 characters of it,
+ * a stray letter or a "·" with nothing after it): such a span is hidden, with the "·" before it. Under 395px wide the
+ * ⚠ Viewers see this chip is just ⚠ (its sentence still for screen readers), giving the moment's words its room.
+ * @param {Page} page
+ * @param {string} where
+ * @param {string} moment
+ * @param {number} w the window's width
+ * @param {boolean} [one] its words on one line (false: a slide's how-to may wrap on a phone over 700px tall)
+ */
+async function tidyStatus(page, where, moment, w, one = true) {
+  /** @type {any} */
+  let got;
+  const look = () =>
+    statusLineIn(page).evaluate((s) => {
+      const shown = (/** @type {Element} */ e) => {
+        const cs = getComputedStyle(e);
+        return cs.visibility !== 'hidden' && cs.display !== 'none' && e.getBoundingClientRect().width > 0;
+      };
+      /** 3 characters of this element's words (as the panel reckons them: 0.6em each). */
+      const threeCh = (/** @type {HTMLElement} */ e) => 1.8 * parseFloat(getComputedStyle(e).fontSize);
+      const kids = /** @type {HTMLElement[]} */ ([...s.children]).filter((e) => !e.matches('[data-click-note], .clockroom') && shown(e));
+      // (Its words and chips: a clue's ⏱ countdown controls may have a row of their own under it.)
+      const mids = kids
+        .filter((e) => e.matches('b, span:not(.spacer)'))
+        .map((e) => {
+          const r = e.getBoundingClientRect();
+          return r.top + r.height / 2;
+        });
+      const slivers = kids
+        .filter((e) => e.matches('.say, .hint, .how, .muted') && e.scrollWidth > e.clientWidth + 1 && e.clientWidth < threeCh(e))
+        .map((e) => `${e.className}: ${e.clientWidth}px`);
+      const seps = kids.filter((e) => e.matches('.sep') && !(e.nextElementSibling && shown(e.nextElementSibling))).length;
+      const say = /** @type {HTMLElement | null} */ (s.querySelector(':scope > .say'));
+      const sr = /** @type {HTMLElement | null} */ (s.querySelector(':scope > [data-viewers] .sr-only'));
+      const chip = /** @type {HTMLElement | null} */ (s.querySelector(':scope > [data-viewers]'));
+      return {
+        oneLine: Math.max(...mids) - Math.min(...mids) < 8,
+        slivers,
+        seps,
+        say: say ? { hidden: !shown(say), w: say.clientWidth } : null,
+        sr: sr?.textContent ?? null,
+        chip: chip
+          ? {
+              text: /** @type {HTMLElement} */ (chip.querySelector('[aria-hidden="true"]')).innerText.trim(),
+              w: Math.round(chip.getBoundingClientRect().width),
+            }
+          : null,
+      };
+    });
+  const ok = (/** @type {any} */ g) =>
+    (g.oneLine || !one) &&
+    !g.slivers.length &&
+    !g.seps &&
+    (!g.chip || ((w < 395 ? g.chip.text === '⚠' : g.chip.text === '⚠ Viewers see this') && g.sr?.startsWith('⚠ Viewers can see this')));
+  await until(async () => ok((got = await look())), 3000);
+  assert(
+    ok(got),
+    `${where}, ${moment}: the status line's words are ${one ? 'one line, ' : ''}no stray sliver of a word nor a "·" left over${w < 395 ? ', the ⚠ chip just ⚠ (its sentence for screen readers)' : ''} (${JSON.stringify(got)})`,
+  );
+  return got;
+}
+
+/**
  * @param {Page} page
  * @param {string | RegExp} text
  */
@@ -271,6 +336,7 @@ try {
 
     // The slides: the stage the screen's width, 16:9, right at the top; the panel the rest of the screen.
     const first = await roomy(page, where, 'a slide', null);
+    await tidyStatus(page, where, 'a slide', w, tiny);
     const stage0 = first.stage;
     if (sideways) {
       // Under the stage the panel was min(clamp(280px, 44vh, 440px), 62vh) tall, the stage 16:9 in what was left.
@@ -354,6 +420,7 @@ try {
       chips.tall.length === 3 && chips.tall.every((t) => t < 50) && chips.reach.every(Boolean) && chips.small === 0,
       `${where}, a clue: each player's chip is one line, the first two's ✔ in reach, ✔ / ✘ at least 36×32 (${JSON.stringify(chips)})`,
     );
+    await tidyStatus(page, where, 'a clue', w);
     await page.keyboard.press('1');
     await sleep(300);
     await roomy(page, where, 'a clue with a player picked', stage0);
@@ -365,6 +432,41 @@ try {
     await statusSays(page, 'Daily Double');
     await sleep(500);
     await roomy(page, where, "a Daily Double's wager", stage0);
+    await tidyStatus(page, where, "a Daily Double's wager", w);
+    if (w === 320) {
+      // The line's room squeezed (here by padding at its end) until the Daily Double's words are a sliver: they're
+      // hidden, with the "·" before them; given the room back, both show again.
+      const seen = () =>
+        statusLineIn(page).evaluate((st) => {
+          const say = /** @type {HTMLElement} */ (st.querySelector(':scope > .say'));
+          const sep = /** @type {HTMLElement} */ (st.querySelector(':scope > .sep'));
+          return {
+            say: getComputedStyle(say).visibility,
+            sep: getComputedStyle(sep).visibility,
+            tiny: say.hasAttribute('data-tiny'),
+            w: say.clientWidth,
+          };
+        });
+      await statusLineIn(page).evaluate((st) => {
+        const say = /** @type {HTMLElement} */ (st.querySelector(':scope > .say'));
+        st.style.paddingRight = `${parseFloat(getComputedStyle(st).paddingRight) + say.clientWidth - 4}px`;
+      });
+      /** @type {any} */
+      let squeezed;
+      await until(async () => (squeezed = await seen()).say === 'hidden', 3000);
+      assert(
+        squeezed.say === 'hidden' && squeezed.sep === 'hidden' && squeezed.tiny,
+        `${where}: a Daily Double's words cut to a sliver are hidden, with the "·" before them (${JSON.stringify(squeezed)})`,
+      );
+      await statusLineIn(page).evaluate((st) => (st.style.paddingRight = ''));
+      /** @type {any} */
+      let back;
+      await until(async () => (back = await seen()).say === 'visible', 3000);
+      assert(
+        back.say === 'visible' && back.sep === 'visible' && !back.tiny,
+        `${where}: given the room back, they and the "·" show again (${JSON.stringify(back)})`,
+      );
+    }
     await tapIt(flowButton(page, 'putback'), `${where}: the Daily Double's ↩ Put back`);
     await statusSays(page, 'Pick a tile');
 
@@ -426,6 +528,7 @@ try {
     // The wagers (0 each), the question, the answer, then the reveals, finished with nobody judged: the end, everyone
     // on the same score, the tie box.
     await roomy(page, where, "the Final's wagers", stage0);
+    await tidyStatus(page, where, "the Final's wagers", w);
     for (const inp of await hostPanelIn(page).locator('input[data-wager]').all()) await inp.fill('0');
     await page.keyboard.press('Escape');
     for (const step of ['Question on screen', 'Answer on screen', /reveals/]) {
