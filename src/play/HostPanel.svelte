@@ -412,7 +412,8 @@
   /**
    * Moments whose rows scroll in the panel's one height (single window, under the stage) in their own way: the results,
    * a roll-off and the tiebreaker clue (the players' chips kept whole first: .keepchips), a board-game round's turns, and
-   * a wheel or dice tile (its tool kept whole at the top).
+   * a wheel or dice tile (its tool kept whole at the top of the action part, which scrolls; the chips are kept whole
+   * before it: .tilebox).
    */
   const held = $derived(
     !side &&
@@ -420,6 +421,14 @@
         session.phase === 'tiebreaker' ||
         session.phase === 'boardgame' ||
         (session.phase === 'clue' && (info?.clue.type === 'wheel' || info?.clue.type === 'dice'))),
+  );
+  /**
+   * A clue whose tile has a box of its own up in the action part (its 🤫 cards, or a wheel or dice tile's tool), single
+   * window: the players' chips are kept whole first, as in a partner clue (.tilebox), so every chip's ✔ / ✘ stays in
+   * sight and the box scrolls instead.
+   */
+  const tilebox = $derived(
+    !side && session.phase === 'clue' && !!info && !partner && (info.clue.type === 'wheel' || info.clue.type === 'dice' || cardSlides(info.clue).length > 0),
   );
   /** Phone buzzer teams: each player is a team (the 👥 button says so, as the list it opens does). */
   const teams = $derived(buzzerOn(game.settings) && teamsOn(game.settings));
@@ -1196,6 +1205,7 @@
   class:partnerclue={!!partner && !side}
   class:held
   class:keepchips={held && (session.phase === 'end' || session.phase === 'tiebreaker')}
+  class:tilebox
   class:quiettools={quietTools}
   class:foldtools={(revealFold || phoneFold) && !toolsOut && !ask}
   class:mediafold={mediaFold && !toolsOut && !ask}
@@ -1650,7 +1660,8 @@
   {#snippet toolBox()}<ToolsControls {game} {session} {selected} {dual} onclose={oncloseoverlay} ring={goon?.ring === 'toolslot'} />{/snippet}
 
   <div class="act">
-    <div class="action">
+    <!-- (data-more while its rows scroll on below its foot: see .action's cue.) -->
+    <div class="action" data-host-action use:scrollMore>
       {#if app.live.overlay && !moverUp && session.phase !== 'rpg'}
         <div class="mode-host tools">{@render toolBox()}</div>
       {/if}
@@ -2719,7 +2730,8 @@
   /* In the column: the action part takes the height left and scrolls; the tools and the fixed bar stay at its foot. */
   /* In a single window (the panel one height: see .panel:not(.dual)), a 🤝 partner clue's box scrolls, its foot kept in
      sight (📤 Send and start and ✔ Got it / ✘ Missed; the steal's row); a wheel or dice tile's tool keeps its height at
-     the top (an outcome's score buttons in sight), what's under it scrolls. */
+     the top, what's under it scrolls (the action part gives way before the players' chips: .tilebox, so on a short
+     window the tool itself scrolls under the flow row). */
   .panel.held:not(.dual) > .act > .action > .tools {
     flex-shrink: 0;
   }
@@ -2729,6 +2741,52 @@
     z-index: 1;
     /* (The box's own green on the panel: what scrolls under it doesn't show through.) */
     background: linear-gradient(rgba(43, 182, 115, 0.1), rgba(43, 182, 115, 0.1)), var(--panel);
+  }
+  /* Under the stage, while the action part's rows go on below its sticky foot (the flow row, or a 🤝 partner clue's
+     ✔ Got it row), a "▾ more" tab sits on the foot's top edge at its right end, and the rows fade out just above it
+     (data-more: see scrollmore.ts): a row cut there reads as more below, never as a strip of half-drawn buttons. Low,
+     so a line above the foot still reads; it takes no room and never takes a click, and scrolled to the end, it goes.
+     (On a window too short for a row above the foot, 200% zoom on a laptop, the tab would be cut by the box's top: the
+     fade alone says it there, and the players' chips have their own.) */
+  .panel:not(.side) > .act > .action:global([data-more]) > .flowrow::before,
+  .panel.partnerclue:not(.dual) > .act > .action:global([data-more]) :global([data-partner-foot])::before {
+    content: '▾ more';
+    position: absolute;
+    right: 6px;
+    top: 0;
+    transform: translateY(-50%);
+    z-index: 1;
+    padding: 0 6px;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 16px;
+    color: var(--muted);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    pointer-events: none;
+  }
+  .panel:not(.side) > .act > .action:global([data-more]) > .flowrow::after,
+  .panel.partnerclue:not(.dual) > .act > .action:global([data-more]) :global([data-partner-foot])::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 12px;
+    background: linear-gradient(transparent, var(--panel));
+    pointer-events: none;
+  }
+  @media (max-height: 499px) {
+    .panel:not(.side) > .act > .action:global([data-more]) > .flowrow::before,
+    .panel.partnerclue:not(.dual) > .act > .action:global([data-more]) :global([data-partner-foot])::before {
+      content: none;
+    }
+  }
+  /* (There the flow row scrolls under the foot, with the rows.) */
+  .panel.partnerclue:not(.dual) > .act > .action:has(:global([data-partner-foot])) > .flowrow::before,
+  .panel.partnerclue:not(.dual) > .act > .action:has(:global([data-partner-foot])) > .flowrow::after {
+    content: none;
   }
   /* Under the stage, when the panel runs out of height (a tall wheel editor, a long Final), the action part scrolls in
      its place: it never spills up over the stage, out of the scrollbar's reach (the row sits at its foot). It keeps one
@@ -3247,15 +3305,25 @@
      first (it scrolls, ✔ Got it / ✘ Missed or the steal's row kept at its foot), down to room for that row and the main
      button: the chips stay whole, quick buttons and all, while there's room. Then they scroll, as above. The same at
      the end and in the tiebreaker (held too), down to one row of buttons: every score in sight to fix, and every
-     player to pick the winner from. */
-  .panel:is(.partnerclue, .keepchips):not(.dual) > .players {
+     player to pick the winner from. And in a clue whose tile has a box of its own (its 🤫 cards, a wheel or dice tile's
+     tool: .tilebox): that box scrolls in the action part (the flow row at its foot), and every chip's ✔ / ✘ stays in
+     reach. */
+  .panel:is(.partnerclue, .keepchips, .tilebox):not(.dual) > .players {
     flex-shrink: 1;
   }
-  .panel:is(.partnerclue, .keepchips):not(.dual) > .act {
+  .panel:is(.partnerclue, .keepchips, .tilebox):not(.dual) > .act {
     flex-shrink: 1000;
   }
   .panel.partnerclue:not(.dual) > .act {
     min-height: 80px;
+  }
+  /* (A tile's box keeps its first line in sight above the flow row: the row's 32px, the gap and a line of buttons. On a
+     window with the room: on a short one, 200% zoom on a laptop, that row and the main button are all it keeps, so the
+     fixed bar stays in the window.) */
+  @media (min-height: 500px) {
+    .panel.tilebox:not(.dual) > .act {
+      min-height: 76px;
+    }
   }
   /* (Never wider than the panel: a chip too wide for it, on a 320px phone, folds its mark and ✔ / ✘ under its name and
      score. Their room is kept either way, so where it folds is set for the round: no ✔ / ✘ refolds it.) */
