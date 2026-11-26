@@ -1450,7 +1450,9 @@ back on the tile) instead of opening it; while the keys are there, number keys t
 - Score bar position is configurable: bottom (default), top, or hidden. The Final follows it too: at the top, its
   wagers and reveals sit under the plates; hidden, they're left out (the reveal card says each player's total, and the
   host spotlights from the panel or with the number keys). On the board a score pop stays inside the bar's band, over
-  its player's plate name, never over a row of tiles.
+  its player's plate name, never over a row of tiles. It's no wider than its plate and a gap, so it never covers the next
+  plates' names: a long name gives way with "…", and on a plate too narrow for any of it the pop shows just the points
+  (always whole).
 - The countdown over a slide (a clue, the Final, the tiebreaker, a slides round) sits in its top-right corner. When
   nothing of the slide reaches that corner (a text box by its words, a picture, video or shape by its box; a backdrop
   filling the stage doesn't count), the slide stays full size and still under it; otherwise the slide moves down under

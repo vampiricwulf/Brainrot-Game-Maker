@@ -659,6 +659,28 @@ async function crowd() {
   await aud.waitForTimeout(300);
   const onBar = await aud.locator('.pop').boundingBox();
   assert(onBar.x >= 0 && onBar.x + onBar.width <= 1280.5, `back on the board, the pop over the last plate stays on the stage (${JSON.stringify(onBar)})`);
+  // It stays on its own plate: never over the next plate's name (12 narrow plates: its long name gives way, the points
+  // show whole).
+  const popOver = await aud.evaluate(() => {
+    const pop = document.querySelector('.pop.anchored');
+    const plates = [...document.querySelectorAll('.plate')].map((p) => p.getBoundingClientRect());
+    const r = pop.getBoundingClientRect();
+    const who = pop.querySelector('.who');
+    const amt = pop.querySelector('.amt');
+    return {
+      left: Math.round(r.left),
+      prevRight: Math.round(plates[10].right),
+      own: [Math.round(plates[11].left), Math.round(plates[11].right)],
+      right: Math.round(r.right),
+      nudge: pop.style.getPropertyValue('--nudge'),
+      named: !!who && getComputedStyle(who).display !== 'none',
+      amtWhole: amt.scrollWidth <= amt.clientWidth + 1 && amt.getBoundingClientRect().right <= r.right + 0.5,
+    };
+  });
+  assert(
+    popOver.left >= popOver.prevRight && popOver.amtWhole,
+    `a score pop on the board stays off the next plate's name, its points whole (${JSON.stringify(popOver)})`,
+  );
   if (process.env.SHOTS) await aud.screenshot({ path: `${process.env.SHOTS}/stream-crowd.png` });
 
   // TIME'S UP slams in once, when the countdown runs out: an audience window reloaded during its moment joins it where

@@ -47,7 +47,7 @@
   import { mediaScope, previewMediaScope, type MediaRole } from '../lib/mediactl.svelte';
   import { autoPlay } from '../lib/audioout.svelte';
   import { cuesAfter, soonLeft as soonLeftAt, tileToolUp, type Live, type SoundCue, type StageAction } from '../lib/live';
-  import { plateCenter, wagersIn } from './flow';
+  import { plateCenter, plateWidth, wagersIn } from './flow';
   import { autofit } from '../lib/autofit';
   import SlideView from '../lib/slide/SlideView.svelte';
   import Board from './Board.svelte';
@@ -254,14 +254,46 @@
   const popsOnBar = $derived(session.phase === 'board' && !session.intro && layout.score ? layout.score : null);
   /** The score bar is at the top of the board: pops fly in from above. */
   const barTop = $derived(!!popsOnBar && popsOnBar.top === 0);
-  /** A player's pop over their plate (its centre, kept on the stage); null for a group's pop. */
+  /** A player's pop over their plate (its centre: popFit keeps it on the stage); null for a group's pop. */
   function popX(playerId: string | undefined): number | null {
     const i = playerId ? session.players.findIndex((p) => p.id === playerId) : -1;
     if (i < 0) return null;
-    return Math.min(1920 - POP_HALF, Math.max(POP_HALF, plateCenter(session.players.length, i, barReserve)));
+    return plateCenter(session.players.length, i, barReserve);
   }
-  /** An anchored pop is at most this wide (its name gives way to "…"), so it stays on the stage. */
-  const POP_HALF = 300;
+  /** Less room than this for a pop's name ("Ch…" at best): it shows just the points (its plate says whose they are). */
+  const POP_NAME_MIN = 60;
+  /**
+   * A pop over a plate: its name gives way ("…", or left out where too little of it would show) so the pop is no wider
+   * than `cap`; its points always show whole. Then it's nudged to stay on the stage (by its real width).
+   */
+  function popFit(node: HTMLElement, o: { at: number | null; cap: number }) {
+    const fit = ({ at, cap }: { at: number | null; cap: number }) => {
+      const who = node.querySelector<HTMLElement>('.who');
+      if (who) who.style.display = who.style.maxWidth = '';
+      if (at === null) {
+        node.style.removeProperty('--nudge');
+        return;
+      }
+      if (who && node.querySelector('.amt')) {
+        who.style.maxWidth = 'none';
+        const room = cap - (node.offsetWidth - who.offsetWidth);
+        if (who.scrollWidth > room) {
+          if (room < POP_NAME_MIN) who.style.display = 'none';
+          else who.style.maxWidth = `${room}px`;
+        }
+      }
+      const half = node.offsetWidth / 2;
+      node.style.setProperty('--nudge', `${Math.min(1920 - half, Math.max(half, at)) - at}px`);
+    };
+    fit(o);
+    // Again when its size changes for another reason (on the score bar its font is smaller; a font finishing loading).
+    const ro = new ResizeObserver(() => fit(o));
+    ro.observe(node);
+    return {
+      update: (n: { at: number | null; cap: number }) => fit((o = n)),
+      destroy: () => ro.disconnect(),
+    };
+  }
   /**
    * On the board, a pop's top is this far inside the score bar's band: with the pop's height (.on-bar .pop, 58px) it
    * covers the plate's name strip and stops at the score, even on the picker's plate (raised 6px).
@@ -502,6 +534,8 @@
   }
   /** Room kept free at the score bar's right end on the board: the join code's (and a gap), the countdown's. */
   const barReserve = $derived((codeSpot === 'bar' ? Math.max(JOIN_ROOM, barJoinW + 16) : 0) + (timerBar ? TIMER_ROOM : 0));
+  /** How wide a pop over a plate may be: its plate and a gap (9px past each edge), so it never covers the next plates' names. */
+  const popCap = $derived(plateWidth(session.players.length, barReserve) + 18);
   const ties = $derived(tiedLeaders(session));
   /** A tie for first the host hasn't settled yet (roll-off, tiebreaker clue or co-winners): nobody has won so far. */
   const tieOpen = $derived(!!ties.length && !coWinnersHold(session));
@@ -998,6 +1032,7 @@
         class="pop"
         class:anchored={at !== null}
         style:left={at !== null ? `${at}px` : undefined}
+        use:popFit={{ at, cap: popCap }}
         style:background={p.color}
         style:color={textOn(p.color)}
         in:fly={{ y: barTop ? -60 : 60, duration: 250 }}
@@ -2028,8 +2063,7 @@
   /* Over its player's plate. */
   .pop.anchored {
     position: absolute;
-    translate: -50% 0;
-    max-width: 600px;
+    translate: calc(-50% + var(--nudge, 0px)) 0;
   }
   /* A long name gives way ("…"); the points always show. */
   .who {
@@ -2038,9 +2072,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     vertical-align: bottom;
-  }
-  .anchored .who {
-    max-width: 280px;
   }
   .on-bar .pop.anchored {
     top: 0;
