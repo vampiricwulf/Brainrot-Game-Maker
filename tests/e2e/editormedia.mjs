@@ -473,7 +473,7 @@ try {
   await chromiumClicks();
 
   // ---------- A picture copied on a slide pastes onto the board images ----------
-  await page.getByRole('button', { name: '🖼️ Image' }).click();
+  await page.getByRole('button', { name: '🖼️ Picture', exact: true }).click();
   await drop(page.getByRole('dialog', { name: 'Choose image' }), [['sticker.png', 'image/png']]);
   await page
     .locator('.canvas')
@@ -551,7 +551,7 @@ try {
       await page.getByRole('dialog', { name: 'Edit clue' }).waitFor();
     };
     await openClue();
-    await page.getByRole('button', { name: '🖼️ Image' }).click();
+    await page.getByRole('button', { name: '🖼️ Picture', exact: true }).click();
     await drop(page.getByRole('dialog', { name: 'Choose image' }), [['gone.png', 'image/png']]);
     await layers.filter({ hasText: 'gone.png' }).waitFor();
     // (And as the slide's background picture.)

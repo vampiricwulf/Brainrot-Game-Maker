@@ -322,7 +322,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   layer; inert, so every click and drag goes through; never in a preview, never saved). A board game's 🖼 Board backdrop
   draws the board's spaces and links there, faint, behind ⬤ Spaces over it (a RememberedFold, `jb.backdropPath`, on
   until first turned off).
-- Insert: 🅣 Text, 🖼 Image, 🎞️ Video, 🔊 Sound, Shape. Drag-drop files onto the canvas. Shape ▾ is in sections: Shapes (▭ ◯ ― ➝),
+- Insert: 🅣 Text, 🖼️ Picture, 🎞️ Video, 🔊 Sound, Shape. Drag-drop files onto the canvas. Shape ▾ is in sections: Shapes (▭ ◯ ― ➝),
   Draw (✏ Freehand line…, one stroke, named "Freehand line" in Layers and the History, "Freehand shape" closed with
   Shift; 🖌 Drawpad…, a whole drawing inserted as a picture named "Drawing"), and on an RPG screen only ⬚ Hotspot (one
   already on another slide keeps showing).
@@ -336,7 +336,7 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **Opening an item**: a double-click, or Enter with one item selected, opens its editor: a text box its Text field, a
   picture ✎ Edit image, a video or sound ✎ Edit video / sound (or its Plays from box, as ✎ Edit the part it plays,
   when its file can't be edited there), a link its Link box, a shape its Fill (a line its Color); the item menu's ✎ Edit shows the keys for every
-  kind. F2 edits a text box's text, and renames any other item in the Layers list. After an item is added (🖼 Image,
+  kind. F2 edits a text box's text, and renames any other item in the Layers list. After an item is added (🖼️ Picture,
   🎞️ Video, 🔊 Sound, 🌐 Link, a drop or a paste) the keys are on the slide.
 - **Slide tabs** (a clue's, the tiebreaker's, a Final's, a slides round's): right after them, one group for the open
   slide (SlideGroup), always there and greyed where it can't act, all the same small button: ＋ Add slide (＋ 🤫 Card) · ⧉ Duplicate slide · 📋 Copy

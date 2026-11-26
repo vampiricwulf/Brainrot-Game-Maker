@@ -452,14 +452,14 @@ try {
   await page.keyboard.press('Delete');
 
   // ---------- Double-click or Enter opens an item's editor; F2 renames it; the keys stay on the slide after adding ----------
-  // A picture picked in 🖼️ Image: the keys are on the slide (not the 🖼️ Image button), so Enter opens ✎ Edit image.
-  await clue.getByRole('button', { name: '🖼️ Image', exact: true }).click();
+  // A picture picked in 🖼️ Picture: the keys are on the slide (not the 🖼️ Picture button), so Enter opens ✎ Edit image.
+  await clue.getByRole('button', { name: '🖼️ Picture', exact: true }).click();
   await page
     .getByRole('dialog', { name: 'Choose image' })
     .getByRole('button', { name: /big\.png/ })
     .click();
   await page.waitForFunction(() => !!document.activeElement?.closest('.canvas'), null, { timeout: 3000 });
-  assert(true, 'after a picture is added from 🖼️ Image, the keys are on the slide');
+  assert(true, 'after a picture is added from 🖼️ Picture, the keys are on the slide');
   await page.keyboard.press('Enter');
   const enterIe = page.getByRole('dialog', { name: 'Edit image' });
   await enterIe.waitFor();
@@ -888,7 +888,7 @@ try {
   await page.keyboard.press('Escape');
   assert((await menu.count()) === 0 && (await page.evaluate(() => document.activeElement?.classList.contains('canvas'))), 'Esc closes it, back on the canvas');
 
-  // ---------- 🖼️ Image on a question alone: the picture on top, the question in a band under it (one undo step) ----------
+  // ---------- 🖼️ Picture on a question alone: the picture on top, the question in a band under it (one undo step) ----------
   await page.getByRole('button', { name: 'Done' }).click();
   await page.locator('.grid .tile').nth(7).click();
   await clue.waitFor();
@@ -943,7 +943,7 @@ try {
     for (let i = 0; i < 5; i++) await clue.getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
     await canvas.locator('.slide .el:has(.text)').nth(1).waitFor({ state: 'detached' });
   }
-  await page.getByRole('button', { name: '🖼️ Image' }).click();
+  await page.getByRole('button', { name: '🖼️ Picture', exact: true }).click();
   await page.getByRole('dialog', { name: 'Choose image' }).dispatchEvent('drop', { dataTransfer: await picture('face.png', 800, 600, '#00aa00') });
   await canvas.locator('.slide .el img').waitFor();
   const laid = await drawn();

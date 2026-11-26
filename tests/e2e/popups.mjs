@@ -3,7 +3,7 @@
 // list (a single window, under the stage and beside it, and with an audience window; at 1280×600 and 1920×1080, after
 // the window shrinks and with the panel scrolled), its 🎲 Dice menu (its Roll as tall as its field, under the stage and
 // beside it) and its Go to round list; the editor's ⋯ More menu; a slide editor's Background ▾, ◼ Shape ▾, 🌐 Link and
-// 🖼️ Image pop-ups by the window's right edge; and the pre-game screen's player picture picker. In a single window the
+// 🖼️ Picture pop-ups by the window's right edge; and the pre-game screen's player picture picker. In a single window the
 // phones list stays off the stage viewers see.
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -395,8 +395,8 @@ try {
       .click();
     await wholeAndOnTop(page, page.getByRole('dialog', { name: 'Add from a link' }), '🌐 Link');
     await page.getByRole('dialog', { name: 'Add from a link' }).getByRole('button', { name: 'Close' }).click();
-    await clueBox.getByRole('button', { name: '🖼️ Image' }).first().click();
-    await wholeAndOnTop(page, page.getByRole('dialog', { name: 'Choose image' }), '🖼️ Image');
+    await clueBox.getByRole('button', { name: '🖼️ Picture', exact: true }).first().click();
+    await wholeAndOnTop(page, page.getByRole('dialog', { name: 'Choose image' }), '🖼️ Picture');
     await page.keyboard.press('Escape');
     await page.close();
   }

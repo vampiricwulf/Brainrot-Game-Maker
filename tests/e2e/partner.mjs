@@ -584,10 +584,10 @@ try {
   assert((await card.inputValue()) === 'Shrek' && (await dialog.getByLabel('Goes to').inputValue()) === 'both', 'with their words and who they go to');
 
   // ---------- Pictures from this computer on the cards, and a second partner clue with a card of its own ----------
-  /** 🖼️ Image › ⬆ Upload image file… on the slide open in the clue: a picture named `name`. */
+  /** 🖼️ Picture › ⬆ Upload image file… on the slide open in the clue: a picture named `name`. */
   async function addPicture(name, r, g, b) {
     const before = await dialog.locator('.slide .el img').count();
-    await dialog.getByRole('button', { name: '🖼️ Image' }).click();
+    await dialog.getByRole('button', { name: '🖼️ Picture', exact: true }).click();
     const [chooser] = await Promise.all([
       page.waitForEvent('filechooser'),
       page.getByRole('dialog', { name: 'Choose image' }).getByRole('button', { name: '⬆ Upload image file…' }).click(),

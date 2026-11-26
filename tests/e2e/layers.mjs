@@ -39,7 +39,7 @@ try {
     if (alt) await page.keyboard.up('Alt');
   };
   const inspectorKind = async () =>
-    (await inspectorIn(page).locator('textarea').count()) ? 'text' : (await inspectorIn(page).locator('h4', { hasText: 'Image' }).count()) ? 'image' : 'none';
+    (await inspectorIn(page).locator('textarea').count()) ? 'text' : (await inspectorIn(page).locator('h4', { hasText: 'Picture' }).count()) ? 'image' : 'none';
 
   // ↺ Reset background is always in the Background ▾ box (disabled until there's a background): a button appearing
   // on the first color change shifted things, and that closed the browser's color picker mid-typing.
@@ -61,7 +61,7 @@ try {
     return d;
   }, PNG);
   await canvas.dispatchEvent('drop', { dataTransfer: dt });
-  await inspectorIn(page).locator('h4', { hasText: 'Image' }).waitFor();
+  await inspectorIn(page).locator('h4', { hasText: 'Picture' }).waitFor();
   const pos = inspectorIn(page).locator('section:has(h4:text("Position"))');
   for (const [k, v] of /** @type {[string, number][]} */ ([
     ['X', 0],
@@ -313,7 +313,7 @@ try {
       return d;
     }, PNG);
     await canvas.dispatchEvent('drop', { dataTransfer: dt2 });
-    await inspectorIn(page).locator('h4', { hasText: 'Image' }).waitFor();
+    await inspectorIn(page).locator('h4', { hasText: 'Picture' }).waitFor();
     for (const [k, v] of /** @type {[string, number][]} */ ([
       ['X', 300],
       ['Y', 200],

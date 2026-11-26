@@ -135,7 +135,7 @@ try {
   // And a picture whose file then goes missing from this computer (gone from the browser's storage, then a reload),
   // in the slide's corner, away from the video.
   await page.getByRole('tab', { name: /Question/ }).click();
-  await page.getByRole('button', { name: '🖼️ Image' }).click();
+  await page.getByRole('button', { name: '🖼️ Picture', exact: true }).click();
   [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '⬆ Upload image file…' }).click()]);
   await fc.setFiles({ name: 'gone.png', mimeType: 'image/png', buffer: Buffer.from(PNG, 'base64') });
   const position = inspectorIn(page).locator('section', { hasText: 'Position' });

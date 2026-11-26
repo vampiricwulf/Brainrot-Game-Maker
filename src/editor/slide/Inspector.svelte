@@ -410,7 +410,7 @@
     {/if}
   {:else if el.kind === 'image'}
     <section>
-      <h4>Image</h4>
+      <h4>Picture</h4>
       {@render goneNote('picture')}
       <label class="field">
         Fit
