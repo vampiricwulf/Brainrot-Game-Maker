@@ -1094,11 +1094,14 @@ function clueRoom(sec: HTMLElement, kbd: boolean): number {
   ];
   // (A box up: the lines under it, "Sending…", "✔ Sent: B", "Not sent yet…" or why one wasn't taken, count as the room
   // kept for them (their min-height) whatever they say now, so a tap or a keystroke never fits the question again and
-  // moves the box.)
+  // moves the box. What they take is their height and margins: a squeezed question's red line is drawn in the gaps
+  // between the box and Send answer, taking none.)
   const notes = !$('answer-form').hidden ? ['answer-state', 'answer-err'] : !$('wager-form').hidden ? ['wager-state', 'wager-err'] : [];
-  const extra = keep.includes($('me'))
-    ? notes.reduce((n, id) => n + Math.max(0, $(id).getBoundingClientRect().height - parseFloat(getComputedStyle($(id)).minHeight)), 0)
-    : 0;
+  const takes = (el: HTMLElement): number => {
+    const s = getComputedStyle(el);
+    return el.getBoundingClientRect().height + parseFloat(s.marginTop) + parseFloat(s.marginBottom) - parseFloat(s.minHeight);
+  };
+  const extra = keep.includes($('me')) ? notes.reduce((n, id) => n + Math.max(0, takes($(id))), 0) : 0;
   const below = Math.max(c.bottom, ...keep.map((el) => rectOf(el)?.bottom ?? c.bottom)) - c.bottom - extra;
   return free - (c.top - side.top) - below;
 }
