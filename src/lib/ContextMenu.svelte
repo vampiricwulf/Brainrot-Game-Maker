@@ -188,6 +188,8 @@
     font-size: 12px;
     line-height: 1.3;
     color: var(--muted);
+    /* (It can name a step or a player: a long name with no spaces breaks too, never scrolling the menu sideways.) */
+    overflow-wrap: anywhere;
   }
   kbd {
     margin-left: auto;

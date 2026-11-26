@@ -355,6 +355,34 @@ try {
   const nowNames = await Promise.all([1, 2, 3].map((i) => catName(i).inputValue()));
   assert(JSON.stringify(nowNames) === JSON.stringify([was[0], 'Beta', was[2]]), `only Beta's rename is in the game (${nowNames.join(', ')})`);
   for (let i = 0; i < 2; i++) await key('Control+y');
+  // A name with no spaces in the line under the item (it names the other step) wraps inside the menu: no sideways scroll.
+  const long = 'W'.repeat(40);
+  const nameWas = await catName(1).inputValue();
+  await catName(1).fill(long);
+  await clickAway();
+  // (Apart, so the second isn't joined to the first as typing on.)
+  await page.waitForTimeout(1600);
+  await catName(1).fill('Short');
+  await clickAway();
+  await page.waitForTimeout(300);
+  await key('Control+z');
+  await key('Control+z');
+  await historyTab.click();
+  await rowOf('Short').click({ button: 'right' });
+  const longWhy = justItem('↷ Redo just this');
+  const fits = await page.getByRole('menu').evaluate((m) => m.scrollWidth <= m.clientWidth && m.getBoundingClientRect().right <= innerWidth);
+  assert(
+    (await longWhy.isDisabled()) && (await detailOf(longWhy)).includes(long.slice(0, 39)) && fits,
+    `a long name in the item's second line wraps in the menu (${await detailOf(longWhy)})`,
+  );
+  await page.keyboard.press('Escape');
+  await key('Control+y');
+  await key('Control+y');
+  await page.locator('.hist .hr.current .gobtn').click();
+  await page.waitForTimeout(300);
+  assert((await catName(1).inputValue()) === 'Short', 'both renames redone');
+  await catName(1).fill(nameWas);
+  await clickAway();
 
   // ＋ Add round is a step of its own: a name and a field typed right after it are steps too, so one Ctrl+Z never
   // takes the whole new round.
