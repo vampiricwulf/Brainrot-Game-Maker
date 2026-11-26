@@ -167,13 +167,15 @@ try {
   await stage('.timer').waitFor();
   // The countdown running: ⏸️ Pause the countdown (T) and ⬛ Cover the screen (K) beside it, no two items one sign.
   const runningMenu = (await stageMenu()).filter((l) => l !== '—' && !l.startsWith('#'));
-  const signs = runningMenu.map((l) => l.split(' ')[0]);
+  // (A sign with or without its emoji form, U+FE0F, is the same sign: ⏸ and ⏸️ would clash.)
+  const signs = runningMenu.map((l) => l.split(' ')[0].replaceAll('\uFE0F', ''));
   assert(
     runningMenu.includes('⏸️ Pause the countdown · T') && runningMenu.includes('⬛ Cover the screen · K') && new Set(signs).size === signs.length,
     `the countdown running, no two items in the stage’s menu share a sign (${runningMenu.join(' | ')})`,
   );
   // Its pause button in the status line: two bars, drawn (the ⏸ character is a thin sliver in the app's fonts).
-  const bars = await statusLineIn(page).locator('.tc button .bars').boundingBox();
+  const barsAt = statusLineIn(page).locator('.tc button .bars');
+  const bars = (await barsAt.count()) === 1 ? await barsAt.boundingBox() : null;
   assert(bars && bars.width >= 6 && bars.height >= 8, `the status line’s pause button draws its two bars (${JSON.stringify(bars)})`);
   await page.keyboard.press('1');
   await page.keyboard.press('Enter');
