@@ -460,6 +460,13 @@ try {
     .click();
   await page.waitForFunction(() => !!document.activeElement?.closest('.canvas'), null, { timeout: 3000 });
   assert(true, 'after a picture is added from 🖼️ Picture, the keys are on the slide');
+  // One word for it in the toolbar and the panel: Picture, as its tooltip, Background's 🖼️ Add a picture… and
+  // 🔁 Use another picture… say (✎ Edit image keeps its name, as the tool).
+  const heads = (await insp.locator('h4').allTextContents()).map((t) => t.trim());
+  assert(
+    (await clue.getByRole('button', { name: '🖼️ Image', exact: true }).count()) === 0 && heads.includes('Picture') && !heads.includes('Image'),
+    `the toolbar's button is 🖼️ Picture and the selected picture's panel is headed Picture (${JSON.stringify(heads)})`,
+  );
   await page.keyboard.press('Enter');
   const enterIe = page.getByRole('dialog', { name: 'Edit image' });
   await enterIe.waitFor();

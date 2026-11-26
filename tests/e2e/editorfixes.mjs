@@ -7,7 +7,8 @@
 // sidebar at 1280×720, pages opening at their top, and a round's name on a tablet; its round pages at 1920 (one header
 // width; the slide of a slides round, a Final and the tiebreaker filling it, and the clue editor the window), the slide's
 // buttons all one size, and the board's two count lines level. And a reload mid-edit coming back on the page, round and
-// clue it left. And on a phone, 🔊 Sounds, 📊 Stats & items, the board game and the slide tabs not scrolling sideways; and on a small phone, the first screen's ✨ Try a sample game in sight, the sidebar under it.
+// clue it left. And on a phone, 🔊 Sounds, 📊 Stats & items, the board game and the slide tabs not scrolling sideways;
+// and on a small phone, the first screen's ✨ Try a sample game in sight, the sidebar under it.
 import { pathToFileURL } from 'node:url';
 import {
   appFile,

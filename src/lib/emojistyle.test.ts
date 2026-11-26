@@ -1,5 +1,5 @@
 // Lint over the app's and the phone page's sources: a sign that's text by default (🖼️ Media, 🗺️ RPG, ♟️, 🕵️, 🗣️, ✏️,
-// ⏱️, 🎞️ video) is written with U+FE0F after it, so a system whose first font draws it as text (DejaVu Sans on Linux) shows the
+// ⏱️, 🎞️ video, 📽️ Slides) is written with U+FE0F after it, so a system whose first font draws it as text (DejaVu Sans on Linux) shows the
 // colour emoji like the icons around it, not a grey outline: the same icon looks the same everywhere.
 import { describe, expect, it } from 'vitest';
 
@@ -10,7 +10,7 @@ const sources = {
 };
 
 /** The signs, as code points (this file's own text stays out of the search). */
-const SIGNS = [0x1f5bc, 0x1f5fa, 0x265f, 0x1f575, 0x1f5e3, 0x270f, 0x23f1, 0x1f39e].map((c) => String.fromCodePoint(c));
+const SIGNS = [0x1f5bc, 0x1f5fa, 0x265f, 0x1f575, 0x1f5e3, 0x270f, 0x23f1, 0x1f39e, 0x1f4fd].map((c) => String.fromCodePoint(c));
 
 /** Each place a sign has no U+FE0F (nor U+FE0E, text on purpose) after it: "path:line ✏". */
 function bareSigns(path: string, src: string): string[] {
