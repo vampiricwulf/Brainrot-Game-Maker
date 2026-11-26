@@ -1449,7 +1449,14 @@
   <MediaControls {dual} />
 
   {#if showPlayers}
-    <div class="players" class:marking={chipSlots} bind:this={playersEl} style:min-height={foldedH ? `${foldedH}px` : undefined}>
+    <div
+      class="players"
+      data-host-players
+      class:marking={chipSlots}
+      bind:this={playersEl}
+      style:min-height={foldedH ? `${foldedH}px` : undefined}
+      use:scrollMore
+    >
       {#each session.players as p, i (p.id)}
         {@const on = selected.includes(p.id)}
         <div
@@ -3346,6 +3353,13 @@
     /* (Room for a selected chip's ring.) */
     padding: 2px;
     margin: -2px;
+  }
+  /* While more chips are below what shows (a short window, a laptop at 200% zoom: one chip a row, one row in sight), the
+     cut row fades out at the box's foot, as the round's box does (data-more: see scrollmore.ts), so it reads as more
+     players below. A mask: it takes no room (no row of its own in the wrapping chips) and never takes a click. Scrolled
+     to the end, it goes, and the last chip shows whole. */
+  .panel:not(.side) > .players:global([data-more]) {
+    mask-image: linear-gradient(#000 calc(100% - 18px), transparent);
   }
   /* A 🤝 partner clue's panel keeps one height (see .partnerclue), so there it's the action part that gives up height
      first (it scrolls, ✔ Got it / ✘ Missed or the steal's row kept at its foot), down to room for that row and the main
