@@ -7,7 +7,8 @@
 // 🙈 Hide), and all of its words where they fit on one line (1100px wide and up); on an upright phone its buttons wrap
 // one by one (three rows from 320 to 390px wide, no more than one more than before), on a tablet held upright (768,
 // 820) it's one line; on a phone on its side (740×360) the panel is a column beside the stage: signs, wrapping, the
-// tools row behind ⋯ Tools. The
+// tools row behind ⋯ Tools, the bar in two rows at most; on a short touch window not 3:2 (720×500) the panel is under
+// the stage: signs, one line. The
 // tools row keeps 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard in words, but on an upright phone up to 800px tall
 // (360×740), a tablet on its side shorter than 768px (1024×700, 1024×600: there the row stays one line) and a phone on
 // its side. Each moment's box keeps its room (60px, or all it needs: the RPG's and the board game's at 1024×600 too),
@@ -144,13 +145,15 @@ try {
     [1280, 800],
     [1024, 700],
     [740, 360],
+    [720, 500],
   ]) {
     const t = touch(w, h);
     const { ctx, page } = await sample(t);
     const b = await bar(page);
     // (A phone on its side, one window: the host panel is a column beside the stage, its bar a wrapping row of signs and
     // its tools row folded behind ⋯ Tools.)
-    const column = w > h && h <= 500;
+    // (Play.svelte's phoneSide: landscape, 500px tall or less, at least 560px wide and 3:2.)
+    const column = w > h && h <= 500 && w >= 560 && w / h >= 1.5;
     const small = b.buttons.filter((x) => x.w < 32 || x.h < 32);
     assert(
       small.length === 0,
@@ -187,7 +190,8 @@ try {
     if (w in before) {
       const was = before[/** @type {320 | 360 | 390} */ (w)];
       assert(b.rows <= was + 1 && b.rows <= 3, `${say(t)}: the bar takes ${b.rows} rows, at most one more than its ${was}`);
-    } else if (!column) assert(b.rows === 1, `${say(t)}: the bar on one line (${b.rows} rows)`);
+    } else if (column) assert(b.rows <= 2, `${say(t)}: the column's bar wraps button by button, two rows at most (${b.rows} rows)`);
+    else assert(b.rows === 1, `${say(t)}: the bar on one line (${b.rows} rows)`);
     // (On a phone up to 700px tall the row is folded behind ⋯ Tools. On a phone up to 800px tall, a tablet on its side
     // shorter than 768px (1024×700, its panel at its shortest) or a phone on its side, the words would take it a line
     // more, out of the moment's room: signs there, and on a tablet so the row stays one line.)
@@ -218,7 +222,7 @@ try {
     if (column) {
       const [x, , sw] = stage.split(/[ ,×]/).map(Number);
       assert(
-        x === 0 && !!panel && panel.x >= sw - 1 && panel.height >= h - 1,
+        x === 0 && !!panel && panel.x >= sw - 1 && panel.height >= h - 1 && Math.abs(panel.width - Math.min(380, Math.max(300, 0.4 * w))) <= 2,
         `${say(t)}: on its side, the panel a column beside the stage (${stage}, panel ${JSON.stringify(panel)})`,
       );
     } else if (h > w && w > 600) {
@@ -226,6 +230,11 @@ try {
       assert(
         x === 0 && y === 0 && sw === w && Math.abs(sh - (w * 9) / 16) <= 1,
         `${say(t)}: a tablet held upright: the stage at the top, the screen's width at 16:9 (${stage})`,
+      );
+      // (The panel in the black that was under it: from the stage's foot to the screen's.)
+      assert(
+        !!panel && panel.y >= y + sh - 1 && Math.abs(panel.y + panel.height - h) <= 1,
+        `${say(t)}: a tablet held upright: the panel under the stage, to the screen's foot (${JSON.stringify(panel)})`,
       );
     } else {
       const m = await sample(mouse(w, h));
