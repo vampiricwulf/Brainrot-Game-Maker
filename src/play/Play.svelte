@@ -553,8 +553,12 @@
   const wide = new MediaQuery('(min-aspect-ratio: 3/2) and (min-width: 1000px)');
   /** The pre-game screen's two columns (its CSS's breakpoint): ✅ Before you start goes at the foot of the right one. */
   const twoCols = new MediaQuery('(min-width: 1200px)');
-  /** A phone on its side (a short landscape touch screen): under the stage the panel would leave it a strip. */
-  const phoneSide = new MediaQuery('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)');
+  /**
+   * A phone on its side (a short landscape touch screen): under the stage the panel would leave it a strip. Only one wide
+   * enough (560px and 3:2 or wider) that the stage beside the column is bigger than it was under the panel: a narrower
+   * short window (480×320, a phone upright whose keyboard took half its height) keeps the panel under the stage.
+   */
+  const phoneSide = new MediaQuery('(orientation: landscape) and (max-height: 500px) and (min-width: 560px) and (min-aspect-ratio: 3/2) and (pointer: coarse)');
   // RPG and board-game rounds have a tall host panel (the player cards, the round's own controls): with an audience
   // window, on a wide window, it goes beside the host's stage copy instead of under it. In one window it stays under the
   // stage, as in every other round: the stage viewers see keeps one size and place the whole game (its rows scroll).

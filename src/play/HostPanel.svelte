@@ -225,7 +225,7 @@
     undoText?: string | null;
     redoText?: string | null;
     dual: boolean;
-    /** RPG and board-game rounds on a wide window, with an audience window: the panel is a column beside the stage (see Play's `side`). */
+    /** The panel is a column beside the stage (see Play's `side`): RPG and board-game rounds on a wide window, with an audience window; a phone on its side, one window, all game. */
     side?: boolean;
     /** P was pressed and the next number key picks the picker. */
     pickerPending?: boolean;

@@ -14,11 +14,12 @@
 // host panel is a column beside the stage at every moment, the stage twice as wide as under it was and one size and
 // place all game; the tools row folds behind ⋯ Tools there too, the status line's how-to keeps to one line, and with
 // nothing scrolled the fixed bar's 🚪 Exit, the RPG's pad and the board game's 🎲 Roll are in sight where a tap reaches
-// them. A laptop (1280×720, 1920×1080) and a phone with an audience window keep the panel's height as it was, and so
-// does a window held upright that's too short for the stage and more (320×454, 360×380, 600×600): its panel ends at the
-// window's foot, the fixed bar in reach. On these phones ⋯ Tools, the clock's buttons and the 🎲 Dice menu's are at
-// least 32px to tap, a clue's player chips are one line each (a 320px phone too), and the panel's words name taps,
-// never a click or keys (a clue, the RPG, the board game, game over).
+// them. A laptop (1280×720, 1920×1080), a mouse (768×1024, 844×390), a short touch window too narrow for the column
+// (480×320) and a phone with an audience window (upright or on its side) keep the panel under the stage, its height as
+// it was, and so does a window held upright that's too short for the stage and more (320×454, 360×380, 600×600): its
+// panel ends at the window's foot, the fixed bar in reach. On these phones ⋯ Tools, the clock's buttons and the 🎲 Dice
+// menu's are at least 32px to tap, a clue's player chips are one line each (a 320px phone too), and the panel's words
+// name taps, never a click or keys (a clue, the RPG, the board game, game over).
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -496,18 +497,26 @@ try {
   }
 
   // Elsewhere the panel is as tall as it was: min(clamp(280px, 44vh, 440px), 62vh).
-  section('A laptop, two windows: the panel as it was');
+  // (Only a touch screen takes the tablet's and the phone on its side's layouts; a short touch window too narrow for a
+  // column beside the stage, which would leave the stage smaller than this, keeps it too.)
+  section('A laptop, a mouse, a narrow short touch window: the panel as it was');
   for (const [what, opts, dual] of /** @type {[string, import('playwright-core').BrowserContextOptions, boolean][]} */ ([
     ['a laptop, 1280×720', { viewport: { width: 1280, height: 720 } }, false],
     ['a big screen, 1920×1080', { viewport: { width: 1920, height: 1080 } }, false],
+    ['a window upright with a mouse, 768×1024', { viewport: { width: 768, height: 1024 } }, false],
+    ['a short wide window with a mouse, 844×390', { viewport: { width: 844, height: 390 } }, false],
+    ['a small short touch window, 480×320', { viewport: { width: 480, height: 320 }, hasTouch: true, isMobile: true }, false],
   ])) {
     const { ctx, page } = await sample(opts, dual);
     const l = await layout(page);
     const vh = l.ih / 100;
     const was = Math.min(Math.max(280, Math.min(44 * vh, 440)), 62 * vh);
     assert(
-      Math.abs(l.panel.h - was) <= 1 && !(await hostPanelIn(page).getByRole('button', { name: '⋯ Tools' }).count()),
-      `${what}: the panel is ${Math.round(was)}px tall as before (${l.panel.h}), no ⋯ Tools`,
+      Math.abs(l.panel.h - was) <= 1 &&
+        l.panel.x === 0 &&
+        l.panel.y >= l.stage.y + l.stage.h - 1 &&
+        !(await hostPanelIn(page).getByRole('button', { name: '⋯ Tools' }).count()),
+      `${what}: the panel is ${Math.round(was)}px tall as before, under the stage (${JSON.stringify({ stage: l.stage, panel: l.panel })}), no ⋯ Tools`,
     );
     await ctx.close();
   }
@@ -517,6 +526,17 @@ try {
     assert(
       l.panel.y + l.panel.h <= l.ih + 1 && !(await hostPanelIn(page).getByRole('button', { name: '⋯ Tools' }).count()) && l.stage.h < 300,
       `a phone with an audience window: the stage preview and the panel as before (${JSON.stringify({ stage: l.stage, panel: l.panel })})`,
+    );
+    await ctx.close();
+  }
+  {
+    // A phone on its side with an audience window: the panel under the stage preview, as before (the column is one
+    // window's).
+    const { ctx, page } = await sample({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true }, true);
+    const l = await layout(page);
+    assert(
+      l.panel.x === 0 && l.panel.y > 0 && l.panel.y + l.panel.h <= l.ih + 1 && !(await page.locator('.play.side').count()),
+      `a phone on its side with an audience window: the panel under the stage preview, as before (${JSON.stringify({ stage: l.stage, panel: l.panel })})`,
     );
     await ctx.close();
   }

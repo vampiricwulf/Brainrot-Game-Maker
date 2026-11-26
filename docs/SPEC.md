@@ -722,7 +722,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     line's room up to ⋯ Tools. While the row is out there (something in it on, or ⋯ Tools pressed) the moment's part
     keeps `min(150px, 34vh)` and the panel scrolls instead (the fixed bar below; its keys still work). A computer and an
     audience window keep the rule above (`tests/e2e/phonepanel.mjs`).
-  - **A phone on its side** (landscape, 500px tall or less, a touch screen), one window: the host panel is a column on
+  - **A phone on its side** (landscape, 500px tall or less, at least 560px wide and 3:2, a touch screen), one window:
+    the host panel is a column on
     the stage's right, `clamp(300px, 40vw, 380px)` wide and the window's height, at every moment of the game, and the
     stage takes the rest of the width (16:9: about 506×285 at 844×390, twice as wide as under the panel), one size and
     place all game. The column is the same stack as beside the stage with an audience window: the status line at its
@@ -731,7 +732,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     named for screen readers, their tooltips say what they do), so 🚪 Exit, the RPG's pad and the board game's 🎲 Roll
     are in sight with nothing scrolled. The tools row folds behind **⋯ Tools** there as on a short phone, and the
     Amount row keeps to one line (the word Amount as its box's placeholder). If its rows still can't all fit, the
-    column scrolls (`tests/e2e/phonepanel.mjs`).
+    column scrolls. A short touch window narrower than that (480×320, a phone upright with its keyboard up) keeps the
+    rule above: there a column would leave the stage smaller than it was (`tests/e2e/phonepanel.mjs`).
 - **The host panel's rules** (everything below follows them):
   1. **Each action has one place: its situation's box**, beside the manual choices it's an alternative to (🤝 a partner
      clue, ⭐ a Daily Double, 🎡 / 🎲 a wheel or dice, the Final's wagers and reveals, a tie at the end, the buzzers' row,
