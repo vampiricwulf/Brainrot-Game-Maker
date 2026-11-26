@@ -1186,7 +1186,10 @@ function refitClue(sec: HTMLElement): void {
     clue.style.fontSize = `${smallest}px`;
     if (!fits()) {
       sec.classList.add('squeezed');
-      room = Math.floor(clueRoom(sec, kbd));
+      const more = Math.floor(clueRoom(sec, kbd));
+      // (Only where it gives the question room: not where that room isn't counted under it, as under a card.)
+      if (more > room) room = more;
+      else sec.classList.remove('squeezed');
     }
     clue.style.removeProperty('font-size');
   }
