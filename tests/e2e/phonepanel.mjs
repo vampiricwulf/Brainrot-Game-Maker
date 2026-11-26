@@ -97,12 +97,12 @@ const layout = (page) =>
       .filter((e) => e.scrollWidth > e.clientWidth + 1 && !(e.getAttribute('title') ?? '').trim())
       .map((e) => (e.textContent ?? '').trim());
     // ...and it, not the line's empty spacer, has the line's room.
-    // (On a line of its own, beside the stage, the spacer on the name's line is no room taken from it.)
+    // (Beside the stage, on a phone on its side, it has a line of its own: the spacer on the name's line takes nothing
+    // from it.)
+    const cut =
+      innerWidth <= innerHeight &&
+      [...panel.querySelectorAll(':scope > .status > :is(.hint, .how, .muted:has(> .hint))')].some((e) => e.scrollWidth > e.clientWidth + 1);
     const spacer = panel.querySelector(':scope > .status > .spacer');
-    const sameLine = (/** @type {Element} */ e) => !spacer || Math.abs(e.getBoundingClientRect().top - spacer.getBoundingClientRect().top) < 4;
-    const cut = [...panel.querySelectorAll(':scope > .status > :is(.hint, .how, .muted:has(> .hint))')].some(
-      (e) => e.scrollWidth > e.clientWidth + 1 && sameLine(e),
-    );
     return {
       untitled,
       spacerW: cut && spacer ? spacer.getBoundingClientRect().width : 0,
