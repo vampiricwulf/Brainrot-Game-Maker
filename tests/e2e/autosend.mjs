@@ -161,7 +161,10 @@ try {
   // A small phone: the long question takes the room kept for why an answer wasn't taken (none kept under the box), and
   // one coming (Send answer with nothing typed) moves neither the question nor the box.
   await p2.setViewportSize({ width: 320, height: 568 });
-  await until(async () => (await p2.locator('#s-buzz.squeezed').count()) === 1, { timeout: 5_000 });
+  assert(
+    await until(async () => (await p2.locator('#s-buzz.squeezed').count()) === 1, { timeout: 5_000 }),
+    'a small phone, a long question that doesn’t fit even at its smallest size: it takes the room kept under the box',
+  );
   const boxAt = () =>
     p2.evaluate(() =>
       ['clue', 'answer-in', 'answer-send', 'answer-err'].map((id) =>
