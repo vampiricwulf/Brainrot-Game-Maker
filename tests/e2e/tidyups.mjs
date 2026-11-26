@@ -134,7 +134,7 @@ try {
     `a wheel slice's long label goes onto two lines at a readable size (${JSON.stringify(storyLines)})`,
   );
   const shortLines = await page.locator('.wheel text', { hasText: 'push-ups' }).evaluate((t) => t.querySelectorAll('tspan').length);
-  assert(shortLines === 1, `a short one stays on one line (${shortLines})`);
+  assert(shortLines === 0, `a short one stays on one line, as before (${shortLines} tspans)`);
   if (process.env.SHOTS)
     await page
       .locator('.wheel')

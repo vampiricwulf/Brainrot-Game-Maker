@@ -63,6 +63,8 @@
   });
   /** Each label's lines and size: a long one on two lines where that reads bigger (a player's name: always one). */
   const layouts = $derived(labels.map((l, i) => wheelLabelLayout(angles[i].end - angles[i].start, l, !players)));
+  /** A line longer than the font's guess allows is squeezed to fit between the hub and the rim. */
+  const squeeze = (size: number, line: string) => (CHAR * size * line.length > LEN * 0.92 ? LEN : undefined);
   /** On the left half (where it is right now), a label is turned the other way round so it never reads upside down. */
   const flipped = (mid: number) => (((mid + rot) % 360) + 360) % 360 > 180;
 </script>
@@ -77,7 +79,7 @@
       {@const size = lay.size}
       <g transform="rotate({mid})" data-slice={i}>
         <!-- Squeezed to fit when the font's guess runs long: it never crosses the rim or the hub. Two lines: either side
-             of the slice's middle. -->
+             of the slice's middle, each squeezed on its own. -->
         <text
           x="0"
           y={-MID}
@@ -85,13 +87,15 @@
           font-size={size}
           text-anchor="middle"
           dominant-baseline="middle"
+          textLength={lay.lines.length === 1 ? squeeze(size, lay.lines[0]) : undefined}
+          lengthAdjust={lay.lines.length === 1 ? 'spacingAndGlyphs' : undefined}
           transform="rotate({flipped(mid) ? 90 : -90} 0 {-MID})"
-          >{#each lay.lines as line, j (j)}<tspan
-              x="0"
-              dy={lay.lines.length > 1 ? (j ? '1.1em' : '-0.55em') : undefined}
-              textLength={CHAR * size * line.length > LEN * 0.92 ? LEN : undefined}
-              lengthAdjust="spacingAndGlyphs">{line}</tspan
-            >{/each}</text
+          >{#if lay.lines.length === 1}{lay.lines[0]}{:else}{#each lay.lines as line, j (j)}<tspan
+                x="0"
+                dy={j ? '1.1em' : '-0.55em'}
+                textLength={squeeze(size, line)}
+                lengthAdjust="spacingAndGlyphs">{line}</tspan
+              >{/each}{/if}</text
         >
       </g>
     {/each}
