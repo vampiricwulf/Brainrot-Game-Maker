@@ -148,194 +148,204 @@
       <button class="ghost modal-x" onclick={onclose} aria-label="Close" title="Close (Esc)">✕</button>
     </div>
 
-    {#if capture}
-      <p class="alert" role="alert">
-        ⚠ Brainrot Games Maker is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and start it normally.
-      </p>
-    {/if}
+    <!-- Two columns where there's room (one window: the panel's width): testing it and where it plays, then streaming it. -->
+    <div class="cols">
+      <div class="col">
+        {#if capture}
+          <p class="alert" role="alert">
+            ⚠ Brainrot Games Maker is running as administrator (or in compatibility mode). Discord and OBS may stream no game sound. Close it and start it
+            normally.
+          </p>
+        {/if}
 
-    <p>
-      The game's sound plays in <b>{where}</b>{dual ? ' (this window stays silent)' : ''}. Press Test sound: you should hear a chime.
-    </p>
-    <div class="row">
-      <button class="primary" onclick={() => testSound(dual)}>▶ Test sound</button>
-      <!-- Always there, so screen readers announce each new result. -->
-      <span class="result" class:ok={test?.state === 'ok'} class:bad={!!test && test.state !== 'ok' && test.state !== 'waiting'} role="status">
-        {testText}
-      </span>
-    </div>
-
-    {#if canRoute}
-      <section class="box">
+        <p>
+          The game's sound plays in <b>{where}</b>{dual ? ' (this window stays silent)' : ''}. Press Test sound: you should hear a chime.
+        </p>
         <div class="row">
-          <b>Game audio output</b>
-          {#if ownPicker}
-            <span>{audioOut.deviceId ? audioOut.label || 'Chosen speaker' : 'Default (system)'}</span>
-            <button class="small" onclick={chooseFirefox}>Choose speaker…</button>
-            {#if audioOut.deviceId}<button class="small ghost" onclick={() => choose('')}>Use default</button>{/if}
-          {:else}
-            <select aria-label="Game audio output" value={audioOut.deviceId} onchange={(e) => choose(e.currentTarget.value)}>
-              <option value="">Default (system)</option>
-              {#if savedExtra}
-                <option value={savedExtra.deviceId}>{savedExtra.label || 'Chosen speaker'}{outputs ? ' (not connected)' : ''}</option>
-              {/if}
-              {#each outputs ?? [] as d (d.deviceId)}
-                <option value={d.deviceId}>{d.label}</option>
-              {/each}
-            </select>
-            <button class="small" onclick={() => showOutputs(true)} disabled={listing}>{listing ? 'Looking…' : 'List my speakers'}</button>
-          {/if}
+          <button class="primary" onclick={() => testSound(dual)}>▶ Test sound</button>
+          <!-- Always there, so screen readers announce each new result. -->
+          <span class="result" class:ok={test?.state === 'ok'} class:bad={!!test && test.state !== 'ok' && test.state !== 'waiting'} role="status">
+            {testText}
+          </span>
         </div>
-        {#if outputs && !outputs.length}
-          <p class="warn small">
-            No speakers found. {exe ? 'Brainrot Games Maker' : 'Your browser'} only lists them after you allow microphone access (nothing is recorded).
-          </p>
-        {/if}
-        {#if missing}
-          <p class="warn small">
-            ⚠ {dual ? 'The audience window' : 'This window'} couldn't use "{audioOut.label || 'the chosen speaker'}", so the game plays on the default device.
-            Plug it in and choose it again.
-          </p>
-        {/if}
-        <p class="muted small">
-          Sends the game's sound to another device, e.g. a virtual cable (VB-CABLE) for OBS. YouTube videos, Google Drive's and Streamable's players and "Open
-          link" pop-ups can't be moved: they always play on the default device.
-        </p>
-      </section>
-    {/if}
 
-    {#if exe}
-      <section class="box">
-        <label class="check">
-          <input type="checkbox" checked={desktop.fixSaved} onchange={(e) => toggleFix(e.currentTarget)} />
-          <b>Discord audio fix</b> <span class="muted small">(on by default)</span>
-        </label>
-        <p class="muted small">
-          Plays the game's sound from Brainrot Games Maker's own process, so Discord and OBS can pick it up. Keep it on; turn it off only if the sound stutters
-          or the app misbehaves. Changes take effect after a restart.
-        </p>
-        <!-- Switched off, none of these apply: unticking hides them, ticking again brings them back. -->
-        {#if desktop.fixSaved && desktop.fixCrashed}
-          <p class="warn small">
-            The Discord audio fix was turned off for this run because WebView2 crashed with it, so Discord may stream no game sound. Try it again; if it crashes
-            again, Brainrot Games Maker restarts without it.
-          </p>
-          <div class="row">{@render restartButton('↻ Try it again', true)}</div>
-        {:else if desktop.fixSaved && desktop.fixFailed}
-          <p class="warn small">
-            The fix didn't start this time, so Brainrot Games Maker is running without it: its previous WebView2 processes were probably still closing. Restart
-            to try again. If it keeps happening, share your whole screen with sound instead, or run the show in Chrome or Edge (see below).
-          </p>
-          <div class="row">{@render restartButton('↻ Restart now', false)}</div>
-        {:else if desktop.fixSaved !== desktop.fixActive}
-          <div class="row">
-            <span class="warn small">Restart Brainrot Games Maker to turn it {desktop.fixSaved ? 'on' : 'off'}.</span>
-            {@render restartButton('↻ Restart now', false)}
-          </div>
+        {#if canRoute}
+          <section class="box">
+            <div class="row">
+              <b>Game audio output</b>
+              {#if ownPicker}
+                <span>{audioOut.deviceId ? audioOut.label || 'Chosen speaker' : 'Default (system)'}</span>
+                <button class="small" onclick={chooseFirefox}>Choose speaker…</button>
+                {#if audioOut.deviceId}<button class="small ghost" onclick={() => choose('')}>Use default</button>{/if}
+              {:else}
+                <select aria-label="Game audio output" value={audioOut.deviceId} onchange={(e) => choose(e.currentTarget.value)}>
+                  <option value="">Default (system)</option>
+                  {#if savedExtra}
+                    <option value={savedExtra.deviceId}>{savedExtra.label || 'Chosen speaker'}{outputs ? ' (not connected)' : ''}</option>
+                  {/if}
+                  {#each outputs ?? [] as d (d.deviceId)}
+                    <option value={d.deviceId}>{d.label}</option>
+                  {/each}
+                </select>
+                <button class="small" onclick={() => showOutputs(true)} disabled={listing}>{listing ? 'Looking…' : 'List my speakers'}</button>
+              {/if}
+            </div>
+            {#if outputs && !outputs.length}
+              <p class="warn small">
+                No speakers found. {exe ? 'Brainrot Games Maker' : 'Your browser'} only lists them after you allow microphone access (nothing is recorded).
+              </p>
+            {/if}
+            {#if missing}
+              <p class="warn small">
+                ⚠ {dual ? 'The audience window' : 'This window'} couldn't use "{audioOut.label || 'the chosen speaker'}", so the game plays on the default
+                device. Plug it in and choose it again.
+              </p>
+            {/if}
+            <p class="muted small">
+              Sends the game's sound to another device, e.g. a virtual cable (VB-CABLE) for OBS. YouTube videos, Google Drive's and Streamable's players and
+              "Open link" pop-ups can't be moved: they always play on the default device.
+            </p>
+          </section>
         {/if}
-        {#if fixError}<p class="bad small">{fixError}</p>{/if}
-        <p class="muted small">
-          If Brainrot Games Maker ever won't open or its window stays blank, start it once with <code class="selectable">--no-audio-fix</code> (e.g. at the end
-          of a shortcut's Target; this also restarts a blank copy that's still open), or close it and put an empty file named
-          <code class="selectable">discord-audio-fix-off</code> in <code class="selectable">%APPDATA%\com.brainrotgames.maker</code>. Either one turns the fix
-          off.
-        </p>
-      </section>
-    {/if}
 
-    <!-- The window is 🔊 Test the sound, as its buttons say; the steps to stream it follow under their own line. -->
-    <p><b>Streaming it (Discord, OBS)</b></p>
-    <details open>
-      <summary>Discord on Windows</summary>
-      <!-- (Single window: viewers see this window, so it's the one to share; there's no audience window to open.) -->
-      <ol>
         {#if exe}
-          <li>Use the Discord desktop app, not Discord in a web browser.</li>
-          <li>
-            Start Brainrot Games Maker normally: not with "Run as administrator", and with nothing ticked under its Properties › Compatibility. Open it only
-            once. (Running Discord as administrator doesn't help.)
-          </li>
-          <li
-            >{#if audienceMode}Open the audience window and press <b>Test sound</b>.{:else}Press <b>Test sound</b> (the sound plays in this window).{/if}</li
-          >
-          <li>
-            In your voice channel: <b>Share Your Screen › Applications › {audienceMode ? `"${windowTitle}"` : 'the Brainrot Games Maker window'}</b>. Turn
-            <b>Sound</b> on, then Go Live.
-          </li>
-        {:else}
-          <li>Use the Discord desktop app. Discord in a web browser can't send a window's sound (in Firefox, none at all).</li>
-          <li>{audienceMode ? 'Open the audience window, click once inside it' : 'Click once anywhere in this window'}, then press <b>Test sound</b>.</li>
-          <li>
-            In your voice channel: <b>Share Your Screen › Applications</b> › {audienceMode
-              ? 'the browser window showing the audience view'
-              : 'this browser window'}. Turn <b>Sound</b> on, then Go Live. Discord sends the sound of every tab in that browser: close or mute the others.
-          </li>
+          <section class="box">
+            <label class="check">
+              <input type="checkbox" checked={desktop.fixSaved} onchange={(e) => toggleFix(e.currentTarget)} />
+              <b>Discord audio fix</b> <span class="muted small">(on by default)</span>
+            </label>
+            <p class="muted small">
+              Plays the game's sound from Brainrot Games Maker's own process, so Discord and OBS can pick it up. Keep it on; turn it off only if the sound
+              stutters or the app misbehaves. Changes take effect after a restart.
+            </p>
+            <!-- Switched off, none of these apply: unticking hides them, ticking again brings them back. -->
+            {#if desktop.fixSaved && desktop.fixCrashed}
+              <p class="warn small">
+                The Discord audio fix was turned off for this run because WebView2 crashed with it, so Discord may stream no game sound. Try it again; if it
+                crashes again, Brainrot Games Maker restarts without it.
+              </p>
+              <div class="row">{@render restartButton('↻ Try it again', true)}</div>
+            {:else if desktop.fixSaved && desktop.fixFailed}
+              <p class="warn small">
+                The fix didn't start this time, so Brainrot Games Maker is running without it: its previous WebView2 processes were probably still closing.
+                Restart to try again. If it keeps happening, share your whole screen with sound instead, or run the show in Chrome or Edge (see below).
+              </p>
+              <div class="row">{@render restartButton('↻ Restart now', false)}</div>
+            {:else if desktop.fixSaved !== desktop.fixActive}
+              <div class="row">
+                <span class="warn small">Restart Brainrot Games Maker to turn it {desktop.fixSaved ? 'on' : 'off'}.</span>
+                {@render restartButton('↻ Restart now', false)}
+              </div>
+            {/if}
+            {#if fixError}<p class="bad small">{fixError}</p>{/if}
+            <p class="muted small">
+              If Brainrot Games Maker ever won't open or its window stays blank, start it once with <code class="selectable">--no-audio-fix</code> (e.g. at the
+              end of a shortcut's Target; this also restarts a blank copy that's still open), or close it and put an empty file named
+              <code class="selectable">discord-audio-fix-off</code> in <code class="selectable">%APPDATA%\com.brainrotgames.maker</code>. Either one turns the
+              fix off.
+            </p>
+          </section>
         {/if}
-        <li>Press Test sound again and ask a viewer if they heard it. Viewers can mute a stream by accident: hover it and check its volume.</li>
-      </ol>
-      <p><b>No sound for viewers?</b></p>
-      <ol start={exe ? 6 : 5}>
-        <li>
-          Stop the stream. In Discord, <b>User Settings › Voice & Video › Screen Share</b>: flip "Use an experimental method to capture audio from applications"
-          (on if it was off, off if it was on). Quit Discord completely (tray icon › Quit Discord), open it again and go live again.
-        </li>
-        {#if exe}
-          <li>
-            Close Brainrot Games Maker, check in Task Manager that no "Brainrot Games Maker" or "Microsoft Edge WebView2" entries are left, start it again and
-            retry. Check that the <b>Discord audio fix</b> above is on (it is unless you turned it off) and that nothing under it says it's off for this run.
-          </li>
-          <li>
-            Still silent: share your whole screen with Sound on (viewers hear everything your PC plays, including your call: use headphones), or run the show in
-            Chrome or Edge: <b>Save</b> the game (.brainrot), open <code class="selectable">brainrot-game-maker.html</code> in the browser, <b>Open…</b> the pack
-            and share that browser window.
-          </li>
-        {:else}
-          <li>
-            Still silent: share your whole screen with Sound on. Viewers hear everything your PC plays, including your call: use headphones and mute other apps.
-          </li>
+      </div>
+      <div class="col">
+        <!-- The window is 🔊 Test the sound, as its buttons say; the steps to stream it follow under their own line. -->
+        <p><b>Streaming it (Discord, OBS)</b></p>
+        <details open>
+          <summary>Discord on Windows</summary>
+          <!-- (Single window: viewers see this window, so it's the one to share; there's no audience window to open.) -->
+          <ol>
+            {#if exe}
+              <li>Use the Discord desktop app, not Discord in a web browser.</li>
+              <li>
+                Start Brainrot Games Maker normally: not with "Run as administrator", and with nothing ticked under its Properties › Compatibility. Open it only
+                once. (Running Discord as administrator doesn't help.)
+              </li>
+              <li
+                >{#if audienceMode}Open the audience window and press <b>Test sound</b>.{:else}Press <b>Test sound</b> (the sound plays in this window).{/if}</li
+              >
+              <li>
+                In your voice channel: <b>Share Your Screen › Applications › {audienceMode ? `"${windowTitle}"` : 'the Brainrot Games Maker window'}</b>. Turn
+                <b>Sound</b> on, then Go Live.
+              </li>
+            {:else}
+              <li>Use the Discord desktop app. Discord in a web browser can't send a window's sound (in Firefox, none at all).</li>
+              <li>{audienceMode ? 'Open the audience window, click once inside it' : 'Click once anywhere in this window'}, then press <b>Test sound</b>.</li>
+              <li>
+                In your voice channel: <b>Share Your Screen › Applications</b> › {audienceMode
+                  ? 'the browser window showing the audience view'
+                  : 'this browser window'}. Turn <b>Sound</b> on, then Go Live. Discord sends the sound of every tab in that browser: close or mute the others.
+              </li>
+            {/if}
+            <li>Press Test sound again and ask a viewer if they heard it. Viewers can mute a stream by accident: hover it and check its volume.</li>
+          </ol>
+          <p><b>No sound for viewers?</b></p>
+          <ol start={exe ? 6 : 5}>
+            <li>
+              Stop the stream. In Discord, <b>User Settings › Voice & Video › Screen Share</b>: flip "Use an experimental method to capture audio from
+              applications" (on if it was off, off if it was on). Quit Discord completely (tray icon › Quit Discord), open it again and go live again.
+            </li>
+            {#if exe}
+              <li>
+                Close Brainrot Games Maker, check in Task Manager that no "Brainrot Games Maker" or "Microsoft Edge WebView2" entries are left, start it again
+                and retry. Check that the <b>Discord audio fix</b> above is on (it is unless you turned it off) and that nothing under it says it's off for this run.
+              </li>
+              <li>
+                Still silent: share your whole screen with Sound on (viewers hear everything your PC plays, including your call: use headphones), or run the
+                show in Chrome or Edge: <b>Save</b> the game (.brainrot), open <code class="selectable">brainrot-game-maker.html</code> in the browser,
+                <b>Open…</b> the pack and share that browser window.
+              </li>
+            {:else}
+              <li>
+                Still silent: share your whole screen with Sound on. Viewers hear everything your PC plays, including your call: use headphones and mute other
+                apps.
+              </li>
+            {/if}
+          </ol>
+        </details>
+
+        <details>
+          <summary>OBS</summary>
+          <ul>
+            <li>
+              Window Capture of {audienceMode ? 'the audience window' : 'this window'}: tick <b>Capture Audio (BETA)</b>, or add an
+              <b>Application Audio Capture</b>
+              for {appName}.
+            </li>
+            <li>
+              Still silent: send the game's sound to a separate device such as VB-CABLE
+              {#if canRoute}(<b>Game audio output</b> above){:else}(Windows: Settings › System › Sound › Volume mixer){/if}, add an
+              <b>Audio Output Capture</b> for that device, and set it to "Monitor and Output" to hear it yourself.
+            </li>
+            <li>OBS Virtual Camera has no sound.</li>
+            <li>YouTube videos and "Open link" pop-ups always play on your default speakers.</li>
+          </ul>
+        </details>
+
+        {#if !exe}
+          <details>
+            <summary>Mac</summary>
+            <ol>
+              <li>Use the Discord desktop app on macOS 13 or newer.</li>
+              <li>
+                <b>System Settings › Privacy & Security › Screen & System Audio Recording</b> (older macOS: Screen Recording): turn Discord on, then quit and reopen
+                Discord.
+              </li>
+              <li>Share {audienceMode ? 'the browser window showing the audience view' : 'this browser window'} with Sound on, and press Test sound.</li>
+              <li>Still silent: share your entire screen with sound, or use a virtual audio device such as BlackHole.</li>
+            </ol>
+          </details>
+
+          <details>
+            <summary>Linux</summary>
+            <ol>
+              <li>The official Discord app sends sound only on Wayland (Discord 0.0.76 or newer), from apps playing through PulseAudio or PipeWire.</li>
+              <li>Share {audienceMode ? 'the browser window showing the audience view' : 'this browser window'} with Sound on, and press Test sound.</li>
+              <li>On X11, or if it's still silent, use Vesktop and share the same window with "Stream audio" on.</li>
+            </ol>
+          </details>
         {/if}
-      </ol>
-    </details>
-
-    <details>
-      <summary>OBS</summary>
-      <ul>
-        <li>
-          Window Capture of {audienceMode ? 'the audience window' : 'this window'}: tick <b>Capture Audio (BETA)</b>, or add an <b>Application Audio Capture</b>
-          for {appName}.
-        </li>
-        <li>
-          Still silent: send the game's sound to a separate device such as VB-CABLE
-          {#if canRoute}(<b>Game audio output</b> above){:else}(Windows: Settings › System › Sound › Volume mixer){/if}, add an
-          <b>Audio Output Capture</b> for that device, and set it to "Monitor and Output" to hear it yourself.
-        </li>
-        <li>OBS Virtual Camera has no sound.</li>
-        <li>YouTube videos and "Open link" pop-ups always play on your default speakers.</li>
-      </ul>
-    </details>
-
-    {#if !exe}
-      <details>
-        <summary>Mac</summary>
-        <ol>
-          <li>Use the Discord desktop app on macOS 13 or newer.</li>
-          <li>
-            <b>System Settings › Privacy & Security › Screen & System Audio Recording</b> (older macOS: Screen Recording): turn Discord on, then quit and reopen Discord.
-          </li>
-          <li>Share {audienceMode ? 'the browser window showing the audience view' : 'this browser window'} with Sound on, and press Test sound.</li>
-          <li>Still silent: share your entire screen with sound, or use a virtual audio device such as BlackHole.</li>
-        </ol>
-      </details>
-
-      <details>
-        <summary>Linux</summary>
-        <ol>
-          <li>The official Discord app sends sound only on Wayland (Discord 0.0.76 or newer), from apps playing through PulseAudio or PipeWire.</li>
-          <li>Share {audienceMode ? 'the browser window showing the audience view' : 'this browser window'} with Sound on, and press Test sound.</li>
-          <li>On X11, or if it's still silent, use Vesktop and share the same window with "Stream audio" on.</li>
-        </ol>
-      </details>
-    {/if}
+      </div>
+    </div>
     <div class="modal-foot"><button class="primary" onclick={onclose}>Done</button></div>
   </div>
 </div>
@@ -357,6 +367,23 @@
   .backdrop.in-panel {
     inset: auto;
     padding: 8px;
+  }
+  /* (And there it takes the panel's width, its parts side by side, so more of it shows without scrolling.) */
+  .backdrop.in-panel .modal {
+    width: min(1180px, 100%);
+  }
+  /* Side by side when each gets 420px; one under the other in a narrower window. */
+  .cols {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr));
+    gap: 12px 22px;
+    align-items: start;
+  }
+  .col {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
   }
   .modal {
     outline: none;

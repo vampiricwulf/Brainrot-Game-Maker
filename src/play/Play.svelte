@@ -6602,6 +6602,11 @@
     inset: auto;
     padding: 8px;
   }
+  /* One window: ⚖ Game rules takes the panel's width (its fields' grids flow into more columns), so more of it shows in
+     the band under the stage without scrolling. */
+  .backdrop.in-panel .rules-modal {
+    width: min(1180px, 100%);
+  }
   .modal {
     background: var(--panel);
     border: 1px solid var(--border);

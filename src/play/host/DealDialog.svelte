@@ -459,89 +459,92 @@
     {#if !app.playerOnly}<div class="muted small">Make your own in the editor’s 🎡 Wheels, Dice & Deals tab.</div>{/if}
     {#if work}
       <div class="head">Parts</div>
-      {#each work.parts as part, i (part.id)}
-        <div class="part" data-deal-part={i + 1}>
-          <div class="row">
-            <input
-              class="pname small"
-              value={part.name}
-              maxlength={DEAL_PART_MAX}
-              aria-label="Part {i + 1}’s name"
-              oninput={(e) => (part.name = e.currentTarget.value)}
-            />
-            <select
-              class="small"
-              aria-label="How many get {partName(part, i)}"
-              value={String(part.count)}
-              onchange={(e) => (part.count = e.currentTarget.value === 'rest' ? 'rest' : Number(e.currentTarget.value))}
-            >
-              {#each COUNTS as n (n)}<option value={String(n)}>{countText(n)}</option>{/each}
-              <option value="rest">{countText('rest')}</option>
-            </select>
-            <button
-              class="ghost tiny danger"
-              aria-label="Take {partName(part, i)} out of this deal"
-              title="Out of this deal only (the saved deal keeps it)"
-              onclick={() => removePart(part)}
-              disabled={work.parts.length < 2}>🗑</button
-            >
-          </div>
-          <div class="row">
-            {#if dual}
-              <!-- (Two windows: viewers don't see this one.) -->
+      <!-- (Side by side where there's room: one window's wider 🎭 Deal… holds two.) -->
+      <div class="parts">
+        {#each work.parts as part, i (part.id)}
+          <div class="part" data-deal-part={i + 1}>
+            <div class="row">
               <input
-                class="small grow"
-                value={slideText(part.card)}
-                placeholder="What its card says"
-                aria-label="{partName(part, i)}’s card words"
-                oninput={(e) => setSlideText(part.card, e.currentTarget.value)}
+                class="pname small"
+                value={part.name}
+                maxlength={DEAL_PART_MAX}
+                aria-label="Part {i + 1}’s name"
+                oninput={(e) => (part.name = e.currentTarget.value)}
               />
-            {:else}
-              <span class="muted small grow">Card: {cardSummary(game, part.card)}</span>
-            {/if}
-            <select
-              class="small"
-              aria-label="{partName(part, i)}’s card draws from the wheel"
-              value={part.draw ?? ''}
-              onchange={(e) => {
-                const v = e.currentTarget.value;
-                if (v === 'own' || v === 'shared') part.draw = v;
-                else delete part.draw;
-              }}
-            >
-              <option value="">no wheel</option>
-              <option value="shared">+ a wheel slice everyone shares</option>
-              <option value="own">+ a wheel slice of their own</option>
-            </select>
-          </div>
-          {#if dual}
-            <details class="small">
-              <summary
-                >Choose who gets it {(dealDraft.picks[part.id] ?? []).length
-                  ? `(${dealDraft.picks[part.id].map(who).join(', ')})`
-                  : '(else at random)'}</summary
+              <select
+                class="small"
+                aria-label="How many get {partName(part, i)}"
+                value={String(part.count)}
+                onchange={(e) => (part.count = e.currentTarget.value === 'rest' ? 'rest' : Number(e.currentTarget.value))}
               >
-              <div class="row wrap">
-                {#each pool as t (toKey(t))}
-                  {@const p = session.players.find((x) => x.id === t.seat)}
-                  {@const on = pickedFor(part, t)}
-                  <button
-                    class="chip"
-                    style:border-color={p?.color}
-                    style:background={on ? p?.color : undefined}
-                    style:color={on ? textOn(p?.color ?? '#888') : undefined}
-                    aria-pressed={on}
-                    aria-label="{who(t)} gets {partName(part, i)}"
-                    data-player-id={t.seat}
-                    onclick={() => togglePick(part, t)}
-                    >{who(t)}{#if on}&nbsp;✓{/if}</button
-                  >
-                {/each}
-              </div>
-            </details>
-          {/if}
-        </div>
-      {/each}
+                {#each COUNTS as n (n)}<option value={String(n)}>{countText(n)}</option>{/each}
+                <option value="rest">{countText('rest')}</option>
+              </select>
+              <button
+                class="ghost tiny danger"
+                aria-label="Take {partName(part, i)} out of this deal"
+                title="Out of this deal only (the saved deal keeps it)"
+                onclick={() => removePart(part)}
+                disabled={work.parts.length < 2}>🗑</button
+              >
+            </div>
+            <div class="row">
+              {#if dual}
+                <!-- (Two windows: viewers don't see this one.) -->
+                <input
+                  class="small grow"
+                  value={slideText(part.card)}
+                  placeholder="What its card says"
+                  aria-label="{partName(part, i)}’s card words"
+                  oninput={(e) => setSlideText(part.card, e.currentTarget.value)}
+                />
+              {:else}
+                <span class="muted small grow">Card: {cardSummary(game, part.card)}</span>
+              {/if}
+              <select
+                class="small"
+                aria-label="{partName(part, i)}’s card draws from the wheel"
+                value={part.draw ?? ''}
+                onchange={(e) => {
+                  const v = e.currentTarget.value;
+                  if (v === 'own' || v === 'shared') part.draw = v;
+                  else delete part.draw;
+                }}
+              >
+                <option value="">no wheel</option>
+                <option value="shared">+ a wheel slice everyone shares</option>
+                <option value="own">+ a wheel slice of their own</option>
+              </select>
+            </div>
+            {#if dual}
+              <details class="small">
+                <summary
+                  >Choose who gets it {(dealDraft.picks[part.id] ?? []).length
+                    ? `(${dealDraft.picks[part.id].map(who).join(', ')})`
+                    : '(else at random)'}</summary
+                >
+                <div class="row wrap">
+                  {#each pool as t (toKey(t))}
+                    {@const p = session.players.find((x) => x.id === t.seat)}
+                    {@const on = pickedFor(part, t)}
+                    <button
+                      class="chip"
+                      style:border-color={p?.color}
+                      style:background={on ? p?.color : undefined}
+                      style:color={on ? textOn(p?.color ?? '#888') : undefined}
+                      aria-pressed={on}
+                      aria-label="{who(t)} gets {partName(part, i)}"
+                      data-player-id={t.seat}
+                      onclick={() => togglePick(part, t)}
+                      >{who(t)}{#if on}&nbsp;✓{/if}</button
+                    >
+                  {/each}
+                </div>
+              </details>
+            {/if}
+          </div>
+        {/each}
+      </div>
       {#if work.parts.length < DEAL_PARTS_MAX}<button class="ghost small" onclick={addPart}>＋ Part</button>{/if}
       {#if draws}
         <label class="small row"
@@ -756,7 +759,14 @@
     font-weight: 700;
     opacity: 0.8;
   }
+  .parts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(260px, 100%), 1fr));
+    gap: 6px;
+    align-items: start;
+  }
   .part {
+    min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 4px;

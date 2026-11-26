@@ -691,7 +691,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     📜 Log, 👥 Players, ⚖ Rules, 🔊 Sound, the RPG's ⤢ Full map, ✎ Edit board's ⚙ Buttons…) open over the host panel,
     never the stage (the full map's screen card beside the map where the panel is wide enough); they scroll in the
     panel's own box, so the stage keeps its size, their head (title, ✕, the keys' filter) and foot (Done) staying in
-    sight and the rows fading over the foot while there's more below; the RPG's ✎
+    sight and the rows fading over the foot while there's more below. ⚖ Rules and 🔊 Sound take the panel's width there
+    (up to 1180px: the rules' fields in more columns, the sound's test and output beside the steps to stream it), and
+    🎭 Deal… is 600px wide under the stage (the ready-made deal's name whole, two parts side by side; 380px beside the
+    stage or with the audience window), so more of them shows without scrolling; the RPG's ✎
     Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). **The stage is one box the
     whole game**: the host panel under it is one height in every round and moment (the Final's, `min(clamp(280px,
     44vh, 440px), 62vh)`), from the board, a clue's steps, a Daily Double, a 🤝 partner clue and a wheel or dice tile to

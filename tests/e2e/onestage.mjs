@@ -5,7 +5,8 @@
 // round, the Final's wagers, question and reveals, the results and the tiebreaker clue: the host panel under it is one
 // height all along (its rows scroll), and the RPG and board-game rounds keep it under the stage too. 👥 Players,
 // ⚖ Rules and the keys (?) open in that panel: their title and Done stay in sight as the middle scrolls, and the rows
-// fade over Done while there's more below (gone at the foot).
+// fade over Done while there's more below (gone at the foot). ⚖ Rules and 🔊 Test the sound take the panel's width
+// there, and 🎭 Deal… is 600px wide, two parts side by side, still off the stage.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -27,6 +28,7 @@ import {
   roundNavIn,
   stageBoxIn,
   statusLineIn,
+  toolsRowIn,
   resultsPath,
 } from './helpers.mjs';
 
@@ -171,11 +173,19 @@ const stageBox = (page) =>
  * sight (what's at their middle is them) at the top and as it scrolls to the foot; faded over Done while there's more
  * below, and not at the foot.
  */
-async function panelWindow(page, w, h, name, open) {
+async function panelWindow(page, w, h, name, open, wide = false) {
   await open();
   const dialog = page.getByRole('dialog', { name });
   await dialog.waitFor();
   await page.waitForTimeout(200);
+  if (wide) {
+    // (⚖ Rules and 🔊 Test the sound take the panel's width, up to 1180px: more of them shows in the band.)
+    const fit = await dialog.evaluate((d) => {
+      const panel = document.querySelector('.play > .panel').getBoundingClientRect();
+      return { w: Math.round(d.getBoundingClientRect().width), want: Math.round(Math.min(1180, panel.width - 16)), shown: d.clientHeight, all: d.scrollHeight };
+    });
+    assert(fit.w >= fit.want - 2, `${w}×${h}, ${name}: as wide as the panel (up to 1180px) (${JSON.stringify(fit)})`);
+  }
   const look = () =>
     dialog.evaluate((d) => {
       const inSight = (el) => {
@@ -260,7 +270,55 @@ try {
     await measure('board');
     // The windows in the panel (on the board, the panel as it is all game).
     await panelWindow(page, w, h, 'Players', () => hostPanelIn(page).locator('.fixed').getByRole('button', { name: '👥 Players' }).click());
-    await panelWindow(page, w, h, 'Game rules', () => hostPanelIn(page).locator('.fixed').getByRole('button', { name: '⚖ Rules' }).click());
+    await panelWindow(page, w, h, 'Game rules', () => hostPanelIn(page).locator('.fixed').getByRole('button', { name: '⚖ Rules' }).click(), true);
+    await measure('⚖ Rules open');
+    // 🔊 Test the sound: as wide as the panel, its parts side by side (testing it | streaming it), in the panel.
+    await hostPanelIn(page).getByRole('button', { name: '🔊 Sound' }).click();
+    const sound = page.getByRole('dialog', { name: 'Test the sound' });
+    await sound.waitFor();
+    await page.waitForTimeout(200);
+    await measure('🔊 Test the sound open');
+    const soundBox = await sound.evaluate((d) => {
+      const panel = document.querySelector('.play > .panel').getBoundingClientRect();
+      const stage = document.querySelector('.stage-box').getBoundingClientRect();
+      const r = d.getBoundingClientRect();
+      const cols = [...d.querySelectorAll('.cols > .col')].map((c) => Math.round(c.getBoundingClientRect().top));
+      return {
+        w: Math.round(r.width),
+        want: Math.round(Math.min(1180, panel.width - 16)),
+        inPanel: r.top >= panel.top - 1 && r.bottom <= panel.bottom + 1 && r.top >= stage.bottom - 1,
+        sideBySide: cols.length === 2 && cols[0] === cols[1],
+      };
+    });
+    assert(
+      soundBox.w >= soundBox.want - 2 && soundBox.inPanel && soundBox.sideBySide,
+      `${w}×${h}: 🔊 Test the sound is as wide as the panel (up to 1180px), in it, off the stage, its parts side by side (${JSON.stringify(soundBox)})`,
+    );
+    await sound.getByRole('button', { name: 'Done', exact: true }).click();
+    await sound.waitFor({ state: 'detached' });
+    // 🎭 Deal…: wider in one window (the ready-made deal's name whole, two parts side by side), still in the panel.
+    await toolsRowIn(page).getByRole('button', { name: /🎭/ }).click();
+    const deal = page.getByRole('dialog', { name: 'Deal' });
+    await deal.waitFor();
+    await page.waitForTimeout(200);
+    await measure('🎭 Deal… open');
+    const dealBox = await deal.evaluate((d) => {
+      const panel = document.querySelector('.play > .panel').getBoundingClientRect();
+      const stage = document.querySelector('.stage-box').getBoundingClientRect();
+      const r = d.getBoundingClientRect();
+      const parts = [...d.querySelectorAll('[data-deal-part]')].map((p) => Math.round(p.getBoundingClientRect().top));
+      return {
+        w: Math.round(r.width),
+        inPanel: r.left >= panel.left - 1 && r.right <= panel.right + 1 && r.top >= stage.bottom - 1,
+        sideBySide: parts.length >= 2 && parts[0] === parts[1],
+      };
+    });
+    assert(
+      dealBox.w >= 590 && dealBox.inPanel && dealBox.sideBySide,
+      `${w}×${h}: 🎭 Deal… is 600px wide in the panel, off the stage, two parts side by side (${JSON.stringify(dealBox)})`,
+    );
+    await page.keyboard.press('Escape');
+    await deal.waitFor({ state: 'detached' });
     await panelWindow(page, w, h, 'Keyboard shortcuts', async () => {
       await statusLineIn(page).click();
       await page.keyboard.press('?');

@@ -418,7 +418,7 @@
       ></button
     >
     {#if menu === 'deal'}
-      <div class="menu wide" role="dialog" aria-label="Deal" use:anchored={at}>
+      <div class="menu wide" class:roomy={!audience.open} role="dialog" aria-label="Deal" use:anchored={at}>
         <DealDialog {game} {session} {dual} ongone={ondealgone} />
       </div>
     {/if}
@@ -583,6 +583,11 @@
   .menu.wide {
     width: 380px;
     max-width: calc(100vw - 24px);
+  }
+  /* 🎭 Deal… in one window, the panel under the stage: wider, so the ready-made deal's name reads whole and two parts sit
+     side by side, in the room the stage never takes. (Beside the stage the panel is narrow: it keeps 380px there.) */
+  :global(.panel:not(.side)) .menu.wide.roomy {
+    width: 600px;
   }
   /* A short menu scrolls (its parts keep their size). */
   .menu > * {
