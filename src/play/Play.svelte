@@ -5970,12 +5970,12 @@
     {#if prefs.liveChecklist}
       <div class="live-check" role="group" aria-labelledby="pregame-live">
         <div class="row live-head">
-          <h3 id="pregame-live">On stream</h3>
+          <h3 id="pregame-live">Going live</h3>
           <button
             class="ghost small"
             onclick={() => tipsShown(false)}
             data-tips-toggle
-            aria-label="Hide the On stream tips"
+            aria-label="Hide the going-live tips"
             title="Hide these tips (the game's checks stay)">✕</button
           >
         </div>
@@ -6014,7 +6014,7 @@
       </div>
     {:else}
       <div class="row small live-off">
-        <span class="muted">On stream tips hidden{wantAudience ? '' : ' (one window: viewers see this page)'}.</span>
+        <span class="muted">Going-live tips hidden{wantAudience ? '' : ' (one window: viewers see this page)'}.</span>
         <button class="ghost small" onclick={() => tipsShown(true)} data-tips-toggle>Show them</button>
         {@render testSound()}
       </div>

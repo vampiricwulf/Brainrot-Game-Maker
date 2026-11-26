@@ -267,7 +267,7 @@ try {
     const [aud] = await Promise.all([page.waitForEvent('popup'), page.getByRole('button', { name: /Separate audience window/ }).click()]);
     watch(aud, 'audience');
     await aud.getByText('🔊 Click to enable sound').waitFor();
-    // (On the pre-game screen it's said once, in ✅ Before you start's On stream tips.)
+    // (On the pre-game screen it's said once, in ✅ Before you start's going-live tips.)
     const clickLine = page.locator('.live-check li[data-check="sound-click"]');
     await clickLine.getByText('click it once').waitFor();
     assert(

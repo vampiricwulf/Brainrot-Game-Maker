@@ -200,7 +200,7 @@ export function createPregame(host: PregameHost) {
   }
 
   /**
-   * ✅ Before you start's On stream tips shown or hidden: the keys go to the button that turns them back (Show them, or
+   * ✅ Before you start's going-live tips shown or hidden: the keys go to the button that turns them back (Show them, or
    * the tips' ✕), not to the page with the one pressed.
    */
   function tipsShown(on: boolean): void {

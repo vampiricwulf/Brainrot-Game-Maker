@@ -74,7 +74,7 @@
   let resetting = $state(false);
   let resetBtn = $state<HTMLButtonElement>();
   function resetAll(): void {
-    // Only what this dialog shows: how games are shown on ▶ Play and the ✅ Before you start card's On stream tips are chosen there.
+    // Only what this dialog shows: how games are shown on ▶ Play and the ✅ Before you start card's going-live tips are chosen there.
     Object.assign(prefs, { ...DEFAULT_PREFS, display: prefs.display, liveChecklist: prefs.liveChecklist });
     // (A Test of the address before is about another server now.)
     tested = '';

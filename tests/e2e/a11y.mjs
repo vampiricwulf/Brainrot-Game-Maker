@@ -531,13 +531,13 @@ try {
   await page.waitForFunction(() => document.activeElement?.textContent?.trim() === '＋ Add player');
   assert(true, 'the note’s ✕ puts them on ＋ Add player');
   await page.getByRole('button', { name: '＋ Add player' }).click();
-  // ✅ Before you start's On stream tips: their ✕ puts the keys on Show them, and Show them back on the ✕.
-  await page.getByRole('button', { name: 'Hide the On stream tips' }).focus();
+  // ✅ Before you start's going-live tips: their ✕ puts the keys on Show them, and Show them back on the ✕.
+  await page.getByRole('button', { name: 'Hide the going-live tips' }).focus();
   await page.keyboard.press('Enter');
   await page.waitForFunction(() => document.activeElement?.textContent === 'Show them');
   await page.keyboard.press('Enter');
-  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Hide the On stream tips');
-  assert(true, 'hiding the On stream tips puts the keys on Show them, and showing them on their ✕ (not the page)');
+  await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Hide the going-live tips');
+  assert(true, 'hiding the going-live tips puts the keys on Show them, and showing them on their ✕ (not the page)');
   // ✅ Before you start: each check's Fix › is described by its own line's words (they're all named “Fix ›”), so Tab
   // and a screen reader tell them apart.
   const fixes = await page.locator('[data-checks] [data-check-fix]').evaluateAll((els) =>

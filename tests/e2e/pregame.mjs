@@ -440,7 +440,7 @@ try {
   await titleBox.press('Escape');
   await page.screenshot({ path: resultsPath('pregame-golive.png') });
 
-  // ---------- ✅ Before you start: its On stream tips (✕ folds them, and only them), then the game's checks ----------
+  // ---------- ✅ Before you start: its going-live tips (✕ folds them, and only them), then the game's checks ----------
   const beforeCard = page.locator('section.before-start');
   const live = beforeCard.locator('.live-check');
   assert(
@@ -454,6 +454,12 @@ try {
   assert(
     beforeBox.x > playersBox.x + playersBox.width && beforeBox.y > streamBox.y + streamBox.height && (await beforeCard.locator('[data-checks]').count()) === 1,
     'two columns (1280 wide): the card is at the foot of the right column, under 📺 On stream, with its The game group',
+  );
+  // Each name on the screen has one place: the tips are “Going live”, so “On stream” is only the 📺 card above.
+  const headings = (await page.locator('.pregame').getByRole('heading').allInnerTexts()).map((t) => t.trim());
+  assert(
+    (await live.locator('h3').innerText()).trim() === 'Going live' && headings.filter((t) => /On stream/.test(t)).length === 1,
+    `the card's tips are headed “Going live”, and one heading on the screen says On stream (${JSON.stringify(headings)})`,
   );
   // What viewers see in one window is said once, in the card: 🖥 Display has only its choice of mode.
   const display = page.locator('section[aria-labelledby="pregame-display"]');
@@ -481,13 +487,14 @@ try {
     `1920×1080: the Start bar rests at the window’s foot (its bottom at ${Math.round(tallBar.y + tallBar.height)}px)`,
   );
   await page.setViewportSize({ width: 1280, height: 720 });
-  await live.getByRole('button', { name: 'Hide the On stream tips' }).click();
+  await live.getByRole('button', { name: 'Hide the going-live tips' }).click();
   assert(
     (await live.count()) === 0 &&
       (await beforeCard.locator('[data-checks]').count()) === 1 &&
       (await page.getByRole('button', { name: '🔊 Test the sound…' }).count()) === 1,
-    '✕ folds the On stream tips only (the game’s checks and 🔊 Test the sound… stay)',
+    '✕ folds the going-live tips only (the game’s checks and 🔊 Test the sound… stay)',
   );
+  assert((await beforeCard.locator('.live-off').innerText()).startsWith('Going-live tips hidden'), 'folded, the line says “Going-live tips hidden”');
   await beforeCard.getByRole('button', { name: 'Show them' }).click();
   assert((await live.count()) === 1, 'and Show them brings them back');
 
