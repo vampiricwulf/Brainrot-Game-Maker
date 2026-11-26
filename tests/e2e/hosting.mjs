@@ -204,15 +204,17 @@ try {
   const clockLine = statusLineIn(page);
   await clockSays(/\+10 s: \d+ s left/, 'the status line’s +10 says the time left', () => clockLine.getByRole('button', { name: '10 seconds more' }).click());
   await clockSays(/−10 s: \d+ s left/, 'its −10 says the time left', () => clockLine.getByRole('button', { name: '10 seconds less' }).click());
-  await clockSays(/Countdown paused at \d+ s/, 'its ⏸ says where it paused', () => clockLine.getByRole('button', { name: 'Pause timer', exact: true }).click());
-  await clockSays(/Countdown: \d+ s/, 'its ▶ says it goes on', () => clockLine.getByRole('button', { name: 'Start timer', exact: true }).click());
+  await clockSays(/Countdown paused at \d+ s/, 'its ⏸ says where it paused', () =>
+    clockLine.getByRole('button', { name: 'Pause countdown', exact: true }).click(),
+  );
+  await clockSays(/Countdown: \d+ s/, 'its ▶ says it goes on', () => clockLine.getByRole('button', { name: 'Start countdown', exact: true }).click());
   await clockSays(/Countdown: 45 s/, 'Enter in its seconds box says the countdown it starts', async () => {
-    await clockLine.getByLabel('Timer seconds').fill('45');
-    await clockLine.getByLabel('Timer seconds').press('Enter');
+    await clockLine.getByLabel('Countdown seconds').fill('45');
+    await clockLine.getByLabel('Countdown seconds').press('Enter');
   });
   // (Emptied again, so later countdowns are the game's own.)
-  await clockLine.getByLabel('Timer seconds').fill('');
-  await clockLine.getByLabel('Timer seconds').evaluate((e) => e.blur());
+  await clockLine.getByLabel('Countdown seconds').fill('');
+  await clockLine.getByLabel('Countdown seconds').evaluate((e) => e.blur());
   await page.keyboard.press('r');
   await stage('.timer').waitFor({ state: 'detached' });
   assert((await stage('.timesup').count()) === 0, 'revealing the answer stops the countdown');

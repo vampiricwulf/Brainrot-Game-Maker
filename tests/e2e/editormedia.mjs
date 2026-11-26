@@ -844,7 +844,7 @@ try {
     await a.goto(pathToFileURL(file).href);
     await addClassicRounds(a);
     await a.locator('.grid .tile').first().click();
-    await a.getByRole('button', { name: '🖼️ Image' }).click();
+    await a.getByRole('button', { name: '🖼️ Picture' }).click();
     const [fc] = await Promise.all([a.waitForEvent('filechooser'), a.getByRole('button', { name: '⬆ Upload image file…' }).click()]);
     await fc.setFiles({ name: 'lost.png', mimeType: 'image/png', buffer: Buffer.from(PNG, 'base64') });
     await a.locator('.layers-box .row', { hasText: 'lost.png' }).waitFor();

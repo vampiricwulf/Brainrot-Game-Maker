@@ -642,11 +642,12 @@ try {
     if (process.env.SHOTS) await page.locator('.preview').screenshot({ path: `${process.env.SHOTS}/dice-mixed.png` });
     // A total's outcome of two lines comes in along the foot under the big dice and their total, not over the total.
     await page.getByRole('button', { name: '＋ Add range' }).click();
-    await page.getByLabel('From', { exact: true }).fill('2');
+    // (To first: a From over To swaps them round as it's left.)
     await page.getByLabel('To', { exact: true }).fill('99');
-    await page.getByLabel('To', { exact: true }).press('Tab');
-    await page.getByLabel('What happens', { exact: true }).fill('Everybody takes a sip and the loser sings a song of chat’s choosing');
-    await page.getByLabel('What happens', { exact: true }).press('Tab');
+    await page.getByLabel('From', { exact: true }).fill('2');
+    await page.getByLabel('From', { exact: true }).press('Tab');
+    await page.getByLabel('What happens on totals 2–99', { exact: true }).fill('Everybody takes a sip and the loser sings a song of chat’s choosing');
+    await page.getByLabel('What happens on totals 2–99', { exact: true }).press('Tab');
     await page.getByRole('button', { name: '🎲 Test roll' }).click();
     const card = page.locator('.preview .reveal .card');
     await card.waitFor();

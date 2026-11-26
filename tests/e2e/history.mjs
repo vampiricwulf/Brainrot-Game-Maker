@@ -776,7 +776,7 @@ try {
   await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click({ button: 'right' });
   await page.locator('.hist').waitFor({ timeout: 3000 });
   const clearBtn = page.getByRole('button', { name: '🗑 Clear history…' });
-  const was = await clearBtn.boundingBox();
+  const clearWas = await clearBtn.boundingBox();
   const focusedText = () => page.evaluate(() => document.activeElement?.textContent?.trim() ?? '');
   const histHeader = page.locator('.hist .page-header');
   const headerSize = () => histHeader.evaluate((h) => [h.getBoundingClientRect().height, h.querySelector('.titles')?.getBoundingClientRect().width ?? 0]);
@@ -786,8 +786,8 @@ try {
   await clearAsk.waitFor();
   const askBox = await clearAsk.boundingBox();
   assert(
-    !!was && !!askBox && askBox.y < was.y + was.height && Math.abs(askBox.x + askBox.width - (was.x + was.width)) < 4,
-    `the question stands where 🗑 Clear history… was, at the header's right end (${JSON.stringify(was)} → ${JSON.stringify(askBox)})`,
+    !!clearWas && !!askBox && askBox.y < clearWas.y + clearWas.height && Math.abs(askBox.x + askBox.width - (clearWas.x + clearWas.width)) < 4,
+    `the question stands where 🗑 Clear history… was, at the header's right end (${JSON.stringify(clearWas)} → ${JSON.stringify(askBox)})`,
   );
   const [headerNow, titleNow] = await headerSize();
   assert(
