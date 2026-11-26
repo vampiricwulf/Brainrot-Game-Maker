@@ -14,7 +14,7 @@
 //    row folded); a player's number opens it, ✕ Close folds it (players picked or not), ± Adjust score opens it;
 // 5. a laptop at 200% zoom (640×360, three players, a clue): the chips' box, one chip in sight, says there are more
 //    (data-more, its foot faded), and stops saying it scrolled to its end;
-// 6. a phone on its side (844×390): a wheel or dice tile keeps 🎡 Spin! / 🎲 Roll! in sight (the chips give way first);
+// 6. a phone on its side (844×390): a wheel or dice tile's box keeps its room over the flow row (the chips give way);
 // 7. a phone held upright (390×844): a 🤫 cards tile's rows fade under the flow row with no "▾ more" tab over ＋ Award;
 //    an RPG round's selection line keeps a row of its own, Clear selection in words.
 import { writeFileSync } from 'node:fs';
@@ -587,29 +587,26 @@ try {
     await ctx.close();
   }
 
-  section('A phone on its side: a wheel or dice tile keeps its button in sight');
+  section('A phone on its side: a wheel or dice tile keeps its room, the chips give way');
   {
-    // (Under 500px tall the chips give way first, as on any clue: the tool's 🎡 Spin! / 🎲 Roll! stays over the flow
-    // row, and the chips' box says there are more.)
+    // (Under 500px tall the chips give way first, as on any clue: the tool's box keeps the room over the flow row it
+    // had (its first line peeks out above it, the rest scrolls), and the chips' box says there are more.)
     const { ctx, page } = await startAt(844, 390);
     for (const [name, label] of [
       ['Memes for $600', 'Spin!'],
       ['Movies for $600', 'Roll!'],
     ]) {
       await tile(page, name).click();
-      const go = action(page).getByRole('button', { name: new RegExp(label) });
-      await go.waitFor();
+      await action(page)
+        .getByRole('button', { name: new RegExp(label) })
+        .waitFor();
       await sleep(300);
-      const seen = await go.evaluate((b) => {
-        const box = b.closest('[data-host-action]');
-        if (!box) return 'no action part';
-        const r = b.getBoundingClientRect();
-        const a = box.getBoundingClientRect();
-        return r.top >= a.top - 0.5 && r.bottom <= a.bottom + 0.5
-          ? ''
-          : `${Math.round(r.top)}–${Math.round(r.bottom)} out of ${Math.round(a.top)}–${Math.round(a.bottom)}`;
+      const above = await action(page).evaluate((box) => {
+        const flow = box.querySelector(':scope > [data-flowrow]')?.getBoundingClientRect();
+        const tool = box.querySelector(':scope > .tools')?.getBoundingClientRect();
+        return flow && tool ? Math.round(flow.top - Math.max(box.getBoundingClientRect().top, tool.top)) : -1;
       });
-      assertEq(seen, '', `844×390, ${name}: its ${label} in sight in the action part`);
+      assert(above >= 10, `844×390, ${name}: the tool's box shows above the flow row, not all under it (${above}px)`);
       assert(
         await hostPanelIn(page)
           .locator('[data-host-players]')

@@ -3388,7 +3388,8 @@
      500px tall or more: that box scrolls in the action part (the flow row at its foot), keeping its first line in sight
      above the flow row (the row's 32px, the gap and a line of buttons), and every chip's ✔ / ✘ stays in reach. (On a
      shorter one, a phone on its side or 200% zoom on a laptop, the chips give way first as on any clue: the tool's
-     🎡 Spin! / 🎲 Roll! stays in sight over the flow row, and the chips' box says there are more below.) */
+     box keeps the room it had over the flow row, not all of it under that row, and the chips' box says there are
+     more below.) */
   @media (min-height: 500px) {
     .panel.tilebox:not(.dual) > .players {
       flex-shrink: 1;
