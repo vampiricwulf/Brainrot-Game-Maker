@@ -668,7 +668,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     host reveals them. Meant to be captured in OBS (window capture). It mirrors state via `postMessage`.
   - Media plays in the **audience window** so that OBS picks up its audio. The host window shows controls and a muted mirror/progress.
 - **Single window** (the default)
-  - One view: the stage, with the host panel under it (with an audience window, beside it in RPG and board-game rounds on a wide window).
+  - One view: the stage, with the host panel under it (with an audience window, beside it in RPG and board-game rounds
+    on a wide window; on a phone on its side, beside it all game).
     Nothing answer-revealing is rendered until the host clicks Reveal. A board tile shows its focus ring only once the
     host moves the keys with Tab or the arrow keys (not when Esc, N or a click puts them back on a tile: a stream crops
     the stage). `H` (🙈 Hide) hides the host controls (then
@@ -694,9 +695,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     Edit screen is too big for it and says viewers see it (📺 Audience edits off stream). **The stage is one box the
     whole game**: the host panel under it is one height in every round and moment (the Final's, `min(clamp(280px,
     44vh, 440px), 62vh)`), from the board, a clue's steps, a Daily Double, a 🤝 partner clue and a wheel or dice tile to
-    the RPG and board-game rounds (under the stage in one window too; beside it only with an audience window), the
-    Final, the results, a roll-off and the tiebreaker clue, so a crop set on one round fits every other and viewers
-    never see the stage zoom down and up. Each moment's rows scroll in the panel: the status line at its top, the
+    the RPG and board-game rounds (under the stage in one window too; beside it only with an audience window, or on a
+    phone on its side, below), the Final, the results, a roll-off and the tiebreaker clue, so a crop set on one round
+    fits every other and viewers never see the stage zoom down and up. Each moment's rows scroll in the panel: the status line at its top, the
     tools row and the fixed bar at its foot; an open 🎲 / 🎡 / 🏁 menu or the 📱 phones list stays inside it too,
     scrolling. A tools-row pop-up (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal…, the cards out, 🪟)
     closes when Tab or Shift+Tab takes the focus out of it and its button (the focus staying where it went), as a
@@ -719,8 +720,18 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     Final's reveals; folded again when the moment changes or a roll's or spin's box opens), and the status line's how-to
     (and a board round's "Pick a tile on the board.") keeps to one line, cut short, whole in its tooltip, with the
     line's room up to ⋯ Tools. While the row is out there (something in it on, or ⋯ Tools pressed) the moment's part
-    keeps `min(150px, 34vh)` and the panel scrolls instead (the fixed bar below; its keys still work). A phone on its
-    side, a computer and an audience window keep the rule above (`tests/e2e/phonepanel.mjs`).
+    keeps `min(150px, 34vh)` and the panel scrolls instead (the fixed bar below; its keys still work). A computer and an
+    audience window keep the rule above (`tests/e2e/phonepanel.mjs`).
+  - **A phone on its side** (landscape, 500px tall or less, a touch screen), one window: the host panel is a column on
+    the stage's right, `clamp(300px, 40vw, 380px)` wide and the window's height, at every moment of the game, and the
+    stage takes the rest of the width (16:9: about 506×285 at 844×390, twice as wide as under the panel), one size and
+    place all game. The column is the same stack as beside the stage with an audience window: the status line at its
+    top (the how-to on one line under the round's name, cut short, whole in its tooltip), the moment's part in the
+    middle (the score chips scroll in their own box), the fixed bar at its foot as one wrapping row of signs (still
+    named for screen readers, their tooltips say what they do), so 🚪 Exit, the RPG's pad and the board game's 🎲 Roll
+    are in sight with nothing scrolled. The tools row folds behind **⋯ Tools** there as on a short phone, and the
+    Amount row keeps to one line (the word Amount as its box's placeholder). If its rows still can't all fit, the
+    column scrolls (`tests/e2e/phonepanel.mjs`).
 - **The host panel's rules** (everything below follows them):
   1. **Each action has one place: its situation's box**, beside the manual choices it's an alternative to (🤝 a partner
      clue, ⭐ a Daily Double, 🎡 / 🎲 a wheel or dice, the Final's wagers and reveals, a tie at the end, the buzzers' row,

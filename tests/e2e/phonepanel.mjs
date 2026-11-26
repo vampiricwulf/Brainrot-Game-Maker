@@ -1,16 +1,20 @@
 // @ts-check
 // A phone or a touch tablet held upright, hosting the sample game in one window (320×568, 360×640, 390×667, 360×740,
-// 390×844, and the tablets 768×1024 and 820×1180, a touch screen): the stage is the screen's width, 16:9, one size and place all game, and the host panel under it takes the
-// rest of the screen (no black above and under the stage), its fixed bar (↶ Undo … 🚪 Exit) on screen. Each moment's
-// own box has room: at least 60px (or all of it, when it's shorter), on a slide, a board round's title card and its
-// categories coming up, a clue, a clue with a player picked, a Daily Double's wager, after a 🎲 roll from the tools
-// row, the RPG and board-game rounds, the Final's title card, wagers and reveals, and the end's tie. The buttons a
-// phone needs are in sight and take a real tap: Skip intro (a board round's title card and categories, the Final's
-// title card), ↩ Put back on a clue and a Daily Double, the roll's own button, 🎲 Roll then ▶ Move in a board game,
-// Finish now… and its Finish. Up to 700px tall the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools, out again
-// with a tap, and the status line's how-to keeps to one line (whole in its tooltip, at every moment); with the row
-// kept out (📊 Scoreboard on, at 320×568) the moment's box still has room and the panel scrolls (a tablet never folds
-// it). A phone on its side, a laptop (1280×720, 1920×1080) and a phone with an audience window keep the panel's height as it was, and so
+// 390×844, and the tablets 768×1024 and 820×1180, a touch screen): the stage is the screen's width, 16:9, one size and
+// place all game, and the host panel under it takes the rest of the screen (no black above and under the stage), its
+// fixed bar (↶ Undo … 🚪 Exit) on screen. Each moment's own box has room: at least 60px (or all of it, when it's
+// shorter), on a slide, a board round's title card and its categories coming up, a clue, a clue with a player picked, a
+// Daily Double's wager, after a 🎲 roll from the tools row, the RPG and board-game rounds, the Final's title card,
+// wagers and reveals, and the end's tie. The buttons a phone needs are in sight and take a real tap: Skip intro (a
+// board round's title card and categories, the Final's title card), ↩ Put back on a clue and a Daily Double, the roll's
+// own button, 🎲 Roll then ▶ Move in a board game, Finish now… and its Finish. Up to 700px tall the tools row (with the
+// round's ◀ / ▶) folds behind ⋯ Tools, out again with a tap, and the status line's how-to keeps to one line (whole in
+// its tooltip, at every moment); with the row kept out (📊 Scoreboard on, at 320×568) the moment's box still has room
+// and the panel scrolls (a tablet never folds it). A phone on its side, one window (844×390, 932×430, 667×375): the
+// host panel is a column beside the stage at every moment, the stage twice as wide as under it was and one size and
+// place all game; the tools row folds behind ⋯ Tools there too, the status line's how-to keeps to one line, and with
+// nothing scrolled the fixed bar's 🚪 Exit, the RPG's pad and the board game's 🎲 Roll are in sight where a tap reaches
+// them. A laptop (1280×720, 1920×1080) and a phone with an audience window keep the panel's height as it was, and so
 // does a window held upright that's too short for the stage and more (320×454, 360×380, 600×600): its panel ends at the
 // window's foot, the fixed bar in reach. On these phones ⋯ Tools, the clock's buttons and the 🎲 Dice menu's are at
 // least 32px to tap, a clue's player chips are one line each (a 320px phone too), and the panel's words name taps,
@@ -93,8 +97,12 @@ const layout = (page) =>
       .filter((e) => e.scrollWidth > e.clientWidth + 1 && !(e.getAttribute('title') ?? '').trim())
       .map((e) => (e.textContent ?? '').trim());
     // ...and it, not the line's empty spacer, has the line's room.
-    const cut = [...panel.querySelectorAll(':scope > .status > :is(.hint, .how, .muted:has(> .hint))')].some((e) => e.scrollWidth > e.clientWidth + 1);
+    // (On a line of its own, beside the stage, the spacer on the name's line is no room taken from it.)
     const spacer = panel.querySelector(':scope > .status > .spacer');
+    const sameLine = (/** @type {Element} */ e) => !spacer || Math.abs(e.getBoundingClientRect().top - spacer.getBoundingClientRect().top) < 4;
+    const cut = [...panel.querySelectorAll(':scope > .status > :is(.hint, .how, .muted:has(> .hint))')].some(
+      (e) => e.scrollWidth > e.clientWidth + 1 && sameLine(e),
+    );
     return {
       untitled,
       spacerW: cut && spacer ? spacer.getBoundingClientRect().width : 0,
@@ -131,6 +139,14 @@ async function roomy(page, where, moment, stage0, scrolls = false) {
     );
   if (stage0)
     assert(JSON.stringify(l.stage) === JSON.stringify(stage0), `${where}, ${moment}: the stage keeps its size and place (${JSON.stringify(l.stage)})`);
+  // A phone on its side: the column beside the stage, its fixed bar's last button (🚪 Exit) in sight, nothing scrolled.
+  if (l.iw > l.ih) {
+    assert(
+      l.panel.x >= l.stage.x + l.stage.w - 1 && l.panel.h >= l.ih - 1,
+      `${where}, ${moment}: the panel is a column beside the stage (${JSON.stringify(l.panel)})`,
+    );
+    await inSight(hostPanelIn(page).locator(':scope > .fixed button').last(), `${where}, ${moment}: 🚪 Exit`);
+  }
   return l;
 }
 
@@ -150,6 +166,23 @@ async function tapIt(b, what, tap = true) {
   });
   assert(hit.ok, `${what} is in sight, where a tap reaches it (${hit.ok ? `${hit.h}px tall` : `${hit.at} is there`})`);
   if (tap) await b.tap();
+}
+
+/**
+ * The button is in sight as the panel is now, nothing scrolled to it (what's at its middle is it, inside the window).
+ * @param {Locator} b
+ * @param {string} what
+ */
+async function inSight(b, what) {
+  await b.waitFor();
+  const hit = await b.evaluate((el) => {
+    const r = el.getBoundingClientRect();
+    const x = r.x + r.width / 2;
+    const y = r.y + r.height / 2;
+    const at = x >= 0 && y >= 0 && x <= innerWidth && y <= innerHeight ? document.elementFromPoint(x, y) : null;
+    return { ok: !!at && el.contains(at), at: at ? `${at.tagName.toLowerCase()}.${[...at.classList].join('.')}` : 'nothing', y: Math.round(y) };
+  });
+  assert(hit.ok, `${what} is in sight with nothing scrolled (its middle at y ${hit.y}: ${hit.ok ? 'it' : hit.at})`);
 }
 
 /**
@@ -223,23 +256,37 @@ try {
     [390, 844],
     [768, 1024],
     [820, 1180],
+    [844, 390],
+    [932, 430],
+    [667, 375],
   ]) {
     const where = `${w}×${h}, one window`;
-    section(`${w > 600 ? 'A tablet' : 'A phone'} upright, ${where}`);
+    const sideways = w > h;
+    section(`${sideways ? 'A phone on its side' : w > 600 ? 'A tablet upright' : 'A phone upright'}, ${where}`);
     const { ctx, page } = await sample({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
     const tiny = h <= 700;
 
     // The slides: the stage the screen's width, 16:9, right at the top; the panel the rest of the screen.
     const first = await roomy(page, where, 'a slide', null);
     const stage0 = first.stage;
-    assert(
-      stage0.x === 0 && stage0.y <= 1 && stage0.w === w && Math.abs(stage0.h - (w * 9) / 16) <= 1,
-      `${where}: the stage is the screen's width, 16:9, at the top (${JSON.stringify(stage0)})`,
-    );
-    assert(
-      first.panel.y - (stage0.y + stage0.h) <= 2 && first.panel.y + first.panel.h >= h - 1,
-      `${where}: the panel takes the rest of the screen, right under the stage (${JSON.stringify(first.panel)})`,
-    );
+    if (sideways) {
+      // Under the stage the panel was min(clamp(280px, 44vh, 440px), 62vh) tall, the stage 16:9 in what was left.
+      const was = Math.min(Math.max(280, Math.min(0.44 * h, 440)), 0.62 * h);
+      const oldW = Math.min(w, ((h - was) * 16) / 9);
+      assert(
+        stage0.x === 0 && stage0.w >= 1.3 * oldW && Math.abs(stage0.h - (stage0.w * 9) / 16) <= 1 && first.panel.x === stage0.w && first.panel.y === 0,
+        `${where}: the stage, 16:9, is far wider than under the old panel (${stage0.w} for ${Math.round(oldW)}), the panel a column on its right (${JSON.stringify({ stage: stage0, panel: first.panel })})`,
+      );
+    } else
+      assert(
+        stage0.x === 0 && stage0.y <= 1 && stage0.w === w && Math.abs(stage0.h - (w * 9) / 16) <= 1,
+        `${where}: the stage is the screen's width, 16:9, at the top (${JSON.stringify(stage0)})`,
+      );
+    if (!sideways)
+      assert(
+        first.panel.y - (stage0.y + stage0.h) <= 2 && first.panel.y + first.panel.h >= h - 1,
+        `${where}: the panel takes the rest of the screen, right under the stage (${JSON.stringify(first.panel)})`,
+      );
     const fold = hostPanelIn(page).getByRole('button', { name: '⋯ Tools' });
     if (tiny) {
       assert((await fold.count()) === 1 && !(await toolsRowIn(page).isVisible()), `${where}: the tools row is folded behind ⋯ Tools`);
@@ -340,6 +387,15 @@ try {
     await sleep(400);
     await roomy(page, where, 'the RPG round', stage0);
     await noKeys(page, where, 'the RPG round');
+    if (sideways) {
+      // The pad's top two rows in sight, nothing scrolled, and → takes a tap (the party walks east).
+      const pad = hostPanelIn(page).getByRole('group', { name: 'Move the party' });
+      await inSight(pad.getByRole('button', { name: 'Go North', exact: true }), `${where}: the RPG pad's ↑`);
+      const east = pad.getByRole('button', { name: 'Go East', exact: true });
+      await inSight(east, `${where}: the RPG pad's →`);
+      await east.tap();
+      await hostPanelIn(page).locator('.where', { hasText: '· Forest' }).waitFor();
+    }
 
     // The board game: 🎲 Roll, then ▶ Move, tapped.
     await nextRound(page);
@@ -348,6 +404,7 @@ try {
     await sleep(400);
     await roomy(page, where, 'the board game', stage0);
     await noKeys(page, where, 'the board game');
+    if (sideways) await inSight(stepButton(page).first(), `${where}: 🎲 Roll`);
     await tapIt(stepButton(page).first(), `${where}: 🎲 Roll`);
     const move = stepButton(page).filter({ hasText: '▶ Move' });
     await move.waitFor({ timeout: 8000 });
@@ -439,9 +496,8 @@ try {
   }
 
   // Elsewhere the panel is as tall as it was: min(clamp(280px, 44vh, 440px), 62vh).
-  section('A phone on its side, a laptop, two windows: the panel as it was');
+  section('A laptop, two windows: the panel as it was');
   for (const [what, opts, dual] of /** @type {[string, import('playwright-core').BrowserContextOptions, boolean][]} */ ([
-    ['a phone on its side, 844×390', { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true }, false],
     ['a laptop, 1280×720', { viewport: { width: 1280, height: 720 } }, false],
     ['a big screen, 1920×1080', { viewport: { width: 1920, height: 1080 } }, false],
   ])) {

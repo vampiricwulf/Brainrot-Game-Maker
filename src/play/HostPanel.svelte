@@ -639,11 +639,12 @@
   /** A short phone held upright (700px tall or less: an iPhone SE, or a bigger phone with its browser's bars showing). */
   const smallPhone = new MediaQuery('(orientation: portrait) and (max-width: 600px) and (max-height: 700px)');
   /**
-   * One window on a short phone held upright: the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools at every
-   * moment, so the moment's own controls (a slide's ◀ Slide, a roll's box, Skip intro, a board game's 🎲 Roll) have its
-   * room under the stage. What's on in it keeps it out, as in the Final's reveals.
+   * One window on a short phone held upright, or on a phone on its side (the panel a column beside the stage: see Play's
+   * `side`): the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools at every moment, so the moment's own controls
+   * (a slide's ◀ Slide, a roll's box, Skip intro, a board game's 🎲 Roll, the RPG's pad) have its room. What's on in it
+   * keeps it out, as in the Final's reveals.
    */
-  const phoneFold = $derived(!dual && !side && smallPhone.current);
+  const phoneFold = $derived(!dual && (side || smallPhone.current));
   /** ⋯ Tools pressed: the row is out again, for these reveals (or this slide's clips, or this moment on a short phone). */
   let toolsOut = $state(false);
   $effect(() => {
@@ -1888,13 +1889,14 @@
         {/if}
         <div class="row award" data-award-row class:flowrow={session.phase === 'clue' || session.phase === 'tiebreaker'} data-flowrow>
           {#if session.phase === 'clue' && info}{@render putBack()}{/if}
+          <!-- (A phone on its side, in the column beside the stage: the word is the box's placeholder instead.) -->
           <label class="check">
-            Amount
+            <span class="amt">Amount</span>
             <input
               type="number"
               min="0"
               bind:value={() => (ddHidden ? null : amount), (v) => (amount = wholePoints(v === null ? null : Math.abs(v)))}
-              placeholder={ddHidden ? 'hidden' : undefined}
+              placeholder={ddHidden ? 'hidden' : side && !dual ? 'Amount' : undefined}
               bind:this={amountBox}
               onfocus={(e) => {
                 amountKeys = true;
@@ -2228,7 +2230,8 @@
     pointer-events: none;
   }
   /*
-    Beside the stage (RPG and board-game rounds on a wide window, with an audience window): a column the window's height, the same stack with the
+    Beside the stage (RPG and board-game rounds on a wide window, with an audience window; a phone on its side in one
+    window, at every moment): a column the window's height, the same stack with the
     round's controls scrolling in the middle and smaller buttons at its foot. An open 🎲 / 🎡 / 🏁 menu pops up over
     the column, never the stage.
   */
@@ -2237,6 +2240,61 @@
     flex-shrink: 0;
     border-top: none;
     border-left: 1px solid var(--border);
+  }
+  /* A phone on its side, one window (see Play's `side`): the column is narrower, the stage beside it as big as it can be,
+     one size all game. If its rows can't all fit (the tools row out on a very short phone), the column scrolls, so the
+     fixed bar is always in reach. */
+  .panel.side:not(.dual) {
+    height: auto;
+    width: clamp(300px, 40vw, 380px);
+    overflow: auto;
+    padding: 8px 10px;
+    gap: 6px;
+  }
+  /* There the fixed bar is one wrapping row of signs (still read out by name, their tooltips say what they do), as under
+     the stage on a narrow window, not the wide column's grid of words: two rows, not four, and 🚪 Exit at its end. */
+  .panel.side:not(.dual) > .fixed {
+    display: flex;
+  }
+  .panel.side:not(.dual) > .fixed :is(.word, .txt) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .panel.side:not(.dual) > .fixed > .spacer {
+    display: block;
+  }
+  /* (And the Amount row on one line there: the word Amount as the box's placeholder, narrower buttons, so the round's
+     box keeps that line.) */
+  .panel.side:not(.dual) .award input {
+    width: 72px;
+  }
+  .panel.side:not(.dual) .award > label {
+    gap: 0;
+  }
+  .panel.side:not(.dual) .award .amt {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .panel.side:not(.dual) .award > button {
+    padding-inline: 8px;
+  }
+  /* There the status line's how-to keeps to one line under the round's name (⋯ Tools up on the name's line), cut short
+     (…), whole in its tooltip. */
+  .panel.side:not(.dual) > .status > :is(.hint, .how, .muted:has(> .hint)) {
+    order: 1;
+    flex-basis: 100%;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   /* With an audience window the stage here is only a preview: the controls get more of the width (two player cards a
      row in RPG and board-game rounds, so less scrolling). */
@@ -3069,8 +3127,10 @@
     gap: 8px;
   }
   /* Under the stage on a short window, many players' chips scroll in their own box (a row stays in sight): the buttons
-     under them stay in the window, and the page never scrolls the stage away. */
-  .panel:not(.side) > .players {
+     under them stay in the window, and the page never scrolls the stage away. (The same in a phone on its side's
+     column, the one window's panel beside the stage.) */
+  .panel:not(.side) > .players,
+  .panel.side:not(.dual) > .players {
     flex-shrink: 1000;
     min-height: 48px;
     overflow: auto;

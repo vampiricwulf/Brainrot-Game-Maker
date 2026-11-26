@@ -553,10 +553,14 @@
   const wide = new MediaQuery('(min-aspect-ratio: 3/2) and (min-width: 1000px)');
   /** The pre-game screen's two columns (its CSS's breakpoint): ✅ Before you start goes at the foot of the right one. */
   const twoCols = new MediaQuery('(min-width: 1200px)');
+  /** A phone on its side (a short landscape touch screen): under the stage the panel would leave it a strip. */
+  const phoneSide = new MediaQuery('(orientation: landscape) and (max-height: 500px) and (pointer: coarse)');
   // RPG and board-game rounds have a tall host panel (the player cards, the round's own controls): with an audience
   // window, on a wide window, it goes beside the host's stage copy instead of under it. In one window it stays under the
   // stage, as in every other round: the stage viewers see keeps one size and place the whole game (its rows scroll).
-  const side = $derived(dual && wide.current && (session.phase === 'rpg' || session.phase === 'boardgame'));
+  // A phone on its side, one window, is the exception: there the panel is a column beside the stage at every moment,
+  // the whole game, so the stage is twice as wide as under it and still keeps one size and place.
+  const side = $derived(dual ? wide.current && (session.phase === 'rpg' || session.phase === 'boardgame') : phoneSide.current);
 
   // Timeouts that touch the live state (score pops, roll-off pickers) are cancelled if the game is left.
   const pending = new Set<ReturnType<typeof setTimeout>>();
@@ -6568,6 +6572,11 @@
     bottom: auto;
     transform: none;
     max-width: 400px;
+  }
+  /* (A phone on its side: no wider than the column, so it never covers the stage.) */
+  :global(body:has(.play.side:not(.dual)) .toast) {
+    right: 8px;
+    max-width: calc(clamp(300px, 40vw, 380px) - 16px);
   }
   .backdrop {
     position: fixed;
