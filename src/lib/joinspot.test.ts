@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { joinSpot } from './joinspot';
+import { clearOf, joinSpot } from './joinspot';
 import { newImageEl, newTextEl, textSlide, type Slide } from './model';
 
 /** A slide with text boxes at these places. */
@@ -63,5 +63,39 @@ describe('joinSpot (the join code on a slide)', () => {
     const s = slide([1310, 490, 1000, 100]);
     s.elements[0].rotation = 90;
     expect(joinSpot(s)?.corner).toBe('tl');
+  });
+});
+
+describe('clearOf (the countdown over a slide, which then stays full size)', () => {
+  const corner = { x: 1670, y: 0, w: 250, h: 190 };
+  it('a slide whose words are in the middle leaves the countdown’s corner free; a title running into it doesn’t', () => {
+    const s = slide([120, 90, 1680, 900]);
+    // The usual text box (its frame nearly the whole slide), its words measured in its middle.
+    expect(clearOf(s, corner, { [s.elements[0].id]: { y: 400, h: 100 } })).toBe(true);
+    // Its words at the top, across the whole width.
+    expect(clearOf(s, corner, { [s.elements[0].id]: { y: 0, h: 120 } })).toBe(false);
+    // Not measured yet: counted as clear (once measured, a slide that reaches it moves down).
+    expect(clearOf(s, corner)).toBe(true);
+  });
+
+  it('a picture or shape counts by its box; a full-stage backdrop and hidden items don’t count', () => {
+    const s = slide();
+    s.elements.push(Object.assign(newImageEl('bg'), { x: 0, y: 0, w: 1920, h: 1080 }));
+    s.elements.push(Object.assign(newTextEl('secret'), { x: 1600, y: 20, w: 300, h: 100, secret: true }));
+    expect(clearOf(s, corner)).toBe(true);
+    s.elements.push(Object.assign(newImageEl('logo'), { x: 1700, y: 40, w: 160, h: 120 }));
+    expect(clearOf(s, corner)).toBe(false);
+    // A text box with a fill counts by its frame.
+    const filled = slide([1500, 100, 300, 200]);
+    filled.elements[0] = Object.assign(filled.elements[0], { background: '#000' });
+    expect(clearOf(filled, corner)).toBe(false);
+  });
+
+  it('counts the slide as drawn smaller over a strip of choices (toward the top middle)', () => {
+    // Just under the corner at full size; drawn at 0.8 toward the top it moves up into it.
+    const s = slide();
+    s.elements.push(Object.assign(newImageEl('pic'), { x: 1800, y: 200, w: 100, h: 100 }));
+    expect(clearOf(s, corner)).toBe(true);
+    expect(clearOf(s, corner, {}, 0.8, 0)).toBe(false);
   });
 });

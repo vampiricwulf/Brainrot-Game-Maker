@@ -4,6 +4,8 @@
 export const TIMER_BAND = 190;
 /** The countdown box's width (220, a little more as it pulses) and a gap: kept free at the end of the board's score bar. */
 export const TIMER_ROOM = 250;
+/** The countdown's corner of a slide (top right): when nothing on the slide reaches it, the slide stays full size under it. */
+export const TIMER_CORNER = { x: 1920 - TIMER_ROOM, y: 0, w: TIMER_ROOM, h: TIMER_BAND };
 /** The phone buzzers' join code at the end of the board's score bar (at least: AudienceView measures it). */
 export const JOIN_ROOM = 230;
 /** "Ann is answering" / the Daily Double badge along the top. */

@@ -35,7 +35,46 @@ function seen(e: SlideElement): Rect | null {
   return { x: e.x + e.w / 2 - w / 2, y: e.y + e.h / 2 - h / 2, w, h };
 }
 
-const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+export const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+
+/**
+ * What viewers see of `slide`'s items, as boxes on the stage: a text box with no fill by its words (`ink`; `unmeasured`
+ * says what one not measured yet counts as: its whole frame, or nothing), drawn smaller by `scale` toward the middle of
+ * the line `originY` px down. An item filling (nearly) the whole stage is a backdrop and isn't one.
+ */
+export function slideBoxes(slide: Slide | undefined, ink: Ink = {}, scale = 1, originY = H, unmeasured: 'frame' | 'none' = 'frame'): Rect[] {
+  return (slide?.elements ?? []).flatMap((e) => {
+    let b = seen(e);
+    if (!b) return [];
+    // A text box with no fill shows only its words: the empty rest of its frame (a new box's is nearly the whole slide) is free.
+    const w = ink[e.id];
+    const bare = e.kind === 'text' && !e.background && e.rotation % 360 === 0;
+    if (bare && !w && unmeasured === 'none') return [];
+    if (w && bare) {
+      const m = textBleed(e) + 8;
+      const y0 = Math.max(e.y, e.y + w.y - m);
+      const y1 = Math.min(e.y + e.h, e.y + w.y + w.h + m);
+      if (y1 <= y0) return [];
+      b = { x: e.x, y: y0, w: e.w, h: y1 - y0 };
+    }
+    const x0 = Math.max(0, b.x);
+    const y0 = Math.max(0, b.y);
+    const x1 = Math.min(W, b.x + b.w);
+    const y1 = Math.min(H, b.y + b.h);
+    if (x1 <= x0 || y1 <= y0 || (x1 - x0) * (y1 - y0) >= 0.85 * W * H) return [];
+    // Drawn smaller towards the middle of originY's line.
+    return [{ x: W / 2 + (x0 - W / 2) * scale, y: originY + (y0 - originY) * scale, w: (x1 - x0) * scale, h: (y1 - y0) * scale }];
+  });
+}
+
+/**
+ * Nothing viewers see of `slide` reaches `rect` (the countdown's corner): it can go over the slide, which then stays
+ * full size. A text box not measured yet counts as clear (its words are most often in the middle; once measured, a
+ * slide whose words do reach the corner moves down under it).
+ */
+export function clearOf(slide: Slide | undefined, rect: Rect, ink: Ink = {}, scale = 1, originY = H): boolean {
+  return !slideBoxes(slide, ink, scale, originY, 'none').some((b) => overlaps(b, rect));
+}
 
 export function cornerRect(corner: Corner, size: { w: number; h: number }): Rect {
   return {
@@ -53,26 +92,7 @@ export function cornerRect(corner: Corner, size: { w: number; h: number }): Rect
  * badge would hide.
  */
 export function joinSpot(slide: Slide | undefined, taken: Rect[] = [], scale = 1, ink: Ink = {}, originY = H): { corner: Corner; small: boolean } | null {
-  const boxes = (slide?.elements ?? []).flatMap((e) => {
-    let b = seen(e);
-    if (!b) return [];
-    // A text box with no fill shows only its words: the empty rest of its frame (a new box's is nearly the whole slide) is free.
-    const w = ink[e.id];
-    if (w && e.kind === 'text' && !e.background && e.rotation % 360 === 0) {
-      const m = textBleed(e) + 8;
-      const y0 = Math.max(e.y, e.y + w.y - m);
-      const y1 = Math.min(e.y + e.h, e.y + w.y + w.h + m);
-      if (y1 <= y0) return [];
-      b = { x: e.x, y: y0, w: e.w, h: y1 - y0 };
-    }
-    const x0 = Math.max(0, b.x);
-    const y0 = Math.max(0, b.y);
-    const x1 = Math.min(W, b.x + b.w);
-    const y1 = Math.min(H, b.y + b.h);
-    if (x1 <= x0 || y1 <= y0 || (x1 - x0) * (y1 - y0) >= 0.85 * W * H) return [];
-    // Drawn smaller towards the middle of originY's line.
-    return [{ x: W / 2 + (x0 - W / 2) * scale, y: originY + (y0 - originY) * scale, w: (x1 - x0) * scale, h: (y1 - y0) * scale }];
-  });
+  const boxes = slideBoxes(slide, ink, scale, originY);
   const all = [...boxes, ...taken];
   for (const small of [false, true]) {
     for (const corner of CORNERS) {

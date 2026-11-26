@@ -452,7 +452,14 @@ async function crowd() {
             id: `q${c}_${r}`,
             value: null,
             type: 'standard',
-            questionSlide: { background: {}, elements: [text(c + r ? `Clue ${c}-${r}` : LONG)] },
+            questionSlide: {
+              background: {},
+              elements: [
+                c === 2 && r === 0
+                  ? { ...text('Top right title'), x: 1000, y: 20, w: 900, h: 200, vAlign: 'top', size: 80 }
+                  : text(c + r ? `Clue ${c}-${r}` : LONG),
+              ],
+            },
             answerSlide: { background: {}, elements: [text(`Answer ${c}-${r}`)] },
             ...(c === 1 && r === 0 ? { timerSeconds: 45 } : {}),
           })),
@@ -716,6 +723,27 @@ async function crowd() {
   await aud.locator('.timer .num').waitFor();
   const own = +(await aud.locator('.timer .num').innerText());
   assert(own > 40 && own <= 45, `and T starts that clue's own 45 s (${own})`);
+  // Its words in the middle: the countdown goes over the slide's empty corner, the slide stays full size and still.
+  const slideScale = async () => {
+    await aud.waitForTimeout(600);
+    return aud.locator('.slide-area').evaluate((e) => getComputedStyle(e).scale);
+  };
+  const midScale = await slideScale();
+  assert(midScale === 'none' || midScale === '1', `a clue with its words in the middle keeps its size under the countdown (scale ${midScale})`);
+  await host.keyboard.press('t');
+  // A clue whose title runs into the countdown's corner moves down under it, as before.
+  await host.keyboard.press('Escape');
+  await crowdTile('q2_0').click();
+  await aud.locator('.slide-area', { hasText: 'Top right title' }).waitFor();
+  await host.keyboard.press('t');
+  await aud.locator('.timer .num').waitFor();
+  const cornerScale = await slideScale();
+  const titleBox = await aud.locator('.slide-area .inner').boundingBox();
+  const clock = await aud.locator('.timer').boundingBox();
+  assert(
+    Math.abs(parseFloat(cornerScale) - 0.824) < 0.01 && titleBox.y >= clock.y + clock.height,
+    `a clue with its title in the countdown's corner moves down under it (scale ${cornerScale}; title at ${Math.round(titleBox.y)}, the clock ends at ${Math.round(clock.y + clock.height)})`,
+  );
   await host.keyboard.press('t');
 
   // The builder opened again mid-game in another tab (a bookmark, the file double-clicked): it says a game is being
@@ -1066,7 +1094,8 @@ async function viewers() {
   );
   assert(overName === 0, 'and of its name: each ✔ sits wholly above the plate');
   // The question with its countdown, and the answer that stops it, each come as one picture: the slide is drawn at its
-  // size from the start (not full size, then shrinking under the clock a moment later; nor growing into the answer).
+  // size from the start (its words in the middle: full size, the countdown over its empty corner; not shrinking under
+  // the clock a moment later, nor growing into the answer).
   await aud.evaluate(() => {
     window.__scales = [];
     const note = (el) => window.__scales.push(el.style.scale || '1');
@@ -1089,8 +1118,8 @@ async function viewers() {
   await aud.locator('.timer').waitFor({ state: 'detached' });
   const answered = await sizes();
   assert(
-    !asked.includes('→') && asked !== '1' && answered === '1',
-    `the Final's question comes in at its size beside the countdown, its answer at full size (${asked} | ${answered})`,
+    asked === '1' && answered === '1',
+    `the Final's question (its words in the middle, clear of the countdown's corner) comes in at full size and stays so, its answer too (${asked} | ${answered})`,
   );
   await mainButton(host, 'Start player reveals ▶').click();
   const wrongs = await host.getByRole('button', { name: '✘ Wrong' }).count();

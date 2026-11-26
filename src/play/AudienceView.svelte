@@ -41,7 +41,7 @@
   } from '../lib/session';
   import { partnerRoles, partnerRules } from '../lib/partner';
   import { onMount, untrack } from 'svelte';
-  import { joinSpot, type Ink, type Rect } from '../lib/joinspot';
+  import { clearOf, joinSpot, type Ink, type Rect } from '../lib/joinspot';
   import { holdWhile, provideCover } from '../lib/hold';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { mediaScope, previewMediaScope, type MediaRole } from '../lib/mediactl.svelte';
@@ -67,7 +67,7 @@
   import QrCode from '../lib/QrCode.svelte';
   import CuePlayer from './CuePlayer.svelte';
   import { soundUrl } from './cues';
-  import { choiceStrip, JOIN_ROOM, PILL_BAND, slideFit, TIMER_BAND, TIMER_ROOM } from './stagefit';
+  import { choiceStrip, JOIN_ROOM, PILL_BAND, slideFit, TIMER_BAND, TIMER_CORNER, TIMER_ROOM } from './stagefit';
   import { letter, pickOf, rightChoice, usableChoices, type UsableChoice } from '../lib/choices';
   import { foldLines } from '../lib/buzzproto';
 
@@ -289,7 +289,8 @@
   const answering = $derived(session.phase === 'clue' && !own && !session.revealed && live.buzz?.answering ? byId[live.buzz.answering] : undefined);
   /**
    * While the countdown, "Ann is answering" or the Daily Double badge is up over a question, the slide moves down into
-   * the room under them (a top band), so they never cover its first line.
+   * the room under them (a top band), so they never cover its first line. The countdown alone, over a slide with nothing
+   * in its corner (the words in the middle), goes over it: the slide stays full size and still.
    */
   const band = $derived.by(() => {
     const onSlide =
@@ -298,16 +299,16 @@
       session.phase === 'tiebreaker' ||
       session.phase === 'slides';
     if (!onSlide) return 0;
-    if (live.timer) return TIMER_BAND;
-    return answering ||
+    const pill =
+      answering ||
       buzzNow ||
       (session.phase === 'clue' && session.dd?.stage === 'question' && ddPlayer) ||
       ptBadge ||
       privateFor.length ||
       (live.answers && session.phase === 'clue' && !session.revealed) ||
-      finalAnswering.length
-      ? PILL_BAND
-      : 0;
+      finalAnswering.length;
+    if (live.timer) return timerClear && !pill ? 0 : TIMER_BAND;
+    return pill ? PILL_BAND : 0;
   });
   /**
    * A countdown on the board sits at the right end of the score bar (the plates and the join code make room), so it
@@ -437,6 +438,29 @@
       },
     };
   }
+  /** The slide on stream: a clue's, a slides round's, the tiebreaker's, the Final's question or answer (none: undefined). */
+  const shownSlide = $derived.by((): Slide | undefined => {
+    if (introName) return undefined;
+    const sr = slidesRound(session, game);
+    if (sr) return shownQuestionSlide(session, sr);
+    if (session.phase === 'clue' && info) return session.revealed ? info.clue.answerSlide : shownQuestionSlide(session, info.clue);
+    const tb = session.phase === 'tiebreaker' ? game.tiebreaker : undefined;
+    if (tb) return session.tiebreakerRevealed ? tb.answerSlide : shownQuestionSlide(session, tb);
+    if (session.phase === 'final' && finalRound) {
+      if (session.finalStep === 'question') return shownQuestionSlide(session, finalRound);
+      if (session.finalStep === 'answer') return finalRound.answerSlide;
+    }
+    return undefined;
+  });
+  /**
+   * Nothing on the slide reaches the countdown's corner (as the slide is drawn with no top band: smaller over a strip of
+   * choices, if there is one), so the countdown goes over it. A text box counts by its words.
+   */
+  const timerClear = $derived.by(() => {
+    if (!shownSlide) return false;
+    const f = slideFit(0, strip?.h ?? 0);
+    return clearOf(shownSlide, TIMER_CORNER, ink, f?.scale ?? 1, f?.originY ?? 1080);
+  });
   /**
    * In a corner over a slide: one with nothing of the slide (nor the caption, slide dots or countdown) under it, smaller
    * if need be; with every corner taken it isn't shown. (A title card's middle is the round's name: its corner is free.)
@@ -445,21 +469,11 @@
     if (codeSpot !== 'corner') return null;
     const tb = session.phase === 'tiebreaker' ? game.tiebreaker : undefined;
     const sr = slidesRound(session, game);
-    const slide =
-      sr && !introName
-        ? shownQuestionSlide(session, sr)
-        : session.phase === 'clue' && info && !introName
-          ? session.revealed
-            ? info.clue.answerSlide
-            : shownQuestionSlide(session, info.clue)
-          : tb && !introName
-            ? session.tiebreakerRevealed
-              ? tb.answerSlide
-              : shownQuestionSlide(session, tb)
-            : undefined;
+    const slide = shownSlide;
     if (!slide) return { corner: 'br' as const, small: false };
     const taken: Rect[] = [];
     if (band) taken.push({ x: 0, y: 0, w: 1920, h: band });
+    else if (live.timer) taken.push(TIMER_CORNER);
     if (tb) taken.push({ x: 0, y: 24, w: 1920, h: 70 });
     if (strip) taken.push({ x: 0, y: 1080 - strip.h, w: 1920, h: strip.h });
     if (session.phase === 'clue' && info && stream?.clueCaption) {
@@ -762,14 +776,14 @@
           {#if finalRound}
             {@const fAt = clueSlideIndex(session, finalRound)}
             {@const fOf = questionSlides(finalRound).length}
-            <div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`} data-slide={fAt + 1}>
+            <div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`} data-slide={fAt + 1} use:inkOf>
               <SlideView slide={shownQuestionSlide(session, finalRound)} {role} />
             </div>
             <!-- Several question slides: where it is (● ○), as on a clue. -->
             {#if fOf > 1}{@render slidePips(fAt, fOf)}{/if}
           {/if}
         {:else if session.finalStep === 'answer'}
-          {#if finalRound}<div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`}
+          {#if finalRound}<div class="slide-area" style:scale={fit?.scale} style:transform-origin={fit && `50% ${fit.originY}px`} use:inkOf
               ><SlideView slide={finalRound.answerSlide} {role} /></div
             >{/if}
         {:else if session.finalStep === 'reveal'}

@@ -1451,6 +1451,11 @@ back on the tile) instead of opening it; while the keys are there, number keys t
   wagers and reveals sit under the plates; hidden, they're left out (the reveal card says each player's total, and the
   host spotlights from the panel or with the number keys). On the board a score pop stays inside the bar's band, over
   its player's plate name, never over a row of tiles.
+- The countdown over a slide (a clue, the Final, the tiebreaker, a slides round) sits in its top-right corner. When
+  nothing of the slide reaches that corner (a text box by its words, a picture, video or shape by its box; a backdrop
+  filling the stage doesn't count), the slide stays full size and still under it; otherwise the slide moves down under
+  it, smaller, so it never covers the first line. "Ann is answering" and the Daily Double badge, across the top middle,
+  always move the slide down. The join code keeps clear of the countdown either way.
 - The Final's reveal card keeps one width for the whole Final (its longest player name's, within the stage), so its
   frame stays put from one player to the next.
 - Can be opened, closed, and reopened without losing sync. On reopen, the full state is resent.
