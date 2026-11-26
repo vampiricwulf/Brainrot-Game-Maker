@@ -778,6 +778,9 @@ try {
   const clearBtn = page.getByRole('button', { name: '🗑 Clear history…' });
   const was = await clearBtn.boundingBox();
   const focusedText = () => page.evaluate(() => document.activeElement?.textContent?.trim() ?? '');
+  const histHeader = page.locator('.hist .page-header');
+  const headerSize = () => histHeader.evaluate((h) => [h.getBoundingClientRect().height, h.querySelector('.titles')?.getBoundingClientRect().width ?? 0]);
+  const [headerWas, titleWas] = await headerSize();
   await clearBtn.click();
   const clearAsk = page.locator('.hist .page-header [data-ask]');
   await clearAsk.waitFor();
@@ -785,6 +788,11 @@ try {
   assert(
     !!was && !!askBox && askBox.y < was.y + was.height && Math.abs(askBox.x + askBox.width - (was.x + was.width)) < 4,
     `the question stands where 🗑 Clear history… was, at the header's right end (${JSON.stringify(was)} → ${JSON.stringify(askBox)})`,
+  );
+  const [headerNow, titleNow] = await headerSize();
+  assert(
+    headerNow - headerWas <= 24 && titleNow >= titleWas * 0.7,
+    `and wraps in about the button's room, not squeezing the title's line (header ${headerWas} → ${headerNow}px tall, title ${titleWas} → ${titleNow}px wide)`,
   );
   assert((await focusedText()) === 'Cancel', `the keys are on its Cancel (${await focusedText()})`);
   assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'the header still fits the window across');

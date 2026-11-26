@@ -419,16 +419,28 @@
   .clear {
     margin-left: 24px;
   }
+  /* Its question wraps in about the button's room, right-aligned, its answers under it where the button was (taking
+     the title's room would squeeze its line to five). */
+  div.clear {
+    max-width: 300px;
+  }
+  div.clear :global(.ia) {
+    justify-content: flex-end;
+    text-align: right;
+  }
   .hist {
     max-width: 1200px;
   }
-  /* Where the title and 🗑 Clear history…'s question can't share a line (a phone), the buttons go under the title
-     rather than squeezing it to a word a line. */
+  /* Where the title and the buttons (or 🗑 Clear history…'s question) can't share a line (a phone, or 1024 while it
+     asks), the buttons go under the title, at the right, rather than squeezing it to a word a line. */
   .hist > :global(.page-header) {
     flex-wrap: wrap;
   }
   .hist > :global(.page-header .titles) {
-    flex: 1 1 240px;
+    flex: 1 1 360px;
+  }
+  .hist > :global(.page-header .actions) {
+    margin-left: auto;
   }
   .filter {
     display: flex;
