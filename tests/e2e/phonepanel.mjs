@@ -14,7 +14,8 @@
 // the host panel is a column beside the stage at every moment, the stage far wider than under it was and one size and
 // place all game; the tools row folds behind ⋯ Tools there too, the status line's how-to keeps to one line, and with
 // nothing scrolled the fixed bar's 🚪 Exit, the RPG's pad and the board game's 🎲 Roll are in sight where a tap reaches
-// them. A laptop (1280×720, 1920×1080), a mouse (768×1024, 844×390), a short touch window too narrow for the column
+// them (with the controls hidden there's no column: 🙈 Hide's note stays at the stage's foot, off the Show controls
+// pill). A laptop (1280×720, 1920×1080), a mouse (768×1024, 844×390), a short touch window too narrow for the column
 // (480×320) and a phone with an audience window (upright or on its side) keep the panel under the stage, its height as
 // it was, and so does a window held upright that's too short for the stage and more (320×454, 360×380, 600×600): its
 // panel ends at the window's foot, the fixed bar in reach. On these phones ⋯ Tools, the clock's buttons and the 🎲 Dice
@@ -538,6 +539,21 @@ try {
     assert(
       l.panel.x === 0 && l.panel.y > 0 && l.panel.y + l.panel.h <= l.ih + 1 && !(await page.locator('.play.side').count()),
       `a phone on its side with an audience window: the panel under the stage preview, as before (${JSON.stringify({ stage: l.stage, panel: l.panel })})`,
+    );
+    await ctx.close();
+  }
+  {
+    // A phone on its side, the controls hidden (🙈 Hide, the first time): no column then, so the note on bringing them
+    // back is at the stage's foot as it always was, not over the Show controls pill (top right) it names.
+    section('A phone on its side, the controls hidden');
+    const { ctx, page } = await sample({ viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true });
+    await hostPanelIn(page).locator(':scope > .fixed button', { hasText: '🙈' }).tap();
+    const note = page.locator('[data-toast]', { hasText: 'Show controls' });
+    await note.waitFor();
+    const [n, pill] = await Promise.all([note.boundingBox(), page.locator('.show-controls').boundingBox()]);
+    assert(
+      !!n && !!pill && n.y > 390 / 2 && (n.y >= pill.y + pill.height || n.x + n.width <= pill.x),
+      `a phone on its side, the controls hidden: the note is at the stage's foot, off the Show controls pill (${JSON.stringify({ n, pill })})`,
     );
     await ctx.close();
   }

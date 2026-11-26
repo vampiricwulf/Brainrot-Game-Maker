@@ -6568,8 +6568,9 @@
     opacity: 0;
   }
   /* The host panel beside the stage: messages show over it, not over the stage, at its top under the status line (its
-     📱 chip and ⏱️ stay in sight; at its foot they'd cover the nav buttons: 👥 Players, Exit). */
-  :global(body:has(.play.side) .toast) {
+     📱 chip and ⏱️ stay in sight; at its foot they'd cover the nav buttons: 👥 Players, Exit). (One window with the
+     controls hidden has no column: its notes keep their place at the stage's foot, off the Show controls pill.) */
+  :global(body:has(.play.side.dual, .play.side:not(.hidden)) .toast) {
     left: auto;
     right: 12px;
     top: var(--toast-top, 12px);
@@ -6578,7 +6579,7 @@
     max-width: 400px;
   }
   /* (A phone on its side: no wider than the column, so it never covers the stage.) */
-  :global(body:has(.play.side:not(.dual)) .toast) {
+  :global(body:has(.play.side:not(.dual):not(.hidden)) .toast) {
     right: 8px;
     max-width: calc(clamp(300px, 40vw, 380px) - 16px);
   }
