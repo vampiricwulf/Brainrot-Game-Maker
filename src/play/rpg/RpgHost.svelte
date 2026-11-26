@@ -1134,9 +1134,10 @@
     height: auto;
     container-type: inline-size;
   }
-  /* (A window 800px wide or less, a tablet held upright: the top row takes two lines there anyway, so the selection line
-     keeps room enough for who's picked and Clear selection in words, and the party buttons go on to the second line.) */
-  @media (max-width: 800px) {
+  /* (A window 800px wide or less, or held upright, a tablet: the top row takes two lines there anyway, or the box has
+     room for a second, so the selection line keeps room enough for who's picked and Clear selection in words, and the
+     party buttons go on to the second line.) */
+  @media (max-width: 800px), (orientation: portrait) {
     .top.withsel > .sel {
       min-width: 16em;
     }
