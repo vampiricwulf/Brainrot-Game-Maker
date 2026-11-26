@@ -402,6 +402,16 @@ describe('hostState (what the buzzer room is told)', () => {
     // Teams: each phone on the team is told it's the team's pick (not each one's to call), and its Daily Double.
     game.settings.buzzTeams = true;
     expect(phoneStatus(game, session)?.seatsText).toBe('Your team’s pick! Tell the host which clue');
+    // A room that takes a small line (cards): "Your pick!" is the picker's big line, what to do under it.
+    expect(phoneStatus(game, session, false, { cards: true })).toEqual({
+      text: 'Ann picks the next clue',
+      seats: ['a'],
+      seatsText: 'Your team’s pick!',
+      seatsSub: 'Tell the host which clue',
+    });
+    game.settings.buzzTeams = false;
+    expect(phoneStatus(game, session, false, { cards: true })).toMatchObject({ seatsText: 'Your pick!', seatsSub: 'Tell the host which clue' });
+    game.settings.buzzTeams = true;
     session.phase = 'clue';
     session.dd = { stage: 'splash', playerId: 'b' };
     expect(phoneStatus(game, session)?.seatsText).toBe('Daily Double — your team’s up!');

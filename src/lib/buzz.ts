@@ -271,8 +271,13 @@ export function phoneStatus(
       if (isBoard(round) && roundComplete(session, game)) return { text: `${roundName(round, session.currentRound)} is done` };
       const id = session.currentPickerId;
       const who = nameOf(id);
-      const pick = teamsOn(game.settings) ? 'Your team’s pick! Tell the host which clue' : 'Your pick! Tell the host which clue';
-      return who && id ? { text: `${who} picks the next clue`, seats: [id], seatsText: pick } : null;
+      // The picker's phone: "Your pick!" as its big line, what to do under it, where the room takes a small line (cards);
+      // one line in a room from before.
+      const pick = teamsOn(game.settings) ? 'Your team’s pick!' : 'Your pick!';
+      const say = 'Tell the host which clue';
+      return who && id
+        ? { text: `${who} picks the next clue`, seats: [id], ...(room.cards ? { seatsText: pick, seatsSub: say } : { seatsText: `${pick} ${say}` }) }
+        : null;
     }
     case 'final': {
       const f = currentFinal(session, game);

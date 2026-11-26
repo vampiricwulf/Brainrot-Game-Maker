@@ -1726,6 +1726,11 @@ function renderBuzz(v: PhoneView): void {
     // Nobody buzzes (a partner clue): greyed, with who plays which part as the big line and what's going on under it.
     [cls, big, small] = ['off', v.status, v.statusSub ?? ''];
     greyed = true;
+  } else if (v.phase === 'lobby' && v.statusSub && !q) {
+    // A line for this seat alone, with what to do under it ("Your pick!" "Tell the host which clue"): the big line,
+    // not the name (the line under the button has it).
+    [big, small] = [v.status ?? '', v.statusSub];
+    plain = true;
   } else if (v.phase === 'lobby') {
     big = you.name;
     // (A question up with answers asked, none of them this seat's: the round's name is over it already.)

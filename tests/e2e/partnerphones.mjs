@@ -331,7 +331,10 @@ try {
   assert(await says(bob, '🤝 Player 2 described → Player 1 guessed'), 'the answer up: “🤝 Player 2 described → Player 1 guessed”');
   assert((await guessLine.innerText()).includes('“Shrek-ish”'), 'and the guess shows in the panel once the answer is up');
   await host.keyboard.press('Escape');
-  assert(await says(ann, 'Your pick! Tell the host which clue'), 'back on the board, the phones are as before');
+  assert(
+    (await says(ann, 'Your pick!')) && (await says(ann, 'Tell the host which clue')),
+    'back on the board, the phones are as before (the picker’s: “Your pick!”, what to do under it)',
+  );
   assert(await until(() => !('cards' in (last() ?? {}))), 'and the room’s state has no card any more');
   assert(
     await until(async () => !(await bob.locator('.card').count()) && (await bob.locator('#buzz').isVisible())),

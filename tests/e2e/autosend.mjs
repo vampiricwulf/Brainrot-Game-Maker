@@ -296,6 +296,20 @@ try {
   // (Player 1 picks, and guesses with Player 2.)
   await host.keyboard.press('p');
   await host.keyboard.press('1');
+  // The picker's phone (a small one): "Your pick!" is its big line, what to do under it; the others keep their name.
+  await p1.setViewportSize({ width: 320, height: 568 });
+  await p1.locator('#buzz-big').getByText('Your pick!', { exact: true }).waitFor();
+  const pickLines = await p1.evaluate(() =>
+    ['buzz-big', 'buzz-small'].map((id) => {
+      const el = /** @type {HTMLElement} */ (document.getElementById(id));
+      return { text: el.textContent, px: parseFloat(getComputedStyle(el).fontSize) };
+    }),
+  );
+  assert(
+    pickLines[1].text === 'Tell the host which clue' && pickLines[0].px > pickLines[1].px && (await p2.locator('#buzz-big').innerText()) === 'Player 2',
+    `the picker’s phone: “Your pick!” big, “Tell the host which clue” under it; another phone keeps its name (${JSON.stringify(pickLines)})`,
+  );
+  await p1.setViewportSize({ width: 360, height: 640 });
   await stageBoxIn(host).locator('.tile[aria-label^="Category 3 for $200"]').click();
   await stageBoxIn(host).locator('[data-partner-up]').waitFor();
   await host.keyboard.press('2');
