@@ -141,7 +141,7 @@
       undone(row)
         ? { label: '↷ Redo to here', onclick: () => jump(row) }
         : {
-            label: '↶ Back to here',
+            label: '↶ Undo to here',
             onclick: () => jump(row),
             disabled: row.steps === 0,
             hint: row.steps ? `Undo the ${row.steps} step${row.steps === 1 ? '' : 's'} after this` : 'Nothing after it',
@@ -202,7 +202,7 @@
   </header>
   {#if tab === 'history'}
     <p class="muted small intro">
-      Newest first. <b>↶ Back to here</b> undoes everything after a step, <b>↷ Redo to here</b> brings undone steps back. Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) go one
+      Newest first. <b>↶ Undo to here</b> undoes everything after a step, <b>↷ Redo to here</b> brings undone steps back. Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) go one
       at a time.
     </p>
     <!-- (A list only with something in it: its rows, round names and ● Now are all its items.) -->
@@ -249,7 +249,7 @@
                   >
                 {:else if back}
                   <button class="small" onclick={() => jump(row)} title="Undo the {row.steps} step{row.steps === 1 ? '' : 's'} after this"
-                    >↶ Back to here</button
+                    >↶ Undo to here</button
                   >
                 {/if}
               </span>

@@ -1166,7 +1166,7 @@ try {
   await hc.goto(pathToFileURL(file).href);
   await addClassicRounds(hc);
   // (And no hover, as on a touch screen: the buttons a row shows when pointed at show anyway, so a tap never presses
-  // one unseen. 🕘 History's Go there › here, 📜 Log's ↶ Back to here in play.)
+  // one unseen. 🕘 History's Go there › here, 📜 Log's ↶ Undo to here in play.)
   const noHover = await fc.newCDPSession(hc);
   await noHover.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 });
   await hc.locator('nav > button', { hasText: '🕘 History' }).click();
@@ -1227,14 +1227,14 @@ try {
     (await sel.count()) === 1 && (await outlined(sel)) && !(await outlined(hostPanelIn(hc).locator('.p:not(.on)').first())),
     'and a selected player in the host panel is outlined',
   );
-  // (Two steps: the older one has ↶ Back to here.)
+  // (Two steps: the older one has ↶ Undo to here.)
   for (const who of ['2', '1']) {
     await hc.keyboard.press('p');
     await hc.keyboard.press(who);
   }
   await hc.keyboard.press('l');
   const backHere = hc.locator('aside .item .acts').first();
-  assert((await backHere.evaluate((a) => getComputedStyle(a).opacity)) === '1', 'and 📜 Log’s ↶ Back to here shows on its rows');
+  assert((await backHere.evaluate((a) => getComputedStyle(a).opacity)) === '1', 'and 📜 Log’s ↶ Undo to here shows on its rows');
   await fc.close();
 
   assert(errors.length === 0, `no page errors (${errors.join('; ')})`);

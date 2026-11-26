@@ -15,7 +15,7 @@ type Row = { id: string; ts: number; text: string; round?: number } & (
 );
 
 /**
- * A row, and `steps`: how many Undos its "Back to here" takes (every Undo newer than it), or for an undone row how
+ * A row, and `steps`: how many Undos its "Undo to here" takes (every Undo newer than it), or for an undone row how
  * many Redos its "Redo to here" takes.
  */
 export type TimelineRow = Row & { steps: number };
@@ -117,7 +117,7 @@ export function timelineRows(session: Session, game: Game, sym: string, hide = f
   for (const r of session.rollLog ?? []) rows.push({ kind: 'roll', id: r.id, ts: r.ts, text: `${r.name}: ${r.result}`, source: r.source });
   const redo = rows.filter((r) => r.kind !== 'roll' && r.state === 'redo').sort((a, b) => b.ts - a.ts);
   const rest = rows.filter((r) => !redo.includes(r)).sort((a, b) => b.ts - a.ts);
-  // Back to here: every Undo newer than the row (a roll, or a change undone in the Scores tab, marks a moment).
+  // Undo to here: every Undo newer than the row (a roll, or a change undone in the Scores tab, marks a moment).
   const order = undoOrder(session);
   const at = new Map(order.map((u, i) => [u.id, i]));
   const back = (r: Row) => at.get(r.id) ?? order.filter((u) => u.ts > r.ts).length;

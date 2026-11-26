@@ -3418,7 +3418,7 @@
 
   const clock = (ts: number) => new Date(ts).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
-  /** 🕘 History's ↶ Back to here: undo every step newer than the row (a roll or a change undone in Scores marks a moment). */
+  /** 🕘 History's ↶ Undo to here: undo every step newer than the row (a roll or a change undone in Scores marks a moment). */
   function undoBackTo(row: TimelineRow): void {
     const moment = row.kind === 'roll' || (row.kind === 'score' && row.state === 'off');
     let n = 0;

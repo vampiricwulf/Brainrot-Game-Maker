@@ -1,6 +1,6 @@
 <!--
   🕘 History: every step of the game's undo history, newest first, grouped by minute, with the steps undone on top
-  (dimmed) above "● Now". Click a step to go back (or forward) to just after it; Go there shows where it changed.
+  (dimmed) above "● Now". Click a step to undo (or redo) to just after it; Go there shows where it changed.
 -->
 <script lang="ts">
   import PageHeader from './PageHeader.svelte';
@@ -119,7 +119,7 @@
     return { n: blobs.size, bytes: [...blobs].reduce((a, b) => a + b.size, 0) };
   });
 
-  /** A jump is waiting for "Go back 34 steps?" to be answered (asked under the step clicked). */
+  /** A jump is waiting for "Undo 34 steps, back to …?" to be answered (asked under the step clicked). */
   let asking = $state<{ n: number; text: string; ok: string } | null>(null);
   let clearing = $state(false);
 
@@ -134,7 +134,7 @@
     const when = minute(n ? history.entries[n - 1].end : history.origin.ts);
     asking =
       moved < 0
-        ? { n, text: `Go back ${-moved} steps, to ${when}?`, ok: `Go back ${-moved} steps` }
+        ? { n, text: `Undo ${-moved} steps, back to ${when}?`, ok: `Undo ${-moved} steps` }
         : { n, text: `Redo ${moved} steps, up to ${when}?`, ok: `Redo ${moved} steps` };
   }
 
@@ -175,13 +175,13 @@
       { heading: e.label },
       applied
         ? {
-            label: '↶ Go back to just after this',
+            label: '↶ Undo to here',
             onclick: () => pick(i + 1),
             disabled: current,
             keys: 'Enter',
             hint: current ? 'The game is here now' : undefined,
           }
-        : { label: '↷ Redo up to here', onclick: () => pick(i + 1), keys: 'Enter' },
+        : { label: '↷ Redo to here', onclick: () => pick(i + 1), keys: 'Enter' },
       { label: 'Go there ›', onclick: () => goThere(e, applied), disabled: !(applied ? e.place : e.undoPlace), keys: 'G' },
       { sep: true },
       { label: '📋 Copy step name', onclick: () => void copyText(e.label, 'Copied the step’s name') },
@@ -208,7 +208,7 @@
   <PageHeader
     title="History"
     sub={history.entries.length
-      ? 'Every change to this game, newest first. Click a step to go back to just after it (↷ steps were undone: click one to redo up to it). Go there › shows where it changed. Ctrl+Z / Ctrl+Y step one at a time.'
+      ? 'Every change to this game, newest first. Click a step to undo back to just after it (↷ steps were undone: click one to redo up to it). Go there › shows where it changed. Ctrl+Z / Ctrl+Y step one at a time.'
       : 'No changes yet. Everything you change in this game shows up here, and you can go back to any point. Ctrl+Z undoes, Ctrl+Y redoes.'}
   >
     {#snippet actions()}
@@ -285,7 +285,7 @@
             tabindex={r.key === tabStep ? 0 : -1}
             onclick={() => pick(r.i + 1)}
             aria-current={current ? 'step' : undefined}
-            title="{e.label}{e.where ? `\n${e.where}` : ''}\n{second(e.ts)} · {applied ? 'Go back to just after this step' : 'Redo up to this step'}"
+            title="{e.label}{e.where ? `\n${e.where}` : ''}\n{second(e.ts)} · {applied ? 'Undo to just after this step' : 'Redo up to this step'}"
           >
             <span class="ic" aria-hidden="true">{applied ? e.icon : '↷'}</span>
             <span class="lb"

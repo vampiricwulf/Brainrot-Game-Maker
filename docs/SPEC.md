@@ -593,6 +593,14 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   for one named so; a number written as text is that number; no players list is none yet, and no version this one);
   one the app can't use says where it's wrong.
 
+### 5.9 🕘 History
+- Every change to the game is a step, newest first, grouped by minute, with the undone steps (↷, dimmed) above
+  "● Now". A click on a step, or its right-click menu's **↶ Undo to here**, makes the game what it was just after it;
+  on an undone step, **↷ Redo to here** redoes every step up to it. Over 20 steps asks first, under the step ("Undo 22
+  steps, back to 3:04 PM?" / "Redo 22 steps, up to …?"). The origin row undoes everything back to where the history
+  starts. ↶ Undo / ↷ Redo (Ctrl+Z / Ctrl+Y) go one step at a time. 📜 Log › 🕘 History in play uses the same words
+  (§6.5).
+
 ---
 
 ## 6. Play Mode
@@ -1202,6 +1210,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   stopped and the time it had left; a redo stops it again).
 - **Score log**: chronological list of every change (player, delta, reason/clue, time). Each entry can be **undone** or redone.
   Global **Undo (Ctrl+Z)** reverts the last score change.
+- **📜 Log › 🕘 History**: score changes, steps (moves, items, tiles, the picker, Players and Final changes) and rolls
+  in one list, newest first, with the undone steps (↷) on top above "● Now". **↶ Undo to here** on a row undoes every
+  step after it; **↷ Redo to here** on an undone row redoes up to it (asking first for more than one step), the same
+  words as the editor's 🕘 History (§5.9).
 - Session state (scores, used tiles, round, log) is autosaved to IndexedDB after every change for **crash recovery**.
 
 ### 6.6 Global tools (available anytime from the toolbar)

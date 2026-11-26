@@ -86,7 +86,7 @@ describe('the play history', () => {
       ['score', '+$500 (Bob) · Adjustment', 0],
       ['score', '+$400 × 2 (Ann & Bob) · Jeopardy! · Memes $400', 0],
     ]);
-    // Back to here: how many Undos each row is behind (the roll marks a moment).
+    // Undo to here: how many Undos each row is behind (the roll marks a moment).
     expect(rows.map((r) => r.steps)).toEqual([0, 1, 2, 2, 3, 4]);
   });
 

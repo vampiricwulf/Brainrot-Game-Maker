@@ -196,16 +196,16 @@ try {
     times.length > 0 && times.every((t) => t.lines === 1 && /^[1-9]\d?:\d\d/.test(t.text)),
     `each row's time is on one line, without a leading 0 (${times.map((t) => `${t.text}: ${t.lines}`).join(', ')})`,
   );
-  // Back to here on the oldest: asks inline (never a browser dialog), then everything after it is undone.
+  // Undo to here on the oldest: asks inline (never a browser dialog), then everything after it is undone.
   const oldest = page.locator('aside .item').last();
   await oldest.hover();
-  await oldest.getByRole('button', { name: '↶ Back to here' }).click();
+  await oldest.getByRole('button', { name: '↶ Undo to here' }).click();
   assert((await page.locator('aside .ia').innerText()).startsWith('Undo 4 steps'), 'going back more than one step asks inline first');
   await page.waitForTimeout(450);
   await page.locator('aside .ia').getByRole('button', { name: 'Undo 4 steps' }).click();
   assert(
     (await scores()) === '$0 $0 $0' && (await names()).startsWith('Player 1') && (await isUsed(1)),
-    'Back to here undoes everything after the step, not the step',
+    'Undo to here undoes everything after the step, not the step',
   );
   const undone = await page.locator('aside .item.redo').count();
   assert(undone === 4, 'the undone steps stay listed above ● Now');
@@ -215,7 +215,7 @@ try {
   await page.waitForTimeout(450);
   await page.locator('aside .ia').getByRole('button', { name: 'Redo 4 steps' }).click();
   assert((await scores()) === '$300 $400 $400' && (await names()).startsWith('Alice'), 'Redo to here brings them all back');
-  // A row's right-click menu: headed by its own words (all the log shows), Back to here, and for a score just that one.
+  // A row's right-click menu: headed by its own words (all the log shows), Undo to here, and for a score just that one.
   const award = page.locator('aside .item', { hasText: '+$100 × 2' }).first();
   await award.click({ button: 'right' });
   const logMenu = page.getByRole('menu');
@@ -225,8 +225,8 @@ try {
   );
   const logItems = (await logMenu.getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert(
-    ['↶ Back to here', '↶ Undo just this score'].every((x) => logItems.includes(x)),
-    `a score row's menu: ↶ Back to here, ↶ Undo just this score (${logItems.join(' | ')})`,
+    ['↶ Undo to here', '↶ Undo just this score'].every((x) => logItems.includes(x)),
+    `a score row's menu: ↶ Undo to here, ↶ Undo just this score (${logItems.join(' | ')})`,
   );
   await logMenu.getByRole('menuitem', { name: '↶ Undo just this score' }).click();
   assert(

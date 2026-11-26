@@ -202,20 +202,17 @@ try {
   await rows.nth(0).click({ button: 'right' });
   const stepItems = (await page.getByRole('menu').getByRole('menuitem').allInnerTexts()).map((t) => t.split('\n')[0]);
   assert(
-    ['↷ Redo up to here', 'Go there ›', '📋 Copy step name'].every((x) => stepItems.includes(x)),
+    ['↷ Redo to here', 'Go there ›', '📋 Copy step name'].every((x) => stepItems.includes(x)),
     `an undone step's menu redoes up to it, goes there and copies its name (${stepItems.join(' | ')})`,
   );
   await page.getByRole('menuitem', { name: '📋 Copy step name' }).click();
   await toastsIn(page, { hasText: 'Copied the step’s name' }).waitFor();
   assert((await page.evaluate(() => navigator.clipboard.readText())) === 'Deleted category “Category 4”', '📋 Copy step name copies its name');
   await rows.nth(1).click({ button: 'right' });
-  assert(
-    await page.getByRole('menuitem', { name: '↶ Go back to just after this' }).isDisabled(),
-    'the step the game is at: Go back to just after this is greyed',
-  );
+  assert(await page.getByRole('menuitem', { name: '↶ Undo to here' }).isDisabled(), 'the step the game is at: Undo to here is greyed');
   await page.keyboard.press('Escape');
   await rows.nth(2).click({ button: 'right' });
-  await page.getByRole('menuitem', { name: '↶ Go back to just after this' }).click();
+  await page.getByRole('menuitem', { name: '↶ Undo to here' }).click();
   await page.waitForTimeout(250);
   assert((await page.locator('.hist .hr.undone').count()) === 2, 'a done step’s menu goes back to just after it');
   await key('Control+y');
@@ -511,9 +508,9 @@ try {
   await historyTab.click();
   await page.locator('.hist .hr.origin .pick').click();
   const ask = page.locator('.hist .hr.origin + .ask');
-  assert((await ask.innerText()).startsWith('Go back 22 steps'), 'going back more than 20 steps asks first, under the step clicked');
+  assert((await ask.innerText()).startsWith('Undo 22 steps, back to'), 'going back more than 20 steps asks first, under the step clicked');
   await page.waitForTimeout(450);
-  await ask.getByRole('button', { name: 'Go back 22 steps' }).click();
+  await ask.getByRole('button', { name: 'Undo 22 steps' }).click();
   await page.waitForTimeout(250);
   assert((await page.locator('.hist .hr.undone').count()) === 22 && !(await ask.count()), 'and goes back once asked');
 
