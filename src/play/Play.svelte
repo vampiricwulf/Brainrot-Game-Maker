@@ -2094,7 +2094,7 @@
 
   /**
    * A click on the stage during a partner clue's hand-out with nothing to send (or a clue with no cards, its clock not
-   * started): the clock starts, as ⏱️ Start the clock does, and the status line says so with ↶ Undo a few seconds, since a
+   * started): the clock starts, as ⏱️ Start the countdown does, and the status line says so with ↶ Undo a few seconds, since a
    * host who drives from the stage may not see it happen. That ↶ Undo takes the clock back while nothing has happened
    * since (it isn't a step of the game's Undo).
    */
@@ -2489,7 +2489,7 @@
     putBack: () => cancelClue(),
     partnerShow: () => partnerShow(),
     closeWheel: () => closeOverlay(),
-    // (T on the check's ⏱️ Start the clock does what T does outside: the clue goes live, and its first Enter after only
+    // (T on the check's ⏱️ Start the countdown does what T does outside: the clue goes live, and its first Enter after only
     // says the clock is running.)
     partnerClock: () => (quickKey && !quickKey.shiftKey && quickKey.key.toLowerCase() === 't' ? clockKey(false) : partnerHandOut(!!quickKey)),
     copyCard: partnerCopy,

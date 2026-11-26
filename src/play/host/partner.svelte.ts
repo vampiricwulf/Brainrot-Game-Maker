@@ -326,7 +326,7 @@ export function createPartner(host: PartnerHost) {
   }
 
   /**
-   * 📤 Send and start (or ⏱️ Start the clock): every card not sent yet goes to its phones, when the room takes cards
+   * 📤 Send and start (or ⏱️ Start the countdown): every card not sent yet goes to its phones, when the room takes cards
    * (copied by hand otherwise), and the countdown starts. Not over the answer.
    */
   function partnerClock(): void {
@@ -356,7 +356,7 @@ export function createPartner(host: PartnerHost) {
 
   /**
    * T or the status line's ⏱️ Start started the countdown (or let it go on), or it was running as the question went up:
-   * a partner clue handing out its cards with none waiting for a phone goes live with it, as ⏱️ Start the clock does,
+   * a partner clue handing out its cards with none waiting for a phone goes live with it, as ⏱️ Start the countdown does,
    * sending nothing, and its first Enter only says the clock is running (so "T, then Enter" never judges by habit).
    * With phone cards waiting it's the clock only: Enter still sends them (📤 Send the cards).
    */
@@ -433,7 +433,7 @@ export function createPartner(host: PartnerHost) {
     `🔔 A steal: ${phonesOn ? 'whoever buzzes in first answers, or press' : 'press'} the number of who steals it, then Enter (right) or Shift+Enter (wrong)`;
 
   /**
-   * 📤 Send and start (or ⏱️ Start the clock) by Enter or the check: never within a second of the question going up, so a
+   * 📤 Send and start (or ⏱️ Start the countdown) by Enter or the check: never within a second of the question going up, so a
    * held or double press can't send before the host has looked at who gets which card. Live with no cards and no clock
    * yet: the clock, as T starts it. False: it waited, and said so.
    */
@@ -565,7 +565,7 @@ export function createPartner(host: PartnerHost) {
    * Enter / Shift+Enter on a partner clue (spec §6.5, §6.6, §6.11). On PARTNER UP!: the blue button, Show question ▶ (or
    * Next ▶ with the wheel up), asking first when something's left (who picked it, the partner). With players picked by
    * hand (1–9): ＋ Award / − Deduct, as on any clue. Handing out the cards: Enter is the 🤝 box's 📤 Send and start (or ⏱️
-   * Start the clock), never within a second of the question; Shift+Enter only says how to judge. Once the clock runs:
+   * Start the countdown), never within a second of the question; Shift+Enter only says how to judge. Once the clock runs:
    * ✔ Got it / ✘ Missed. Never on a key repeat, nor a moment after the clock started. Returns whether it's done with
    * the key (false: award as on any clue).
    */

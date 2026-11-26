@@ -121,7 +121,7 @@
     dual?: boolean;
     /** 🎡 Spin for a partner (W): the partner wheel, spun. */
     onspin: () => void;
-    /** ⏱️ Start the clock: the countdown starts. */
+    /** ⏱️ Start the countdown: the countdown starts. */
     onclock: () => void;
     /** What the shares are of: the Amount box (the tile's value, unless the host changed it). */
     value: number;
@@ -139,7 +139,7 @@
     selected?: Id[];
     /** A steal's chip: that player answers it (picked, as with their number). */
     onpick?: (id: Id) => void;
-    /** What ⏱️ Start the clock counts down from (its words say it): a paused countdown's time left, else its seconds. */
+    /** What ⏱️ Start the countdown counts down from (its words say it): a paused countdown's time left, else its seconds. */
     clockSecs?: number;
     /** The action due now ('partnerspin', 'describerspin', 'handout'): its button wears the ring (goon.ts ringOf). */
     ring?: string | null;
@@ -720,11 +720,11 @@
   });
   /** The countdown is running (T, or the status line's ⏱️ Start): with cards still to send, only they're left to go. */
   const clockRuns = $derived(!!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired);
-  /** What a click on 📤 Send and start (or ⏱️ Start the clock) says within a second of the question going up. */
+  /** What a click on 📤 Send and start (or ⏱️ Start the countdown) says within a second of the question going up. */
   const handSoon = $derived(`The question just went up: click again to ${unsentToGo.length ? 'send the cards' : 'start the countdown'}`);
   /**
    * The cards handed out (until the clock runs, it's judged, or the answer shows): 📤 Send and start when phones get cards
-   * not sent yet, else ⏱️ Start the clock: Enter's too (⏎). A click within a second of the question waits, as Enter does.
+   * not sent yet, else ⏱️ Start the countdown: Enter's too (⏎). A click within a second of the question waits, as Enter does.
    */
   const handStep = $derived.by((): NextAction | null => {
     if (s.stage !== 'distribute' || verdict.judged || session.revealed) return null;

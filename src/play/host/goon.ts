@@ -195,7 +195,7 @@ export type GoActs = {
   /** Show question ▶ on PARTNER UP!, and the partner wheel put away (its landing is the partner). */
   partnerShow: () => void;
   closeWheel: () => void;
-  /** 📤 Send and start or ⏱️ Start the clock (false: a moment after the question it waits, saying so). */
+  /** 📤 Send and start or ⏱️ Start the countdown (false: a moment after the question it waits, saying so). */
   partnerClock: () => void | false;
   /** 📋 Copy a card's words (or picture), to paste to its players: never on screen. */
   copyCard: (cardId: Id) => void;
@@ -286,7 +286,7 @@ export type PartnerNow = {
   copy: { id: Id; name: string; to: Id[]; phoneless: boolean; what: 'words' | 'picture' | null; copied?: boolean }[];
   /** 📤 Send and start won't fit in the buzzer room: why. */
   full?: string;
-  /** What ⏱️ Start the clock counts down from. */
+  /** What ⏱️ Start the countdown counts down from. */
   secs: number;
   /** The countdown: up (running or paused, its seconds left), run out, or none. */
   clock: { left: number; running: boolean } | 'out' | null;

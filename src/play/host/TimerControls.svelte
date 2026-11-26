@@ -80,7 +80,7 @@
     <!-- (The countdown box's corner ✕, as a notice's: no word, so the status line never wraps and shrinks the stage.) -->
     <button class="small ghost" onclick={hide} title="Hide the countdown" aria-label="Hide countdown">✕</button>
   {:else}
-    <button class="small" onclick={() => start(secs)} title="T">Start {secs}s</button>
+    <button class="small" onclick={() => start(secs)} title="Start the countdown (T)">Start {secs}s</button>
   {/if}
   <!-- Enter starts that countdown; Enter and Esc give the keys back to the shortcuts, as the Amount box does. -->
   <input
