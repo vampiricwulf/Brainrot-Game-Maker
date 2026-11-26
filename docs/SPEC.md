@@ -720,9 +720,15 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     whole game**: the host panel under it is one height in every round and moment (the Final's, `min(clamp(280px,
     44vh, 440px), 62vh)`), from the board, a clue's steps, a Daily Double, a 🤝 partner clue and a wheel or dice tile to
     the RPG and board-game rounds (under the stage in one window too; beside it only with an audience window, or on a
-    phone on its side, below), the Final, the results, a roll-off and the tiebreaker clue, so a crop set on one round
-    fits every other and viewers never see the stage zoom down and up. Each moment's rows scroll in the panel: the status line at its top, the
-    tools row and the fixed bar at its foot; an open 🎲 / 🎡 / 🏁 menu or the 📱 phones list stays inside it too,
+    phone on its side, below), the Final, the results, a roll-off and the tiebreaker clue, so a crop set on one round fits every other and viewers
+    never see the stage zoom down and up. Each moment's rows scroll in the panel: the status line at its top, the
+    tools row and the fixed bar at its foot, and the action part (the flow row and the blue button) right on the tools
+    row, any room to spare above it, so the blue button keeps one place from a plain clue to a wheel, dice or 🤫 cards
+    tile, a board-game turn and the Final's steps (it moves once, down, as the Final's reveals fold the tools row away;
+    on a phone held upright the action part stays under the chips instead, the room to spare under it). While the
+    action part's rows go on under its sticky foot (the flow row, or a 🤝 partner clue's ✔ Got it row), they fade out
+    just above it and a **▾ more** tab sits on its top edge at its right end (`data-more`, scrollmore.ts; the fade alone
+    on a window under 500px tall); it takes no room and no click, and goes at the end. An open 🎲 / 🎡 / 🏁 menu or the 📱 phones list stays inside it too,
     scrolling. A tools-row pop-up (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal…, the cards out, 🪟)
     closes when Tab or Shift+Tab takes the focus out of it and its button (the focus staying where it went), as a
     click outside does; Esc closes it and gives its button the keys back. The app moving the focus by itself (a check
@@ -730,8 +736,12 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     window opening keep it open, with what's typed in it.
     Each score chip keeps room for the mark and the score a clue of the round can give it, counted from its
     score before the clue's marks (the ★ of who picks next takes none), so the chips don't reflow. What scrolls in
-    there comes into view as it comes (a board-game move's landing row, a tool's outcome), and at the end and in the
-    tiebreaker clue the score chips stay whole while the part under them scrolls.
+    there comes into view as it comes (a board-game move's landing row, a tool's outcome), and at the end, in the
+    tiebreaker clue and in a clue whose tile has a box of its own (its 🤫 cards, a wheel or dice tile's tool, up or
+    landed) the score chips stay whole, every ✔ / ✘ in reach, while the part under them scrolls (that box keeping its
+    first line in sight above the flow row on a window 500px tall or more). Where the chips' box itself scrolls (a
+    short window: a laptop at 200% zoom shows one chip), its foot fades while more chips are below (`data-more`, a
+    mask: no room, no click), and shows the last chip whole at its end (`tests/e2e/hostroom.mjs`).
   - **A phone or a touch tablet held upright** (portrait, up to 600px wide, or any portrait touch screen), one window:
     the stage is the screen's width (16:9, the same size as before) right at the top, and the host panel takes the rest
     of the screen, the black that was above and under the stage, so each moment's box (a slide's ◀ Slide, Skip intro, a
@@ -1014,7 +1024,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **An RPG round's box** (RpgHost), the pad first at every height: the top row (where, notes, the parties, ✂ Split off,
   🤝 Regroup, ▦ Split view, 🛒 Shop…, 🗺 Map on stream; in one window the screen's and round's 📝 notes have a slot of
   their own there on every screen, note or none, one line cut short with the whole of it in its tooltip, so the
-  buttons, the pad and the minimap keep their places from screen to screen), the selection line, a party's rename
+  buttons, the pad and the minimap keep their places from screen to screen), the selection line (in one window on the
+  top row, in the room between the notes' slot and the party buttons, cut short as it must, the row pinned at the box's
+  top: the pad and the minimap get the room a line of its own took), a party's rename
   question, then the pad and the minimap beside the `tools` snippet (HostPanel's ToolsControls: in an RPG round a
   tool's box goes here, never at the panel's top) and the object's card or Objects here, then **✎ Improvise** (a RememberedFold, `jb.improviseOpen`,
   open until first folded; its questions show under it either way), then the players. An object's card, once open,
@@ -1049,6 +1061,11 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   dashed outlines while it's held and 1.5 s after, and on the whole group while one of it is pressed; nothing at rest.
   The RPG box has one selection line near its top, always there (one height), with one Clear selection for players and objects (the
   award row has no Clear selection of its own in an RPG round), and one `Esc` clears both, after an open card. In one
+  window an RPG or board-game round's Amount row is folded behind **± Adjust score**, at the end of the tools row (no
+  row of its own: the pad's 9 buttons and the minimap's first row stay in sight at 1280×720): a pick on the stage or in
+  the box (which moves and splits the party, or picks who moves) leaves it folded; ± Adjust score, the stage's menu or
+  a player's number key (`1–9`) opens it, and its **✕ Close** folds it again, players picked or not. With an audience
+  window it stays open, as before. In one
   window it counts a secret object ("1 hidden object"), Objects here numbers them ("🙈 Hidden object 1": its card keeps
   the name and buttons behind 👁 Show; what the host added during the show keeps its name), and steps that move or
   remove one carry a quiet label ("Move Ann & a hidden object"). No step is recorded for a move that moves nothing;
@@ -1138,6 +1155,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      Enter after it only says "Countdown running: Enter again for ✔ Got it"; with phone cards still to send it starts
      the countdown only, the 🤝 box's foot reads **📤 Send the cards (countdown running)** and the status line "Countdown running:
      Enter sends the 2 cards", and Enter sends them (a card goes to a phone only by Enter on that step or a 📤 press).
+     While the cards are handed out with some to copy, the first line is short, so it reads whole on a laptop ("Next:
+     📋 Copy, then ⏱️ Start", "Next: 📋 Copy, then 📤 Send", "Next: ⏱️ Start the clock" once they're copied, "Clock
+     running: 📋 Copy, then 📤 Send"), its whole sentence in its tooltip; who plays which part, beside it, is cut short
+     instead (whole in its tooltip, the names on the chips).
      Under the box the Amount row folds behind **± Other points…** (✔ Got it / ✘ Missed give the points): it opens by
      itself once a player is picked (`1–9`, then Enter awards them as on any clue) or points were given by hand on the
      clue, and stays open for it; a steal's row is the Amount row, open. Nobody buzzes. With **steal on a miss**

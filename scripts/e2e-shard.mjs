@@ -37,7 +37,7 @@ import { appFile, failureDir } from '../tests/e2e/helpers.mjs';
 import { leftoversOf, parseTargets } from './e2e-targets.mjs';
 
 const SHARDS = {
-  1: 'phonecopies cardrounds partnerplay cardsend history playfeatures buzzerlive convert slidesround dealcaptain rpg touchsize',
+  1: 'phonecopies cardrounds partnerplay cardsend history playfeatures buzzerlive convert slidesround dealcaptain rpg touchsize hostroom',
   2: 'hostlayout boardgame remotebuzz partnersend boardedit partnerteams partnerrandom deal editorfixes multislide autosend',
   3: 'smoke audio save videoedit buzzerfiles themes goon editormedia lists everyone links phonepanel',
   4: 'stream editorfeatures hosting partnerjudge pregame board finalcards datasafety dealwheel playcopies update boardimages',
