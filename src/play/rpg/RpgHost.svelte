@@ -1134,6 +1134,13 @@
     height: auto;
     container-type: inline-size;
   }
+  /* (A window 800px wide or less, a tablet held upright: the top row takes two lines there anyway, so the selection line
+     keeps room enough for who's picked and Clear selection in words, and the party buttons go on to the second line.) */
+  @media (max-width: 800px) {
+    .top.withsel > .sel {
+      min-width: 16em;
+    }
+  }
   /* (Short there, a crowded top row: Clear selection is just ✕, and ↩ Select them again is cut short.) */
   .sel .x .xx {
     display: none;

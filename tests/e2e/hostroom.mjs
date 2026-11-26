@@ -16,7 +16,9 @@
 //    (data-more, its foot faded), and stops saying it scrolled to its end;
 // 6. a phone on its side (844×390): a wheel or dice tile's box keeps its room over the flow row (the chips give way);
 // 7. a phone held upright (390×844): a 🤫 cards tile's rows fade under the flow row with no "▾ more" tab over ＋ Award;
-//    an RPG round's selection line keeps a row of its own, Clear selection in words.
+//    an RPG round's selection line keeps a row of its own, Clear selection in words;
+// 8. a tablet held upright (768×1024): the RPG selection line on the top row keeps room for who's picked and Clear
+//    selection in words (the party buttons go on to the row's second line), the pad whole.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -562,6 +564,45 @@ try {
     assert(!line.onTop && line.width >= 300, `390×844: the selection line is a row of its own, the box's width (${JSON.stringify(line)})`);
     await sel.getByRole('button', { name: 'Clear selection' }).waitFor();
     assertEq(await sel.getByRole('button', { name: 'Clear selection' }).innerText(), 'Clear selection', 'Clear selection in words there');
+    await ctx.close();
+  }
+
+  section('A tablet held upright: the RPG selection line keeps room for who’s picked');
+  {
+    // (768 wide, the top row takes two lines anyway: the party buttons go on to the second, and the selection line keeps
+    // room for the names and Clear selection in words, the pad as whole as before.)
+    const { ctx, page } = await startAt(768, 1024);
+    const opts = await roundNavIn(page).locator('option').allInnerTexts();
+    await roundNavIn(page)
+      .locator('select')
+      .selectOption({ label: opts.find((o) => o.includes('Adventure')) }, { force: true });
+    if (await until(async () => (await leaveAnswer(page).count()) > 0, { timeout: 2000 })) await answerAsk(leaveAnswer(page));
+    const skip = page.getByRole('button', { name: 'Skip intro' });
+    for (let i = 0; i < 3 && (await until(async () => (await skip.count()) > 0, { timeout: 1500 })); i++) await skip.click();
+    await hostPanelIn(page).locator('.rh .pad').waitFor();
+    await stageBoxIn(page).locator('.rpg .avatar[data-player-id="p2"]').click();
+    await stageBoxIn(page)
+      .locator('.rpg .avatar[data-player-id="p3"]')
+      .click({ modifiers: ['Shift'] });
+    const sel = page.locator('.rh [data-rpg-sel]', { hasText: 'Selected: Bob, Cat' });
+    await sel.waitFor();
+    await sleep(300);
+    const line = await sel.evaluate((e) => {
+      const box = /** @type {HTMLElement} */ (e.closest('.mode-host'));
+      const b = box.getBoundingClientRect();
+      const top = /** @type {HTMLElement} */ (e.closest('.top'));
+      return {
+        onTop: !!top,
+        width: Math.round(e.getBoundingClientRect().width),
+        lines: top ? Math.round(top.getBoundingClientRect().height / 30) : 0,
+        pad: [...box.querySelectorAll('.pad button')].filter((x) => x.getBoundingClientRect().bottom <= b.bottom + 0.5).length,
+      };
+    });
+    assert(
+      line.onTop && line.width >= 200 && line.lines <= 2 && line.pad === 9,
+      `768×1024: the selection line on the top row with room for who’s picked, the row two lines at most, the pad whole (${JSON.stringify(line)})`,
+    );
+    assertEq(await sel.getByRole('button', { name: 'Clear selection' }).innerText(), 'Clear selection', '768×1024: Clear selection in words');
     await ctx.close();
   }
 

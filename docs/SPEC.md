@@ -1029,7 +1029,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   their own there on every screen, note or none, one line cut short with the whole of it in its tooltip, so the
   buttons, the pad and the minimap keep their places from screen to screen), the selection line (in one window wider than 600px on the
   top row, in the room between the notes' slot and the party buttons, with twice the notes' share, cut short as it
-  must, Clear selection just ✕ where it's short, the row pinned at the box's top and a card's pad and map pinned under it, however many lines it
+  must, Clear selection just ✕ where it's short (on a window 800px wide or less, where that row takes two lines anyway, it keeps
+  room for who's picked and Clear selection in words, the party buttons going on to the second line), the row pinned at the box's top and a card's pad and map pinned under it, however many lines it
   takes: the pad and the minimap get the room a line of its own took; on a narrower window, a phone held upright, whose
   top row is full already, a line of its own, as with an audience window), a party's rename
   question, then the pad and the minimap beside the `tools` snippet (HostPanel's ToolsControls: in an RPG round a
