@@ -65,7 +65,6 @@
     bottom: 6%;
     font-size: max(28px, calc(var(--size) * 0.12));
     line-height: 1;
-    opacity: 0.85;
   }
   /* (A diamond's bottom tip is too narrow for it.) */
   .dia small {

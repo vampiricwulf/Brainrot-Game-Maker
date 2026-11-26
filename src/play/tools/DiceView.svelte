@@ -40,13 +40,18 @@
   };
   // (The same one the host's card acts on.)
   const outcome = $derived(o.roll ? rollOutcome(o.roll).main : undefined);
+  /**
+   * The set can come to a card along the foot (outcomes for totals, faces of its own): the dice and the total sit higher
+   * from the start, so a card of two lines comes in under them, not over the total (and the dice don't jump up for it).
+   */
+  const cardRoom = $derived(!!o.preset.totalOutcomes?.length || o.preset.dice.some((d) => d.customFaces?.length));
   /** A card with a picture or words under its label: the whole stage, as a wheel's (under the dice it ran off the bottom). */
   const big = $derived(!!outcome && !!(outcome.media || outcome.details));
   // It covers the dice: it comes a moment after they settle, so viewers see the faces and the total first.
   const showCard = $derived(!rolling && !!outcome && (!big || (!!o.roll && now >= o.startedAt + o.duration + 900)));
 </script>
 
-<div class="wrap">
+<div class="wrap" class:room={cardRoom}>
   <div class="title">{o.name}</div>
   <div class="dice">
     {#each shown as d, i}
@@ -72,6 +77,9 @@
     align-items: center;
     justify-content: center;
     gap: 50px;
+  }
+  .wrap.room {
+    padding-bottom: 220px;
   }
   .title {
     position: absolute;

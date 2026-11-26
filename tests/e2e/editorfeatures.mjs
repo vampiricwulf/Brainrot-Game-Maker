@@ -628,6 +628,23 @@ try {
     const mixed = await look();
     assert(mixed.labels.length === 2 && Math.min(...mixed.labels) >= 28, `a d2 and a d6: each says what it is, big enough to read (${JSON.stringify(mixed)})`);
     if (process.env.SHOTS) await page.locator('.preview').screenshot({ path: `${process.env.SHOTS}/dice-mixed.png` });
+    // A total's outcome of two lines comes in along the foot under the big dice and their total, not over the total.
+    await page.getByRole('button', { name: '＋ Add range' }).click();
+    await page.getByLabel('From', { exact: true }).fill('2');
+    await page.getByLabel('To', { exact: true }).fill('99');
+    await page.getByLabel('To', { exact: true }).press('Tab');
+    await page.getByLabel('What happens', { exact: true }).fill('Everybody takes a sip and the loser sings a song of chat’s choosing');
+    await page.getByLabel('What happens', { exact: true }).press('Tab');
+    await page.getByRole('button', { name: '🎲 Test roll' }).click();
+    const card = page.locator('.preview .reveal .card');
+    await card.waitFor();
+    await page.waitForTimeout(600);
+    const [total, cardBox] = [await page.locator('.preview .total').boundingBox(), await card.boundingBox()];
+    assert(
+      total.y + total.height <= cardBox.y,
+      `a two-line outcome card comes in under the dice's total (${Math.round(total.y + total.height)} / ${Math.round(cardBox.y)})`,
+    );
+    await page.keyboard.press('Control+z');
   }
   {
     // ＋ Add range is the size of the page's other ＋ Add buttons.
