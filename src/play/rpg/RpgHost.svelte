@@ -220,6 +220,8 @@
   let cardEl = $state<HTMLElement>();
   let mainEl = $state<HTMLElement>();
   let selEl = $state<HTMLElement>();
+  /** The top row: in one window the selection line is on it, and it's what's pinned at the box's top. */
+  let topEl = $state<HTMLElement>();
   $effect(() => {
     if (!obj?.el.id) return;
     tick().then(() => {
@@ -233,8 +235,9 @@
       const c = card.getBoundingClientRect();
       const below = c.bottom - view.bottom;
       const above = c.top - view.top;
-      // (The selection line is sticky: once it's at the box's top, there's no row above it left to scroll out.)
-      const sel = selEl?.getBoundingClientRect();
+      // (The selection line is sticky: once it's at the box's top, there's no row above it left to scroll out. In one
+      // window it's on the top row, and that row is what's pinned.)
+      const sel = (dual ? selEl : topEl)?.getBoundingClientRect();
       const rowsAbove = sel ? Math.max(0, sel.top - view.top) : 0;
       // A card taller than the box stops with its top just under what's pinned over it (the selection line, and the pad
       // and the map when the card is under them, beside the stage), so its first row isn't left cut under them.
@@ -463,19 +466,37 @@
   const MAP_HEAD = 46;
 </script>
 
+<!-- What's selected, players and objects, with one Clear selection for both: one line (the stage keeps its size as it
+     changes), in sight with a card open too. ↩ Select them again sits apart from it, so a double-click can't undo a
+     clear. -->
+{#snippet selLine()}
+  {#if again}<button class="link again" onclick={again} title="Bring back what was selected">↩ Select them again</button>{/if}
+  {#if selWords}
+    {@const how = `drag one on the stage to move them all${touchScreen.on ? '' : ' · Esc clears'}`}
+    <span class="words" title="{selWords} · {how}"><b>Selected:</b> {selWords} <span class="muted">— {how}</span></span>
+    <button class="ghost small x" onclick={() => onclear?.()} title="Esc">Clear selection</button>
+  {:else if !again}
+    {@const none = `Nothing selected · ${clickWord()} players, or drag a box on the stage to select several`}
+    <span class="muted words" title={none}>{none}</span>
+  {/if}
+{/snippet}
+
 {#if world && st}
   <div class="rh">
-    <div class="row top">
+    <!-- (One window: the selection line is on it, so it stays in sight at the box's top as the box scrolls, and the pad
+         and the minimap get the room a line of their own took.) -->
+    <div class="row top" class:withsel={!dual} bind:this={topEl}>
       <b class="where">🗺️ {here ? `${here.map.name} · ${here.screen.name}` : 'Nowhere'}</b>
       <!-- One window: the notes' slot, there on every screen, note or none, and one line (cut short, the whole of it in
            its tooltip): a screen's note never pushes 🗺️ Map on stream to a second line, so the buttons, the pad and the
            minimap keep their places from screen to screen. -->
       {#if !dual}
         {@const notes = [here?.screen.hostNotes, now.round?.hostNotes && `Round: ${now.round.hostNotes}`].filter(Boolean).join('\n')}
-        <span class="notes-slot" data-screen-notes title={notes || undefined}>
+        <span class="notes-slot" class:empty={!notes} data-screen-notes title={notes || undefined}>
           {#if here?.screen.hostNotes}<span class="notes">📝 {here.screen.hostNotes}</span>{/if}
           {#if now.round?.hostNotes}<span class="notes">📝 {now.round.hostNotes}</span>{/if}
         </span>
+        <span class="sel" data-rpg-sel bind:this={selEl}>{@render selLine()}</span>
       {:else}
         <span class="spacer"></span>
       {/if}
@@ -534,20 +555,10 @@
       >
     </div>
 
-    <!-- What's selected, players and objects, with one Clear selection for both: one line (the stage keeps its size as it
-         changes), in sight with a card open too. ↩ Select them again sits apart from it, so a double-click can't undo a
-         clear. -->
-    <div class="row sel" data-rpg-sel bind:this={selEl}>
-      {#if again}<button class="link again" onclick={again} title="Bring back what was selected">↩ Select them again</button>{/if}
-      {#if selWords}
-        {@const how = `drag one on the stage to move them all${touchScreen.on ? '' : ' · Esc clears'}`}
-        <span class="words" title="{selWords} · {how}"><b>Selected:</b> {selWords} <span class="muted">— {how}</span></span>
-        <button class="ghost small x" onclick={() => onclear?.()} title="Esc">Clear selection</button>
-      {:else if !again}
-        {@const none = `Nothing selected · ${clickWord()} players, or drag a box on the stage to select several`}
-        <span class="muted words" title={none}>{none}</span>
-      {/if}
-    </div>
+    <!-- (With an audience window, the selection line is a row of its own here; in one window it's on the top row.) -->
+    {#if dual}
+      <div class="row sel" data-rpg-sel bind:this={selEl}>{@render selLine()}</div>
+    {/if}
 
     <!-- A party's new name, asked by its chip's menu: here, by the chips. -->
     {#if ask?.what === 'party'}
@@ -1086,6 +1097,28 @@
     height: 24px;
     font-size: 12px;
     white-space: nowrap;
+  }
+  /* One window: the selection line takes the top row's room left, between the screen's name (and its notes) and the
+     party buttons, cut short as it must; the row is pinned at the box's top in its place. (No notes on this screen:
+     their slot gives it the room.) */
+  .top.withsel {
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: var(--panel);
+  }
+  .top.withsel > .sel {
+    position: static;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 0;
+    min-width: 0;
+    height: auto;
+  }
+  .notes-slot.empty {
+    flex-grow: 0;
+    min-width: 0;
   }
   .sel .words {
     flex: 1 1 auto;

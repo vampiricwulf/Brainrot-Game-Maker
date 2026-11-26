@@ -92,6 +92,7 @@
     session,
     selected = $bindable(),
     amount = $bindable(),
+    adjust = $bindable(false),
     rpgObject = $bindable(null),
     rpgSelObjects = $bindable([]),
     rpgAgain = null,
@@ -185,6 +186,11 @@
     session: Session;
     selected: string[];
     amount: number | null;
+    /**
+     * The Amount row opened by hand (± Adjust score): on the board, and in one window in an RPG or board-game round, a
+     * player's number key too (Play's keys).
+     */
+    adjust?: boolean;
     /** RPG rounds: the object whose card is open (clicked on the stage). */
     rpgObject?: string | null;
     /** RPG rounds: the objects selected on the stage (they drag with the selected players). */
@@ -855,8 +861,7 @@
     e.preventDefault();
   }
 
-  /** On the board, the Amount row stays folded (± Adjust score) until a player is selected. */
-  let adjust = $state(false);
+  // (On the board, the Amount row stays folded, ± Adjust score, until a player is selected or it's opened: adjust.)
   let amountBox = $state<HTMLInputElement>();
   /** The keys are in the Amount box: number keys type points there, so the chips' keys go (see .key.gone). */
   let amountKeys = $state(false);
@@ -877,8 +882,17 @@
     if (to) to.focus({ preventScroll: true });
     else box.blur();
   }
+  /**
+   * One window, an RPG or board-game round: the Amount row stays folded (± Adjust score, in the tools row) until it's
+   * opened, by it or a player's number key. Picking players there moves and splits the party (or picks who moves), so a
+   * pick doesn't open it, and the pad and the minimap keep the room.
+   */
+  const roundFold = $derived(!dual && (session.phase === 'rpg' || session.phase === 'boardgame'));
+  // (Folded again as the moment changes: a clue opened, another round.)
   $effect(() => {
-    if (session.phase !== 'board') adjust = false;
+    void session.phase;
+    void session.currentRound;
+    untrack(() => (adjust = false));
   });
   /**
    * The tiebreaker clue: its 🏆 row settles the tie, so the Amount row folds behind ± Also give points… (opened, it
@@ -946,16 +960,21 @@
   $effect(() => {
     if (partnerFold && (selected.length || handGiven)) untrack(() => (otherFor = partnerPlay));
   });
-  /** The Amount row is open: on the board once a player is picked (or ± Adjust score), in a partner clue as above. */
+  /**
+   * The Amount row is open: on the board once a player is picked (or ± Adjust score), in one window in an RPG or
+   * board-game round once opened (roundFold), in a partner clue as above.
+   */
   const showAward = $derived(
     scoring &&
       (session.phase === 'board'
         ? !!selected.length || adjust
-        : partnerFold
-          ? otherPoints || !!selected.length || handGiven
-          : session.phase === 'tiebreaker'
-            ? tbPoints
-            : true),
+        : roundFold
+          ? adjust
+          : partnerFold
+            ? otherPoints || !!selected.length || handGiven
+            : session.phase === 'tiebreaker'
+              ? tbPoints
+              : true),
   );
   /** The folded Amount row's button: ± Adjust score, a partner clue's ± Other points…, the tiebreaker's ± Also give points…. */
   const amountFold = $derived(partnerFold ? '± Other points…' : session.phase === 'tiebreaker' ? '± Also give points…' : '± Adjust score');
@@ -1812,7 +1831,7 @@
         {#if session.intro}
           <button class="ghost" onclick={onskipintro}>{VERBS.skipIntro.label}</button>
         {/if}
-        {#if scoring && !showAward}
+        {#if scoring && !showAward && !roundFold}
           <!-- (The keys go to the Amount box: the points are typed first, then who gets them. In a partner clue ✔ Got it /
                ✘ Missed give them: this is for anyone else.) -->
           <button
@@ -1852,7 +1871,8 @@
       <!-- The flow row, level with the blue button: in a clue ↩ Put back (keep tile) at its far left, the clue's other flow
            steps at its right end (see flowEnd); the Amount row is it while that's open (below). On PARTNER UP! ↩ Put back
            alone (a Daily Double's splash has its own row for it: the ⭐ box's Wager row, its whole room). -->
-      {#if !showAward && (session.intro || (session.phase === 'clue' && !ddWager) || session.phase === 'tiebreaker' || session.phase === 'slides' || scoring)}
+      <!-- (Not for a folded Amount row alone in an RPG or board-game round: its ± Adjust score is in the tools row.) -->
+      {#if !showAward && (session.intro || (session.phase === 'clue' && !ddWager) || session.phase === 'tiebreaker' || session.phase === 'slides' || (scoring && !roundFold))}
         <div class="row flow" class:flowrow={session.phase === 'clue' || session.phase === 'tiebreaker'} data-flowrow>
           {#if session.phase === 'clue' && info}{@render putBack()}{/if}
           {@render rowOwn()}
@@ -1980,7 +2000,11 @@
                 ><span class="word">Clear selection</span><span class="x" aria-hidden="true">✕</span></button
               >
             {/if}
-          {:else if session.phase === 'board'}
+            <!-- (An RPG or board-game round's row folds back with players picked too: picking doesn't open it there.) -->
+            {#if roundFold}
+              <button class="ghost" onclick={() => (adjust = false)} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
+            {/if}
+          {:else if session.phase === 'board' || roundFold}
             <!-- (It folds the row back: ± Adjust score.) -->
             <button class="ghost" onclick={() => (adjust = false)} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
           {:else if !toolOnly && !buzzing}
@@ -2050,6 +2074,17 @@
        of the keys' reach while the strip lies over it: nothing out of sight is pressed.) -->
   <div class="row toolsrow" data-tools-row id="host-tools" inert={!!ask && !dual}>
     {@render tools?.()}
+    <!-- One window, an RPG or board-game round: the folded Amount row's ± Adjust score, here (no row of its own: the
+         round's box keeps that room). -->
+    {#if roundFold && scoring && !showAward}
+      <button
+        class="ghost"
+        aria-expanded="false"
+        data-adjust-score
+        onclick={openAmount}
+        title="Give or take points (or press a player's number): the Amount row opens above">{amountFold}</button
+      >
+    {/if}
     <!-- (A Final's title card too: a way back from it without putting its category on stream.) -->
     {#if session.phase === 'board' || session.phase === 'rpg' || session.phase === 'boardgame' || session.phase === 'slides' || (session.phase === 'final' && session.intro?.stage === 'title')}
       <span class="spacer"></span>

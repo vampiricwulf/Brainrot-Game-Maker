@@ -403,6 +403,8 @@
   // (Its steal is answered as any clue: whoever was answering it still is.)
   const partnerUp = untrack(() => session.phase === 'clue' && !!session.partner && !partnerSteal(session));
   let selected = $state<string[]>(ddUp?.playerId ? [ddUp.playerId] : !partnerUp && buzzUp?.phase === 'answering' && buzzUp.answering ? [buzzUp.answering] : []);
+  /** The host panel's Amount row opened by hand (± Adjust score, or a number key in an RPG or board-game round). */
+  let amountOpen = $state(false);
   let amount = $state<number | null>(ddUp ? (ddUp.wager ?? null) : untrack(() => currentClueInfo(session, game)?.value ?? null));
   let showLog = $state(false);
   /** The 📜 Log's tab (L opens the one used last, 🕘 History to begin with). */
@@ -4775,6 +4777,9 @@
         const p = session.players[n - 1];
         if (!p) return;
         selected = selected.includes(p.id) ? selected.filter((x) => x !== p.id) : [...selected, p.id];
+        // An RPG or board-game round: a click on a player picks them to move, and leaves the Amount row folded; their
+        // number opens it, as a pick does on the board (then the points typed in it, and Enter).
+        if ((session.phase === 'rpg' || session.phase === 'boardgame') && selected.includes(p.id)) amountOpen = true;
         saySelected();
       }
       pickerPending = false;
@@ -5672,6 +5677,7 @@
         {session}
         bind:selected
         bind:amount
+        bind:adjust={amountOpen}
         bind:rpgObject
         bind:rpgSelObjects
         rpgAgain={rpgAgain ? selectAgain : null}
