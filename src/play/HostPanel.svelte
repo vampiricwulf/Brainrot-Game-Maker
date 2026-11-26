@@ -884,10 +884,16 @@
   }
   /**
    * One window, an RPG or board-game round: the Amount row stays folded (± Adjust score, in the tools row) until it's
-   * opened, by it or a player's number key. Picking players there moves and splits the party (or picks who moves), so a
-   * pick doesn't open it, and the pad and the minimap keep the room.
+   * opened, by it or a player's number key, or points wait in it (a space's or an object's question put them there).
+   * Picking players there moves and splits the party (or picks who moves), so a pick doesn't open it, and the pad and
+   * the minimap keep the room.
    */
   const roundFold = $derived(!dual && (session.phase === 'rpg' || session.phase === 'boardgame'));
+  /** ✕ Close: the Amount row folded back (there, its points let go too: they'd hold it open). */
+  function foldAmount(): void {
+    adjust = false;
+    if (roundFold) amount = null;
+  }
   // (Folded again as the moment changes: a clue opened, another round.)
   $effect(() => {
     void session.phase;
@@ -962,14 +968,14 @@
   });
   /**
    * The Amount row is open: on the board once a player is picked (or ± Adjust score), in one window in an RPG or
-   * board-game round once opened (roundFold), in a partner clue as above.
+   * board-game round once opened or with points waiting (roundFold), in a partner clue as above.
    */
   const showAward = $derived(
     scoring &&
       (session.phase === 'board'
         ? !!selected.length || adjust
         : roundFold
-          ? adjust
+          ? adjust || amount != null
           : partnerFold
             ? otherPoints || !!selected.length || handGiven
             : session.phase === 'tiebreaker'
@@ -2009,11 +2015,11 @@
             {/if}
             <!-- (An RPG or board-game round's row folds back with players picked too: picking doesn't open it there.) -->
             {#if roundFold}
-              <button class="ghost" onclick={() => (adjust = false)} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
+              <button class="ghost" onclick={foldAmount} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
             {/if}
           {:else if session.phase === 'board' || roundFold}
             <!-- (It folds the row back: ± Adjust score.) -->
-            <button class="ghost" onclick={() => (adjust = false)} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
+            <button class="ghost" onclick={foldAmount} title="Fold the Amount row back (± Adjust score opens it)">✕ Close</button>
           {:else if !toolOnly && !buzzing}
             <!-- (In the tiebreaker this row is for points: its 🏆 row settles the tie.) -->
             <!-- (On a touch screen no keys: who to tap (a clue's chips, the RPG's or board game's players on the stage). Up to

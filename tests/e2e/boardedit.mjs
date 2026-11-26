@@ -24,6 +24,7 @@ import {
   section,
   awardRowIn,
   hostPanelIn,
+  toolsRowIn,
   roundTabsIn,
   stageBoxIn,
   toastsIn,
@@ -374,6 +375,8 @@ try {
   const card = (name) => page.locator('.bh .pc', { hasText: name }).innerText();
   await skipTurn(page);
   await page.locator('.stage .turn-banner', { hasText: 'Bob' }).waitFor();
+  // (One window: the Amount row is folded behind ± Adjust score, in the tools row; a pick on the stage leaves it so.)
+  await toolsRowIn(page).getByRole('button', { name: '± Adjust score' }).click();
   await amountBox.fill('200');
   await amountBox.blur();
   await page.keyboard.press('2');
