@@ -7,6 +7,7 @@ import {
   activeSegments,
   applyAction,
   describeRoll,
+  diceSize,
   diceCount,
   initials,
   newWheel,
@@ -303,6 +304,17 @@ describe('what a roll comes to', () => {
     };
     expect(rollOutcome(r)).toEqual({ main: truth, others: [{ i: 2, face: minus }] });
     expect(rollOutcome({ ...r, totalOutcome: plain })).toEqual({ main: plain, others: [] });
+  });
+});
+
+describe('dice on the stage', () => {
+  it('are big for a few dice and every row fits for many', () => {
+    expect([1, 2, 3, 4, 6, 7, 20].map(diceSize)).toEqual([400, 400, 340, 240, 240, 170, 170]);
+    for (const n of [7, 20, 40, 100]) {
+      const s = diceSize(n);
+      const rows = Math.ceil(n / Math.floor(1750 / (s + 50)));
+      expect(rows * s + (rows - 1) * 50).toBeLessThanOrEqual(700);
+    }
   });
 });
 

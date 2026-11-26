@@ -15,7 +15,7 @@
     color?: string;
     rolling?: boolean;
     size?: number;
-    /** The small "d6" in a corner (left off where every die is the same, like a roll-off: it's unreadable on a stream). */
+    /** The "d6" under the number: only where the dice differ (a d6 and a d20), sized with the die to read on a stream. */
     label?: boolean;
     /** A die with its own faces: square (a word doesn't fit a d4's triangle), and no "d4" under the word. */
     custom?: boolean;
@@ -32,6 +32,7 @@
   style:--t={textOn(color)}
   style:width="{size}px"
   style:height="{size}px"
+  style:--size="{size}px"
   style:font-size="{Math.max(24, Math.min(size * 0.45, (size * 1.7) / Math.max(1, value.length)))}px"
 >
   <span>{value}</span>
@@ -62,8 +63,13 @@
   small {
     position: absolute;
     bottom: 6%;
-    font-size: 22px;
-    opacity: 0.6;
+    font-size: max(28px, calc(var(--size) * 0.12));
+    line-height: 1;
+    opacity: 0.85;
+  }
+  /* (A diamond's bottom tip is too narrow for it.) */
+  .dia small {
+    bottom: 15%;
   }
   .tri {
     clip-path: polygon(50% 2%, 98% 94%, 2% 94%);

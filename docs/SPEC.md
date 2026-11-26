@@ -1286,6 +1286,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 
 ### 6.6 Global tools (available anytime from the toolbar)
 - **Dice roller**: quick d4–d100, a custom "NdS", or any saved preset. The result animates on the audience view.
+  The dice are big enough to watch on a stream: 400 stage px for one or two, 340 for three, 240 up to six, then 170
+  (smaller still where that many rows wouldn't fit). A die says what it is ("d6", under its number) only when the roll
+  mixes kinds of dice.
   It is usable anytime, for anything (who goes first, how many seconds, punishment severity...).
 - **Roll-off ("who goes first")**: one click rolls one die per player, each die in that player's color, all
   animating together on the full-screen overlay. The result is a ranked list. If players tie for the top spot, only

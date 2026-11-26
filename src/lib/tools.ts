@@ -68,6 +68,21 @@ export function spinSeconds(text: string, last: number): number {
   return Math.round(numberFieldValue(text, last, 1, 30) * 10) / 10;
 }
 
+/**
+ * A die's size on the stage (px) for a roll of `count` dice: 400 for one or two, 340 for three, 240 up to six (one row
+ * of DiceView's 1700px), then 170, or smaller where that many rows wouldn't fit 700px high (with 50px gaps).
+ */
+export function diceSize(count: number): number {
+  if (count <= 2) return 400;
+  if (count === 3) return 340;
+  if (count <= 6) return 240;
+  for (let s = 170; s > 40; s -= 10) {
+    const rows = Math.ceil(count / Math.max(1, Math.floor((1700 + 50) / (s + 50))));
+    if (rows * s + (rows - 1) * 50 <= 700) return s;
+  }
+  return 40;
+}
+
 /** How many of a die a saved dice set rolls, as typed: a whole 1–20, a blank or not-a-number box keeps `last`. */
 export function diceCount(text: string, last: number): number {
   return Math.round(numberFieldValue(text, last, 1, 20));

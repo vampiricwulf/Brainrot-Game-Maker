@@ -4,7 +4,7 @@
   import type { Overlay } from '../../lib/live';
   import type { Game } from '../../lib/model';
   import type { MediaRole } from '../../lib/mediactl.svelte';
-  import { faceText, outcomeText, rollOutcome } from '../../lib/tools';
+  import { diceSize, faceText, outcomeText, rollOutcome } from '../../lib/tools';
   import Die from './Die.svelte';
   import OutcomeCard from './OutcomeCard.svelte';
 
@@ -20,7 +20,13 @@
   const shown = $derived(o.roll ? o.roll.dice.map((d) => ({ sides: d.sides, custom: !!d.face })) : pending);
   const rolling = $derived(!!o.roll && now < o.startedAt + o.duration);
   const count = $derived(o.roll?.dice.length ?? pending.length);
-  const size = $derived(count > 6 ? 150 : count > 3 ? 190 : 240);
+  /**
+   * Big enough to watch on a stream (the wheel the same kind of tile gets is about 880 tall): 400 for one or two dice,
+   * 340 for three, 240 up to six (one row), and 170 or smaller for more, so every row fits above the total.
+   */
+  const size = $derived(diceSize(count));
+  /** The dice differ (a d6 and a d20): each says what it is, under its number. One kind of dice needs no "d6". */
+  const mixed = $derived(new Set(shown.filter((d) => !d.custom).map((d) => d.sides)).size > 1);
   const face = (i: number) => {
     if (!o.roll) return '?';
     const d = o.roll.dice[i];
@@ -44,7 +50,7 @@
   <div class="title">{o.name}</div>
   <div class="dice">
     {#each shown as d, i}
-      <Die value={face(i)} sides={d.sides} custom={d.custom} {rolling} {size} />
+      <Die value={face(i)} sides={d.sides} custom={d.custom} {rolling} {size} label={mixed} />
     {/each}
   </div>
   {#if !o.roll}<div class="total small">Get ready to roll…</div>{/if}

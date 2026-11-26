@@ -21,6 +21,7 @@ import {
   inspectorIn,
   roundTabsIn,
   toastsIn,
+  until,
 } from './helpers.mjs';
 
 const file = appFile();
@@ -590,6 +591,44 @@ try {
   await sides.press('Tab');
   assert((await sides.inputValue()) === '2', 'sides typed 0 then 1 show the d2 it is');
   assert((await page.locator('.die .roll').first().innerText()) === '20d2', 'and the row says what it rolls (20d2)');
+  {
+    // On stream: dice big enough to watch, every row of 20 on the stage, and the "d6" under a die only where the dice
+    // differ (one kind needs none). (Sizes in stage px: offsetWidth, the stage's scale aside.)
+    const dice = page.locator('.preview .dice .die');
+    const look = () =>
+      page.locator('.preview .dice').evaluate((box) => {
+        const stage = box.closest('.wrap').getBoundingClientRect();
+        const all = [...box.querySelectorAll('.die')];
+        return {
+          n: all.length,
+          size: all[0]?.offsetWidth,
+          labels: all
+            .map((d) => d.querySelector('small'))
+            .filter(Boolean)
+            .map((s) => parseFloat(getComputedStyle(s).fontSize)),
+          inside: all.every((d) => {
+            const r = d.getBoundingClientRect();
+            return r.top >= stage.top - 0.5 && r.bottom <= stage.bottom + 0.5;
+          }),
+        };
+      });
+    await until(async () => (await dice.count()) === 20, 'the preview shows the 20 dice');
+    const twenty = await look();
+    assert(
+      twenty.inside && twenty.labels.length === 0 && twenty.size >= 150,
+      `20 dice of one kind: all on the stage, no “d2” under them (${JSON.stringify(twenty)})`,
+    );
+    await count.fill('1');
+    await count.press('Tab');
+    await until(async () => (await dice.count()) === 1, 'the preview shows one die');
+    const one = await look();
+    assert(one.size === 400 && one.labels.length === 0, `one die is 400 stage px, no “d2” under it (${JSON.stringify(one)})`);
+    await page.getByRole('button', { name: '＋ Add another die' }).click();
+    await until(async () => (await dice.count()) === 2, 'the preview shows two dice');
+    const mixed = await look();
+    assert(mixed.labels.length === 2 && Math.min(...mixed.labels) >= 28, `a d2 and a d6: each says what it is, big enough to read (${JSON.stringify(mixed)})`);
+    if (process.env.SHOTS) await page.locator('.preview').screenshot({ path: `${process.env.SHOTS}/dice-mixed.png` });
+  }
   {
     // ＋ Add range is the size of the page's other ＋ Add buttons.
     const h = async (name) => Math.round((await page.getByRole('button', { name }).boundingBox()).height);
