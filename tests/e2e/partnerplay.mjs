@@ -386,9 +386,11 @@ try {
   assert((await flowIs(page, '👁 Reveal answer')) && (await stage('.timer').count()) === 0, 'the blue button is 👁 Reveal answer, and no countdown runs');
   assert((await boxHasAction(panel, '⏱️ Start the countdown (45 s)')) === '', 'the box has ⏱️ Start the countdown at its foot, once on the page, in sight');
   assert(await stepButton(panel, '⏱️ Start the countdown (45 s)').evaluate((b) => b.classList.contains('ring')), 'ringed, as the step due now');
+  // (Short, so it reads whole on a laptop: the foot's buttons say the rest, and its tooltip says it all.)
   assert(
-    (await panel.locator('[data-partner-next]').innerText()) === 'Next: 📋 copy each card to its player, then ⏱️ Start the countdown',
-    'its first line says to copy the cards first (no phones here), then start the countdown',
+    (await panel.locator('[data-partner-next]').innerText()) === 'Next: 📋 Copy, then ⏱️ Start' &&
+      (await panel.locator('[data-partner-next]').getAttribute('title')) === 'Next: 📋 copy each card to its player, then ⏱️ Start the countdown',
+    'its first line says to copy the cards first (no phones here), then start the countdown, in full in its tooltip',
   );
   const foot = panel.locator('[data-partner-foot]');
   assert(
@@ -508,7 +510,7 @@ try {
   // Card 2 copied at the box's foot: the first line says the clock is next, and a click on the stage starts it, the
   // status line saying so with ↶ Undo, which takes it back.
   await panel.locator('[data-partner-foot]').getByRole('button', { name: 'Copy Card 2’s words' }).click();
-  await panel.locator('[data-partner-next]', { hasText: 'Next: ⏱️ Start the countdown (the cards are copied)' }).waitFor();
+  await panel.locator('[data-partner-next][title="Next: ⏱️ Start the countdown (the cards are copied)"]', { hasText: 'Next: ⏱️ Start the countdown' }).waitFor();
   // (Past the stage's double-click guard: a click on it under half a second after the last one is that one's rest.)
   await page.waitForTimeout(Math.max(0, 500 - (Date.now() - clickedAt)));
   await stage('[data-slide="1"]').click();

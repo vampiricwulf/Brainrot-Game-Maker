@@ -769,8 +769,11 @@
   const toCopy = $derived(
     handStep ? cards.flatMap((card, i) => (recipients(card).length && (!cardsOn || recipients(card).some((t) => !hasPhone(t.seat))) ? [{ card, i }] : [])) : [],
   );
-  /** The box's first line: what to do next, in plain words, as the moment goes on. */
-  const nextLine = $derived.by((): { text: string; warn?: boolean } | null => {
+  /**
+   * The box's first line: what to do next, in plain words, as the moment goes on. While the cards are handed out it
+   * shows `short` (the foot's buttons say the rest), the whole of it in its tooltip: so it reads whole on a laptop.
+   */
+  const nextLine = $derived.by((): { text: string; short?: string; warn?: boolean } | null => {
     if (s.stage === 'pick') {
       if (pickStepIs === 'picker') return { text: `${noun === 'team' ? 'Which team' : 'Who'} picked it?`, warn: true };
       if (pickStepIs === 'nobody') return { text: nobodyText, warn: true };
@@ -783,16 +786,19 @@
     if (verdict.judged || steal) return { text: `Next: ${session.revealed ? VERBS.done.label : VERBS.reveal.label} (the blue button${keyNote('N', ', or ')})` };
     if (handStep) {
       if (unsentToGo.length && clockRuns)
-        return {
-          text: toCopy.length
-            ? `Countdown running: 📋 copy cards for ${noun}s without a phone, then 📤 Send the cards`
-            : 'Countdown running: 📤 Send the cards',
-        };
+        return toCopy.length
+          ? { text: `Countdown running: 📋 copy cards for ${noun}s without a phone, then 📤 Send the cards`, short: 'Countdown running: 📋 Copy, then 📤 Send' }
+          : { text: 'Countdown running: 📤 Send the cards' };
       if (unsentToGo.length)
-        return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: 📤 Send and start' };
+        return toCopy.length
+          ? { text: `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start`, short: 'Next: 📋 Copy, then 📤 Send' }
+          : { text: 'Next: 📤 Send and start' };
       // (Each 📋 pressed: the clock is next, and a click on the stage starts it.)
-      if (toCopy.length && !toCopy.every(({ card }) => copied(card))) return { text: `Next: 📋 copy each card to its ${noun}, then ⏱️ Start the countdown` };
-      return { text: toCopy.length ? 'Next: ⏱️ Start the countdown (the cards are copied)' : 'Next: ⏱️ Start the countdown' };
+      if (toCopy.length && !toCopy.every(({ card }) => copied(card)))
+        return { text: `Next: 📋 copy each card to its ${noun}, then ⏱️ Start the countdown`, short: 'Next: 📋 Copy, then ⏱️ Start' };
+      return toCopy.length
+        ? { text: 'Next: ⏱️ Start the countdown (the cards are copied)', short: 'Next: ⏱️ Start the countdown' }
+        : { text: 'Next: ⏱️ Start the countdown' };
     }
     // (The verdict due: ✔ Got it and ✘ Missed an equal pair at the foot, neither blue, the keys where they were.)
     return { text: app.live.timer?.expired ? 'Time’s up: did they get it?' : 'Did they get it? ✔ Got it or ✘ Missed' };
@@ -896,13 +902,14 @@
 
 <!-- The box's first line: what to do next, in plain words. -->
 {#snippet firstLine()}
-  {#if nextLine}<span class="next-line" class:warn={nextLine.warn} title={nextLine.text} data-partner-next>{nextLine.text}</span>{/if}
+  {#if nextLine}<span class="next-line" class:warn={nextLine.warn} class:short={!!nextLine.short} title={nextLine.text} data-partner-next
+      >{nextLine.short ?? nextLine.text}</span
+    >{/if}
 {/snippet}
 
 {#snippet parts()}
-  <span class="parts" data-partner-parts
-    >{roles.solo && !(sameTeamOn && (member || people.length > 1)) ? '🎯' : G.icon} {partsSaid.replace(' · ', ' · 🎯 ')}</span
-  >
+  {@const partsText = `${roles.solo && !(sameTeamOn && (member || people.length > 1)) ? '🎯' : G.icon} ${partsSaid.replace(' · ', ' · 🎯 ')}`}
+  <span class="parts" data-partner-parts title={partsText}>{partsText}</span>
   <button
     class="small ghost"
     onclick={swap}
@@ -1433,7 +1440,8 @@
     border-top: 1px solid rgba(255, 255, 255, 0.08);
   }
   /* What to do next: the box's first line. One line, cut short (the whole line is in its tooltip), taking the row's room
-     left: its row stays one line, so in one window on a laptop the card rows stay in view under it. */
+     left: its row stays one line, a row less for the card rows under it (in one window on a laptop they scroll above
+     the foot, which says "▾ more" while they go on). */
   .next-line {
     font-weight: 600;
     flex: 1000 1 0;
@@ -1447,6 +1455,19 @@
   .next-line.warn {
     flex: 1 1 auto;
     white-space: normal;
+  }
+  /* While the cards are handed out it's short, and kept whole: who plays which part gives way instead, cut short (the
+     names are on the chips, and the whole line in its tooltip). */
+  .next-line.short {
+    flex: none;
+  }
+  .row:has(> .next-line.short) > .parts {
+    flex: 1 1 0;
+    max-width: max-content;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   /* The foot's next step, at its right end: when it goes, nothing takes its place. */
   .end {
