@@ -381,7 +381,7 @@ async function bigWorld() {
   assert(firstGroup === 'RPG', `in an RPG round the ? list starts with the RPG keys (${firstGroup})`);
   await host.keyboard.press('Escape');
   await keyList.waitFor({ state: 'detached' });
-  // Under ⏸ Cover, viewers hear nothing new: a step there and back makes no sound on stream.
+  // Under ⬛ Cover, viewers hear nothing new: a step there and back makes no sound on stream.
   await host.keyboard.press('b');
   await aud.locator('.cover').waitFor();
   const heard = (await cues(aud)).length;

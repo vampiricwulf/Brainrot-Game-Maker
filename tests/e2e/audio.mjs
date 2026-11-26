@@ -1148,14 +1148,14 @@ try {
     await page.getByText(/Click the audience window once|blocked a sound/).waitFor({ state: 'detached' });
     await aud.waitForFunction(() => window.__music.length === 1 && !window.__music[0].paused);
     assert(true, 'the click that lets the audience window play sound starts that music (no new screen needed)');
-    // Under ⏸ Cover (K) the music waits, and goes on after (viewers heard it under “Be right back”).
+    // Under ⬛ Cover (K) the music waits, and goes on after (viewers heard it under “Be right back”).
     await page.keyboard.press('k');
     await aud.locator('.cover').waitFor();
     await aud.waitForFunction(() => window.__music.length === 1 && window.__music[0].paused);
     await page.keyboard.press('k');
     await aud.locator('.cover').waitFor({ state: 'detached' });
     await aud.waitForFunction(() => window.__music.length === 1 && !window.__music[0].paused);
-    assert(true, 'under ⏸ Cover (K) the RPG music waits, and goes on after');
+    assert(true, 'under ⬛ Cover (K) the RPG music waits, and goes on after');
     await context.close();
   }
 

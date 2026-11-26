@@ -1204,7 +1204,7 @@ async function viewers() {
 /**
  * A reload mid-game in one window: that window is the one on stream, so it opens on the game's cover card, never the
  * editor (every clue still to play, its ⭐ DD and 🤝 badges). Again on a reload of the cover; Resume game goes back in
- * (covered again if ⏸ Cover was on); Go to the editor shows it, the game kept to resume. Keep & leave, then a reload:
+ * (covered again if ⬛ Cover was on); Go to the editor shows it, the game kept to resume. Keep & leave, then a reload:
  * the editor, as before; and so with an audience window, which is the one on stream.
  */
 async function reloadMidGame() {
@@ -1323,7 +1323,7 @@ async function reloadMidGame() {
   await page.keyboard.press('Enter');
   await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
   assert((await cover.count()) === 0 && (await editorSeen()) === 0, 'Resume game goes back into the game, the clue still open');
-  // ⏸ Cover on (K), then a reload: Resume game comes back covered.
+  // ⬛ Cover on (K), then a reload: Resume game comes back covered.
   await page.keyboard.press('k');
   await stageBoxIn(page).locator('.cover').waitFor();
   await reloadToCover();
@@ -1333,7 +1333,7 @@ async function reloadMidGame() {
   await statusLineIn(page, { hasText: 'Answer hidden' }).waitFor();
   assert(
     (await stageBoxIn(page).locator('.cover').count()) === 1 && (await editorSeen()) === 0,
-    'with ⏸ Cover on, a reload and Resume game come back covered, the editor never shown',
+    'with ⬛ Cover on, a reload and Resume game come back covered, the editor never shown',
   );
   // Go to the editor: the editor, the game kept to resume.
   await reloadToCover();

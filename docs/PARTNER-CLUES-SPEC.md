@@ -782,7 +782,7 @@ Bob (describer) · sent · ✓ seen", then what's on it. HostInfo is text-only t
   `<img>`.
 - A card whose words are the same as the answer's says so: "This card shows the answer".
 - Never a `SlideView` and never a live player. Media handles are kept by element id in one map
-  (mediactl.svelte.ts:56-58), which media controls and the ⏸ Cover hush (Play.svelte:461-494) act on, so a player in
+  (mediactl.svelte.ts:56-58), which media controls and the ⬛ Cover hush (Play.svelte:461-494) act on, so a player in
   the host column could be taken for the stage's.
 - During PARTNER UP!, the question label reads "(not shown yet)", as on a Daily Double splash (HostInfo.svelte:72-80).
 

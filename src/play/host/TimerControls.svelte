@@ -66,7 +66,7 @@
     {#if t.expired}<span class="sr-only">{'· '}</span>{/if}
     <b class="left" class:done={t.expired} data-quiet={t.expired ? undefined : ''}>{t.expired ? "Time's up" : `${left}s`}</b>
     <button class="small" onclick={toggle} disabled={t.expired} title="T" aria-label={t.startedAt === null ? 'Start timer' : 'Pause timer'}
-      >{t.startedAt === null ? '▶' : '⏸'}</button
+      >{#if t.startedAt === null}▶{:else}<span class="bars" aria-hidden="true"></span>{/if}</button
     >
     <!-- Change the time left without starting over. -->
     <button class="small ghost" onclick={() => more(-10)} disabled={t.expired} title="10 seconds less" aria-label="10 seconds less">−10</button>
@@ -102,6 +102,14 @@
   }
   .done {
     color: var(--bad);
+  }
+  /* Pause: two bars, drawn, as the cover card's are (the ⏸ character is thin or missing in many fonts). The ▶'s size. */
+  .bars {
+    display: inline-block;
+    width: 0.6em;
+    height: 0.8em;
+    vertical-align: -0.05em;
+    background: linear-gradient(to right, currentColor 0 34%, transparent 34% 66%, currentColor 66%);
   }
   .small {
     font-size: 12px;

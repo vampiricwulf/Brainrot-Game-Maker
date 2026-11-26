@@ -5,7 +5,7 @@
  * takes that step's place (it knows its box: its words, its greyed state). One order everywhere:
  *   the heading ("🤝 Partner clue · Movies $400"), the blue button's step (N: it asks first when something's left, as the
  *   blue button does), a box's leading items (who found a Daily Double), the moment's own actions, the boxes' other
- *   items, the ways out (▦ Done ▶ board, ↩ Put back (keep tile)), then the standing ones (↶ Undo, ⏸ Cover the screen).
+ *   items, the ways out (▦ Done ▶ board, ↩ Put back (keep tile)), then the standing ones (↶ Undo, ⬛ Cover the screen).
  * Each step shows once: an item with the blue button's words is that step, and goes.
  * Within one moment the items keep their places: one that can't be used now is greyed, not left out.
  */

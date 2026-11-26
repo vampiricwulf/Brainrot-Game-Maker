@@ -74,7 +74,7 @@ The panel keeps the same layout in every round:
    navigation (◀ Previous round, the round list, Next round ▶) on the right. Leaving a round early asks
    first. In the round list, `↓` and `↑` only move it (or type a round's first letter); `Enter` asks to go there.
 5. **A fixed bar**: ↶ Undo, ↷ Redo, 📜 Log (shown pressed while it's open; with an audience window it opens beside
-   your stage preview, so the panel keeps its width), 👥 Players, ⚖ Rules, ⏸ Cover, 🙈 Hide, 🔊 Sound, 📺 Audience,
+   your stage preview, so the panel keeps its width), 👥 Players, ⚖ Rules, ⬛ Cover, 🙈 Hide, 🔊 Sound, 📺 Audience,
    ▭ Scores window, ❔ Help and 🚪 Exit.
 
 ### The blue button
@@ -197,7 +197,7 @@ The tools row works at any time, in any round:
 - **📊 Scoreboard**, with **📋 Copy standings** for chat
 - **🤫 Send a card…** and **🎭 Deal…** (see [Secret cards](#secret-cards))
 
-`Esc` puts a tool away. **⏸ Cover** (`K` or `B`) shows a "Be right back" card; the countdown and any video wait under it.
+`Esc` puts a tool away. **⬛ Cover** (`K` or `B`) shows a "Be right back" card; the countdown and any video wait under it.
 
 ![Two wheels spinning together](screenshots/wheels.png)
 

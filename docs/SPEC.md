@@ -962,7 +962,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   blue button's step on its own (goon.ts `mainStep`, key `N`, through `goOn('menu')`: it asks first when something's
   left, as the blue button does; none where there's no blue button), the moment's own actions with their keys, the
   box's own items, the ways out (▦ Done ▶ board before the answer, a skip that asks first as the clue row's does; ↩ Put
-  back (keep tile); a question pop-up's ✕ Close before its answer; a shop's 🚪 Leave shop), then ↶ Undo `Ctrl+Z` and ⏸
+  back (keep tile); a question pop-up's ✕ Close before its answer; a shop's 🚪 Leave shop), then ↶ Undo `Ctrl+Z` and ⬛
   Cover the screen `K`. Each step shows once: an item with the blue button's words is that step, and is left out
   (stagemenu.ts `stageMenuOf`), so 👁 Reveal answer `R` shows only while the blue button is still on a slide, and no
   box offers the blue button's step (Show question ▶, Next ▶, a tool's Close). The play screen builds it from the steps
@@ -981,7 +981,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   in a box `Alt+drag`, Select everything here, ＋ Text here…, 🗺 Full map `J`, the map for viewers `V`, 🤝 Regroup `G`). While the check is open, a right-click on the stage
   doesn't open it: the check flashes, as a click does. In one window (on stream) it shows only words the panel shows:
   names and steps, never a card's words, a part, a wager or a typed answer, and ↶ Undo without its step's name. A
-  tile's menu shows its keys too (▶ Open `Enter`, ⏸ Cover the screen `K`).
+  tile's menu shows its keys too (▶ Open `Enter`, ⬛ Cover the screen `K`).
 - **The board-game and RPG stage by keyboard**: the host's board-game board is one Tab stop (a roving tabindex: the space
   the keys were last on, else the turn player's, else Start), the arrows go to the nearest space that way (spaceToward,
   as in the editor), `Enter` or `Space` opens its card (the controls come back for it) and `Shift+F10` its menu. A space
@@ -1034,7 +1034,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   `STILL_PX`, which also stops the long press's menu) draws a box: on an empty part of a screen, on a 🔒 locked object or
   one as big as its screen (a click there still opens its card), anywhere with `Alt` (its keyup kept in the page, for
   Firefox's menu bar), or after the stage menu's ▭ Select in a box (`Esc` puts that away). Never on the stats strip, the
-  map on stream, a tool or the title card (they're over the screens), under ⏸ Cover, nor with ✎ Edit screen or a window
+  map on stream, a tool or the title card (they're over the screens), under ⬛ Cover, nor with ✎ Edit screen or a window
   open. It catches the drawn targets (`.avatar` tokens, `.hit` click targets) whose middle is inside it: players, and
   objects of class item, currency, npc or interactable, unless bigger than the box all round; never doorways, shops,
   zones, hazards, role-less scenery, anything locked or `neverShown` (in two windows too), and in one window nothing

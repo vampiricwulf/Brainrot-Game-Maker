@@ -345,7 +345,7 @@ try {
   await page.screenshot({ path: resultsPath('partner-play-paired.png') });
   // A right-click on the stage: the moment's menu, the blue button's Show question ▶ first (N, once only), then the 🤝
   // box's actions, each with its key (the partner there greyed, not left out), then the box's own, the way out, ↶ Undo
-  // and ⏸ Cover. Names only: no card's words.
+  // and ⬛ Cover. Names only: no card's words.
   await stage('[data-partner-up]').click({ button: 'right' });
   const pairedMenu = await menuLines(page);
   assert(
@@ -362,7 +362,7 @@ try {
       pairedMenu.filter((l) => l.startsWith('Show question ▶')).length === 1 &&
       pairedMenu.includes('⇄ Swap') &&
       pairedMenu.includes('↩ Put back (keep tile) · Shift+Esc') &&
-      pairedMenu.at(-1) === '⏸ Cover the screen · K',
+      pairedMenu.at(-1) === '⬛ Cover the screen · K',
     `a right-click on PARTNER UP! gives the moment’s menu, the blue button’s step first (${pairedMenu.join(' | ')})`,
   );
   await noCards(page, 'the stage’s menu on PARTNER UP!');

@@ -1356,7 +1356,7 @@
     <span>
       <b>How is it shown?</b>
       <span class="muted small">Enter picks the one you used last.</span>
-      {#if app.resumable?.cover}<span class="muted small">It comes back with the screen covered (⏸ Cover).</span>{/if}
+      {#if app.resumable?.cover}<span class="muted small">It comes back with the screen covered (⬛ Cover).</span>{/if}
     </span>
     <ModeCards dual={audience.open || prefs.display === 'audience'} onsingle={() => resumeIn(false)} onaudience={() => resumeIn(true)} />
     <button class="ghost" onclick={() => (resuming = null)}>Cancel</button>
@@ -1587,7 +1587,7 @@
   .mode-ask :global(.modes) {
     align-self: stretch;
   }
-  /* The cover after a reload mid-game in one window: as viewers see ⏸ Cover, the host's choice small under it. Laid out
+  /* The cover after a reload mid-game in one window: as viewers see ⬛ Cover, the host's choice small under it. Laid out
      as the game is in one window (Play's .stage-area and HostPanel's .panel:not(.dual)): a 16:9 box the stage's size
      and place, letterboxed in black, over the host panel's height, so a capture of just the stage (an OBS crop) shows
      the whole card and none of the host's buttons. */
@@ -1621,7 +1621,7 @@
     align-items: center;
     gap: 0.4em;
     max-width: 90%;
-    /* (The ⏸ Cover card's size on the stage: 120px of its 1920.) */
+    /* (The ⬛ Cover card's size on the stage: 120px of its 1920.) */
     font:
       6.25cqw 'Anton',
       'Oswald',

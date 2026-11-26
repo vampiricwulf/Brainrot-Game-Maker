@@ -403,7 +403,7 @@
   let flash = $state(false);
   let flashTimer: ReturnType<typeof setTimeout> | undefined;
 
-  /** A box starts on a screen, never on the stats strip or the map on stream, under ⏸ Cover, nor while ✎ Edit screen or a window is open over the game. */
+  /** A box starts on a screen, never on the stats strip or the map on stream, under ⬛ Cover, nor while ✎ Edit screen or a window is open over the game. */
   const boxOK = (e: PointerEvent) =>
     !app.live.cover && !app.editGame && !document.querySelector('.modal[role="dialog"]') && !!(e.target as Element).closest?.('.pane');
 

@@ -866,7 +866,7 @@
     const m = (dual ? remoteMedia : localMedia)[id];
     mediaCommand({ el: id, op: m?.kind === 'external' ? 'stop' : 'pause' });
   }
-  // ⏸ Cover: what's going on waits under it (the countdown, a clue's video or sound), and goes on after it.
+  // ⬛ Cover: what's going on waits under it (the countdown, a clue's video or sound), and goes on after it.
   let coverHeld: { timer: TimerState | null; media: string[] } | null = null;
   $effect(() => {
     const on = !!app.live.cover;
@@ -3042,7 +3042,7 @@
   function tileMenu(e: MouseEvent, ref: ClueRef): void {
     const clue = getClue(game, ref)?.clue;
     if (!clue) return;
-    const cover = { label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', keys: 'K', onclick: () => (app.live.cover = !app.live.cover) };
+    const cover = { label: app.live.cover ? '▶ Uncover the screen' : '⬛ Cover the screen', keys: 'K', onclick: () => (app.live.cover = !app.live.cover) };
     if (!session.used[clue.id])
       return showMenu(e, [
         { heading: clueName(game, ref) },
@@ -3789,7 +3789,7 @@
   let boxMenu = $state<(() => StageItem[]) | null>(null);
 
   /**
-   * ↶ Undo and ⏸ Cover the screen, in every moment. (One window: Undo doesn't name its step, as it's on stream.) The
+   * ↶ Undo and ⬛ Cover the screen, in every moment. (One window: Undo doesn't name its step, as it's on stream.) The
    * countdown too where the moment's own actions don't have it (the board, a round's title card, Game over…): the
    * status line has ⏱️ only where a clock fits, so T and this menu start one anywhere.
    */
@@ -3797,7 +3797,7 @@
     return [
       ...(m.steps.some((it) => it.id === 'clock') ? [] : [clockItem()]),
       { id: 'undo', label: '↶ Undo', keys: 'Ctrl+Z', disabled: !undoText, ...(dual && undoText ? { hint: `Undo: ${undoText}` } : {}), onclick: doUndo },
-      { id: 'cover', label: app.live.cover ? '▶ Uncover the screen' : '⏸ Cover the screen', keys: 'K', onclick: () => (app.live.cover = !app.live.cover) },
+      { id: 'cover', label: app.live.cover ? '▶ Uncover the screen' : '⬛ Cover the screen', keys: 'K', onclick: () => (app.live.cover = !app.live.cover) },
     ];
   }
 
@@ -4180,7 +4180,7 @@
   /**
    * The moment's menu (a right-click on the stage, Shift+F10 on the main button or the stage, a long press): the blue
    * button's step first (N, through the check), then the moment's own actions as the keys do them, with what the boxes
-   * open add, then ↶ Undo and ⏸ Cover the screen.
+   * open add, then ↶ Undo and ⬛ Cover the screen.
    */
   function momentMenuAt(e: MouseEvent, at?: StagePoint): void {
     // (With the check open, the moment waits on it: the menu doesn't open, the check flashes, as a click does.)

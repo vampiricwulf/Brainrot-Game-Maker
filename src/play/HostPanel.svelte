@@ -1374,7 +1374,7 @@
         ><span aria-hidden="true">⚠<span class="vw">{' '}Viewers see this</span></span><span class="sr-only">{viewersSee.join(' ')}</span></span
       >
     {/if}
-    {#if app.live.cover}<span class="covered">⏸ Viewers see the cover</span>{/if}
+    {#if app.live.cover}<span class="covered">⬛ Viewers see the cover</span>{/if}
     {#if app.playUnstored && !app.test}
       <span class="unsaved" title="Storage is full or blocked: the scores aren't being saved, so closing or reloading this window loses them">⚠ Not saving</span
       >
@@ -2110,7 +2110,7 @@
         onclick={() => (app.live.cover = !app.live.cover)}
         title={app.live.cover ? 'K: viewers see the game again' : "K: viewers see only a 'Be right back' card"}
       >
-        {app.live.cover ? '▶ Uncover' : '⏸ Cover'} <kbd aria-hidden="true">K</kbd>
+        {app.live.cover ? '▶ Uncover' : '⬛ Cover'} <kbd aria-hidden="true">K</kbd>
       </button>
       <button onclick={onhide} title="H: hide the controls (in a single window, viewers see only the stage)">🙈 <span class="txt">Hide</span></button>
     </span>
@@ -2780,7 +2780,7 @@
     font-size: 12px;
   }
   /* The fixed bar as a two-column grid of its groups, 🚪 Exit in the bottom-right cell: ↶ Undo ↷ Redo and the lists,
-     then the stream's (🔊 Sound, 📺 Audience, ▭ Scores window) across both, then ⏸ Cover 🙈 Hide and ❔ Help 🚪 Exit. */
+     then the stream's (🔊 Sound, 📺 Audience, ▭ Scores window) across both, then ⬛ Cover 🙈 Hide and ❔ Help 🚪 Exit. */
   .side > .fixed {
     display: grid;
     /* (The left groups as wide as they need, the right ones the rest: Log, Players and Rules stay on one line.) */

@@ -25,7 +25,7 @@ export interface SavedPlay {
   game: Game;
   session: Session;
   savedAt: number;
-  /** The screen was covered (⏸ Cover): resuming covers it again. */
+  /** The screen was covered (⬛ Cover): resuming covers it again. */
   cover?: boolean;
   /** A wheel or dice on screen (a board game's roll to move by, a wheel's points not yet confirmed): resuming brings it back. */
   overlay?: Overlay;

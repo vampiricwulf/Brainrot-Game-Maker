@@ -92,7 +92,7 @@ try {
       probe.remove();
       return [getComputedStyle(e).borderTopColor, color];
     });
-  assert(border === own, `a selected player's chip keeps their color (${border}, not the ⏸ Cover's highlight)`);
+  assert(border === own, `a selected player's chip keeps their color (${border}, not the ⬛ Cover's highlight)`);
   await page.keyboard.press('0');
   assert((await selected()) === 0, '0 again selects no one');
   await page.keyboard.press('0');
@@ -297,7 +297,7 @@ try {
   assert((await scores()) === '$300 $400 $400' && (await page.locator('aside .item.redo').count()) === 0, 'Ctrl+Y brings back the rest');
   await page.keyboard.press('Escape');
 
-  // K covers the screen in any round, and the fixed bar's ⏸ Cover shows it (filled, saying ▶ Uncover).
+  // K covers the screen in any round, and the fixed bar's ⬛ Cover shows it (filled, saying ▶ Uncover).
   await page.keyboard.press('k');
   assert(
     await page.getByRole('button', { name: '▶ Uncover' }).evaluate((e) => e.classList.contains('on')),

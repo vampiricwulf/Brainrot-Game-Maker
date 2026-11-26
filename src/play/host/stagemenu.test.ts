@@ -33,7 +33,7 @@ describe('the stage’s menu', () => {
         exits: [item('▦ Done ▶ board', { id: 'done', keys: 'Esc' }), item('↩ Put back (keep tile)', { id: 'putback', keys: 'Shift+Esc', disabled: true })],
       },
       [],
-      [item('↶ Undo', { keys: 'Ctrl+Z' }), item('⏸ Cover the screen', { keys: 'K' })],
+      [item('↶ Undo', { keys: 'Ctrl+Z' }), item('⬛ Cover the screen', { keys: 'K' })],
     );
     expect(lines(m)).toEqual([
       '# Movies · $400',
@@ -47,7 +47,7 @@ describe('the stage’s menu', () => {
       '↩ Put back (keep tile) · Shift+Esc (off)',
       '—',
       '↶ Undo · Ctrl+Z',
-      '⏸ Cover the screen · K',
+      '⬛ Cover the screen · K',
     ]);
   });
 
@@ -90,7 +90,7 @@ describe('the stage’s menu', () => {
         exits: [item('↩ Put back (keep tile)', { id: 'putback', keys: 'Esc' })],
       },
       [item('⭐ Ann found it', { lead: true, disabled: true }), item('⭐ Bob found it', { lead: true }), item('True Daily Double')],
-      [item('⏸ Cover the screen', { keys: 'K' })],
+      [item('⬛ Cover the screen', { keys: 'K' })],
     );
     expect(lines(m)).toEqual([
       '# ⭐ Daily Double',
@@ -103,7 +103,7 @@ describe('the stage’s menu', () => {
       '—',
       '↩ Put back (keep tile) · Esc',
       '—',
-      '⏸ Cover the screen · K',
+      '⬛ Cover the screen · K',
     ]);
   });
 

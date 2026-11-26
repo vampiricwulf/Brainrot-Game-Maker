@@ -145,7 +145,7 @@ try {
   await tile(1).click();
   // A right-click on the stage: the moment's menu, the blue button's step first, on its own (N: it asks first when
   // something's left, as the blue button does), then the clue's own actions with their keys (no second 👁 Reveal
-  // answer), the ways out, then ↶ Undo and ⏸ Cover. Its ⏱️ Start the countdown does what T does.
+  // answer), the ways out, then ↶ Undo and ⬛ Cover. Its ⏱️ Start the countdown does what T does.
   const clueMenu = await stageMenu({ close: false });
   assert(
     JSON.stringify(clueMenu) ===
@@ -159,12 +159,22 @@ try {
         '↩ Put back (keep tile) · Shift+Esc',
         '—',
         '↶ Undo · Ctrl+Z (off)',
-        '⏸ Cover the screen · K',
+        '⬛ Cover the screen · K',
       ]),
     `a right-click on a clue’s stage gives its menu, the blue button’s step first (${clueMenu.join(' | ')})`,
   );
   await openMenu(page).getByRole('menuitem', { name: '⏱️ Start the countdown' }).click();
   await stage('.timer').waitFor();
+  // The countdown running: ⏸ Pause the countdown (T) and ⬛ Cover the screen (K) beside it, no two items one sign.
+  const runningMenu = (await stageMenu()).filter((l) => l !== '—' && !l.startsWith('#'));
+  const signs = runningMenu.map((l) => l.split(' ')[0]);
+  assert(
+    runningMenu.includes('⏸ Pause the countdown · T') && runningMenu.includes('⬛ Cover the screen · K') && new Set(signs).size === signs.length,
+    `the countdown running, no two items in the stage’s menu share a sign (${runningMenu.join(' | ')})`,
+  );
+  // Its pause button in the status line: two bars, drawn (the ⏸ character is a thin sliver in the app's fonts).
+  const bars = await statusLineIn(page).locator('.tc button .bars').boundingBox();
+  assert(bars && bars.width >= 6 && bars.height >= 8, `the status line’s pause button draws its two bars (${JSON.stringify(bars)})`);
   await page.keyboard.press('1');
   await page.keyboard.press('Enter');
   await stage('.timer').waitFor({ state: 'detached' });
@@ -570,7 +580,7 @@ try {
   );
   await page.keyboard.press('Escape');
 
-  // ---------- ⏸ Cover pauses the clue's video and the countdown, and they go on after ----------
+  // ---------- ⬛ Cover pauses the clue's video and the countdown, and they go on after ----------
   await tile(0).click();
   await stage('.full video').waitFor();
   // (In one window the stage's menu is on stream: its first item is 👁 Reveal answer, and nowhere the answer's words.)
@@ -583,7 +593,7 @@ try {
   await stage('.timer').waitFor();
   await page.keyboard.press('k');
   await stage('.cover').waitFor();
-  assert((await status()).includes('⏸ Viewers see the cover'), 'the host’s status line says viewers see the cover');
+  assert((await status()).includes('⬛ Viewers see the cover'), 'the host’s status line says viewers see the cover');
   await page.waitForTimeout(300);
   const held = await video();
   const n1 = await timerNum();
