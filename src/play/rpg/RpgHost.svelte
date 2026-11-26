@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { onDestroy, tick, untrack, type Snippet } from 'svelte';
+  import { MediaQuery } from 'svelte/reactivity';
   import { menuItem, menuOf, showMenu } from '../../lib/menustate.svelte';
   import { app, hint, toast } from '../../lib/app.svelte';
   import { announce } from '../../lib/announce';
@@ -220,7 +221,14 @@
   let cardEl = $state<HTMLElement>();
   let mainEl = $state<HTMLElement>();
   let selEl = $state<HTMLElement>();
-  /** The top row: in one window the selection line is on it, and it's what's pinned at the box's top. */
+  /**
+   * One window wider than a phone held upright: the selection line goes on the top row (the pad and the minimap get the
+   * room a line of its own took). On a narrow window that row is already full (the screen's name and the party
+   * buttons), so it keeps a line of its own there, where who's picked reads whole.
+   */
+  const notNarrow = new MediaQuery('(min-width: 601px)');
+  const selOnTop = $derived(!dual && notNarrow.current);
+  /** The top row: with the selection line on it, it's what's pinned at the box's top. */
   let topEl = $state<HTMLElement>();
   /** Their heights: a card's pad and map pin under whichever is pinned (two lines, when the top row wraps). */
   let topH = $state(24);
@@ -240,7 +248,7 @@
       const above = c.top - view.top;
       // (The selection line is sticky: once it's at the box's top, there's no row above it left to scroll out. In one
       // window it's on the top row, and that row is what's pinned.)
-      const sel = (dual ? selEl : topEl)?.getBoundingClientRect();
+      const sel = (selOnTop ? topEl : selEl)?.getBoundingClientRect();
       const rowsAbove = sel ? Math.max(0, sel.top - view.top) : 0;
       // A card taller than the box stops with its top just under what's pinned over it (the selection line, and the pad
       // and the map when the card is under them, beside the stage), so its first row isn't left cut under them.
@@ -488,10 +496,10 @@
 {/snippet}
 
 {#if world && st}
-  <div class="rh" style:--pin="{dual ? selH : topH}px">
-    <!-- (One window: the selection line is on it, so it stays in sight at the box's top as the box scrolls, and the pad
-         and the minimap get the room a line of their own took.) -->
-    <div class="row top" class:withsel={!dual} bind:this={topEl} bind:offsetHeight={topH}>
+  <div class="rh" style:--pin="{selOnTop ? topH : selH}px">
+    <!-- (One window wider than 600px: the selection line is on it, so it stays in sight at the box's top as the box scrolls,
+         and the pad and the minimap get the room a line of their own took.) -->
+    <div class="row top" class:withsel={selOnTop} bind:this={topEl} bind:offsetHeight={topH}>
       <b class="where">🗺️ {here ? `${here.map.name} · ${here.screen.name}` : 'Nowhere'}</b>
       <!-- One window: the notes' slot, there on every screen, note or none, and one line (cut short, the whole of it in
            its tooltip): a screen's note never pushes 🗺️ Map on stream to a second line, so the buttons, the pad and the
@@ -502,7 +510,7 @@
           {#if here?.screen.hostNotes}<span class="notes">📝 {here.screen.hostNotes}</span>{/if}
           {#if now.round?.hostNotes}<span class="notes">📝 {now.round.hostNotes}</span>{/if}
         </span>
-        <span class="sel" data-rpg-sel bind:this={selEl}>{@render selLine()}</span>
+        {#if selOnTop}<span class="sel" data-rpg-sel bind:this={selEl}>{@render selLine()}</span>{/if}
       {:else}
         <span class="spacer"></span>
       {/if}
@@ -561,8 +569,9 @@
       >
     </div>
 
-    <!-- (With an audience window, the selection line is a row of its own here; in one window it's on the top row.) -->
-    {#if dual}
+    <!-- (With an audience window, or on a narrow window, the selection line is a row of its own here; else it's on the
+         top row.) -->
+    {#if !selOnTop}
       <div class="row sel" data-rpg-sel bind:this={selEl} bind:offsetHeight={selH}>{@render selLine()}</div>
     {/if}
 
@@ -1118,7 +1127,8 @@
     display: flex;
     align-items: center;
     gap: 8px;
-    flex: 1 1 0;
+    /* (Twice the notes' share: who's picked reads before a screen's note, whole in its tooltip.) */
+    flex: 2 1 0;
     min-width: 5em;
     overflow: hidden;
     height: auto;
@@ -1143,7 +1153,7 @@
       white-space: nowrap;
     }
   }
-  .notes-slot.empty {
+  .top.withsel > .notes-slot.empty {
     flex-grow: 0;
     min-width: 0;
   }

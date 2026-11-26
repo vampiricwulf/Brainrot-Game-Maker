@@ -14,7 +14,8 @@
 //    row folded); a player's number opens it, ✕ Close folds it (players picked or not), ± Adjust score opens it;
 // 5. a laptop at 200% zoom (640×360, three players, a clue): the chips' box, one chip in sight, says there are more
 //    (data-more, its foot faded), and stops saying it scrolled to its end;
-// 6. a phone on its side (844×390): a wheel or dice tile keeps 🎡 Spin! / 🎲 Roll! in sight (the chips give way first).
+// 6. a phone on its side (844×390): a wheel or dice tile keeps 🎡 Spin! / 🎲 Roll! in sight (the chips give way first);
+// 7. a phone held upright (390×844): an RPG round's selection line keeps a row of its own, Clear selection in words.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -522,6 +523,29 @@ try {
     await page.locator('.bh').waitFor();
     await sleep(300);
     assert((await awardRowIn(page).count()) === 0 && (await adjust.count()) === 1, 'a board game: the Amount row folded too, ± Adjust score in the tools row');
+    await ctx.close();
+  }
+
+  section('A phone held upright: the RPG selection line keeps a row of its own');
+  {
+    // (The top row is full there, the screen's name and the party buttons: who's picked reads whole on a line of its
+    // own, as with an audience window. Wider, it's on the top row: see above.)
+    const { ctx, page } = await startAt(390, 844);
+    const opts = await roundNavIn(page).locator('option').allInnerTexts();
+    await roundNavIn(page)
+      .locator('select')
+      .selectOption({ label: opts.find((o) => o.includes('Adventure')) }, { force: true });
+    if (await until(async () => (await leaveAnswer(page).count()) > 0, { timeout: 2000 })) await answerAsk(leaveAnswer(page));
+    const skip = page.getByRole('button', { name: 'Skip intro' });
+    for (let i = 0; i < 3 && (await until(async () => (await skip.count()) > 0, { timeout: 1500 })); i++) await skip.click();
+    await hostPanelIn(page).locator('.rh .pad').waitFor();
+    await stageBoxIn(page).locator('.rpg .avatar[data-player-id="p2"]').click();
+    const sel = page.locator('.rh [data-rpg-sel]', { hasText: 'Selected: Bob' });
+    await sel.waitFor();
+    const line = await sel.evaluate((e) => ({ onTop: !!e.closest('.top'), width: Math.round(e.getBoundingClientRect().width) }));
+    assert(!line.onTop && line.width >= 300, `390×844: the selection line is a row of its own, the box's width (${JSON.stringify(line)})`);
+    await sel.getByRole('button', { name: 'Clear selection' }).waitFor();
+    assertEq(await sel.getByRole('button', { name: 'Clear selection' }).innerText(), 'Clear selection', 'Clear selection in words there');
     await ctx.close();
   }
 

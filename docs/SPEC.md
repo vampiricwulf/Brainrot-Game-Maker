@@ -1027,10 +1027,11 @@ The mode isn't saved with the game: it's dual while the audience window is open.
 - **An RPG round's box** (RpgHost), the pad first at every height: the top row (where, notes, the parties, ✂ Split off,
   🤝 Regroup, ▦ Split view, 🛒 Shop…, 🗺 Map on stream; in one window the screen's and round's 📝 notes have a slot of
   their own there on every screen, note or none, one line cut short with the whole of it in its tooltip, so the
-  buttons, the pad and the minimap keep their places from screen to screen), the selection line (in one window on the
-  top row, in the room between the notes' slot and the party buttons, cut short as it must, Clear selection just ✕
-  where it's short, the row pinned at the box's top and a card's pad and map pinned under it, however many lines it
-  takes: the pad and the minimap get the room a line of its own took), a party's rename
+  buttons, the pad and the minimap keep their places from screen to screen), the selection line (in one window wider than 600px on the
+  top row, in the room between the notes' slot and the party buttons, with twice the notes' share, cut short as it
+  must, Clear selection just ✕ where it's short, the row pinned at the box's top and a card's pad and map pinned under it, however many lines it
+  takes: the pad and the minimap get the room a line of its own took; on a narrower window, a phone held upright, whose
+  top row is full already, a line of its own, as with an audience window), a party's rename
   question, then the pad and the minimap beside the `tools` snippet (HostPanel's ToolsControls: in an RPG round a
   tool's box goes here, never at the panel's top) and the object's card or Objects here, then **✎ Improvise** (a RememberedFold, `jb.improviseOpen`,
   open until first folded; its questions show under it either way), then the players. An object's card, once open,
