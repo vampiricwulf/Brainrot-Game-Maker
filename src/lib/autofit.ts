@@ -30,6 +30,13 @@ export interface AutofitOptions {
    * broken; and text that doesn't fit even hyphenated at `min` may go down to it too instead of being cut off.
    */
   floor?: number;
+  /**
+   * With hyphenate and floor: a word too long for the line is hyphenated at `min` or more first, before the text goes
+   * below `min` whole (a category that's one word: "ANTIDISES-/TABLISHMEN-/TARIANISM" at 30 reads better than the whole
+   * word in a thin line at 20, and how narrow the theme's font is no longer decides which it gets). A word with nowhere
+   * to hyphenate still goes down whole to `floor` before it's broken anywhere.
+   */
+  breakFirst?: boolean;
   /** Never break a word: at the smallest size, what's left over is cut (CSS shows "…" where it's set). */
   noBreak?: boolean;
   /**
@@ -72,7 +79,7 @@ export function largestFitting(lo: number, hi: number, fits: (n: number) => bool
 }
 
 /** The sizes one box tries, ending on the one it keeps (which is the last one tried). */
-function* fitting({ size, enabled, min = 12, hyphenate, noBreak, floor }: AutofitOptions): Generator<Try, FitResult, boolean> {
+function* fitting({ size, enabled, min = 12, hyphenate, noBreak, floor, breakFirst }: AutofitOptions): Generator<Try, FitResult, boolean> {
   // Words stay whole: the longest one must fit on a line. Only if that's impossible even at the
   // smallest size are words hyphenated (if asked) or allowed to break (then at the largest size that fits that way).
   if (!enabled) return { size, overflow: yield { size, wrap: '' } };
@@ -86,7 +93,14 @@ function* fitting({ size, enabled, min = 12, hyphenate, noBreak, floor }: Autofi
     left = yield { size: s, wrap: 'normal' };
   }
   if (!left || noBreak) return { size: s, overflow: left };
-  if (hyphenate) {
+  if (hyphenate && breakFirst && floor !== undefined && floor < lo) {
+    s = yield* largest(lo, size, 'hyphen');
+    if (!(yield { size: s, wrap: 'hyphen' })) return { size: s, overflow: false };
+    s = yield* largest(floor, lo, 'normal');
+    if (!(yield { size: s, wrap: 'normal' })) return { size: s, overflow: false };
+    s = yield* largest(floor, lo, 'hyphen');
+    if (!(yield { size: s, wrap: 'hyphen' })) return { size: s, overflow: false };
+  } else if (hyphenate) {
     // Smaller still with whole words (down to `floor`) before any word is broken: "UNIVERSE" whole at 24px reads better
     // than "UNIVE-RSE" at 30.
     if (floor !== undefined && floor < lo) {
@@ -195,6 +209,7 @@ function fitKey(node: HTMLElement, o: AutofitOptions): string {
     o.min,
     o.floor,
     !!o.hyphenate,
+    !!o.breakFirst,
     !!o.noBreak,
     css(node),
     inner ? css(inner) : '',

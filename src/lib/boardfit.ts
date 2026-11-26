@@ -6,6 +6,7 @@ export const CAT_MIN = 30;
 /**
  * A name too long for its cell even then goes smaller, down to this, its words still whole (the editor's checklist says
  * to shorten it); only a word too long for the cell at this size is hyphenated (at CAT_MIN or more where it fits so).
+ * A name that's one long word is hyphenated at CAT_MIN or more first (oneWord), the same in every theme's font.
  */
 export const CAT_FLOOR = 20;
 
@@ -63,13 +64,23 @@ function wholeAt(text: string, size: number, w: number, h: number): boolean {
 }
 
 /**
+ * A name that's a single word long enough to hyphenate (softHyphens: 8 letters or more): on the board it's hyphenated at
+ * CAT_MIN or more before it goes smaller whole (autofit's breakFirst).
+ */
+export function oneWord(title: string): boolean {
+  const t = title.trim();
+  return !!t && !/\s/.test(t) && /\p{L}{8,}/u.test(t);
+}
+
+/**
  * A category name that goes below CAT_MIN on the board (an estimate: the editor's checklist warns). As the board fits
  * it: one that's whole at a smaller size goes there before a word is broken; one with a word too long even at the
- * floor is hyphenated at CAT_MIN, unless even that doesn't fit.
+ * floor, or that's one long word, is hyphenated at CAT_MIN, unless even that doesn't fit.
  */
 export function categoryTooLong(title: string, cols: number, rows: number, theme?: Theme): boolean {
   if (!title.trim()) return false;
   const { w, h } = categoryBox(cols, rows, theme);
   if (wholeAt(title, CAT_MIN, w, h)) return false;
-  return wholeAt(title, CAT_FLOOR, w, h) || linesAt(title, CAT_MIN, w) * CAT_MIN * LINE > h;
+  const hyphenated = linesAt(title, CAT_MIN, w) * CAT_MIN * LINE > h;
+  return oneWord(title) ? hyphenated : wholeAt(title, CAT_FLOOR, w, h) || hyphenated;
 }

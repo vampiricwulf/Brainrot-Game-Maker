@@ -63,6 +63,19 @@ describe('fitting a box (score plates, board values, category names)', () => {
     expect(r.size).toBeGreaterThanOrEqual(30);
   });
 
+  it('a one-word name (breakFirst): hyphenates at the smallest size or more before it shrinks whole toward the floor', () => {
+    // "ANTIDISESTABLISHMENTARIANISM" (28 letters) in a 284px cell: whole at 20px in a narrow font, hyphenated at 30+.
+    const word = box(28, 284);
+    const opts = { size: 54, min: 30, floor: 20, hyphenate: true, enabled: true };
+    expect(fitWith(opts, word)).toMatchObject({ size: 20, wrap: 'normal' });
+    const r = fitWith({ ...opts, breakFirst: true }, word);
+    expect(r.wrap).toBe('hyphen');
+    expect(r.size).toBeGreaterThanOrEqual(30);
+    // A word with nowhere to break (no soft hyphens: it overflows hyphenated as it does whole) still goes down whole.
+    const unbreakable = (size: number, wrap: string) => (wrap === 'anywhere' ? false : 12 * size * 0.5 > 140);
+    expect(fitWith({ ...opts, breakFirst: true }, unbreakable)).toMatchObject({ size: 23, overflow: false, wrap: 'normal' });
+  });
+
   it('gives a group the smallest size any of its boxes fits at', () => {
     expect(groupSize([84, 61, 72, undefined])).toBe(61);
     expect(groupSize([undefined])).toBeUndefined();

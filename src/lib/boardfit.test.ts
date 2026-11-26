@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAT_MIN, categoryBox, categoryTooLong, linesAt } from './boardfit';
+import { CAT_MIN, categoryBox, categoryTooLong, linesAt, oneWord } from './boardfit';
 import { newRound, type Game } from './model';
 import { jeopardyGame } from './testgame';
 import { validate } from './validate';
@@ -32,6 +32,19 @@ describe('category names on the board', () => {
     expect(categoryTooLong('Speedrunning Facts', 10, 5)).toBe(true);
     // A word too long even at the floor (34 letters): hyphenated at 30px, readable.
     expect(categoryTooLong('Supercalifragilisticexpialidocious', 6, 5)).toBe(false);
+  });
+
+  it('take a name that is one long word as hyphenated at CAT_MIN, whatever the font (no warning when that fits)', () => {
+    expect(oneWord('Antidisestablishmentarianism')).toBe(true);
+    expect(oneWord('Speedrunning Facts')).toBe(false);
+    expect(oneWord('Rizz')).toBe(false);
+    // 10 columns: "Speedrunning" alone would be whole only below 30px; hyphenated at 30 it fits.
+    expect(categoryTooLong('Speedrunning', 10, 5)).toBe(false);
+    expect(categoryTooLong('Antidisestablishmentarianism', 6, 5)).toBe(false);
+    // Too long even hyphenated at 30: still a warning.
+    expect(categoryTooLong('Pneumonoultramicroscopicsilicovolcanoconiosis'.repeat(3), 10, 5)).toBe(true);
+    // A name of several words keeps the rule: whole words first, down to the floor (a warning).
+    expect(categoryTooLong('Speedrunning Facts', 10, 5)).toBe(true);
   });
 
   it('show in the editor’s checklist', () => {

@@ -802,6 +802,32 @@ try {
   await key('Escape');
   assert((await clueDlg.count()) === 0, 'Esc in the Value box closes the clue');
 
+  // ---------- A category that's one long word: hyphenated at a readable size in every theme ----------
+  // (Not shrunk whole to a thin 20px line where the theme's font is narrow enough for that: Classic, Brainrot Neon.)
+  await roundTabsIn(page).first().click();
+  const firstCat = page.locator('.cat textarea').first();
+  await firstCat.fill('Antidisestablishmentarianism');
+  await firstCat.press('Tab');
+  const cols = await page.locator('.cat textarea').count();
+  await page.getByRole('button', { name: '🎨 Theme' }).click();
+  const catPx = {};
+  for (const name of ['Classic', 'Dark', 'Brainrot Neon', 'Pastel']) {
+    await page.getByRole('button', { name, exact: true }).click();
+    const title = page.locator('.board .header .title', { hasText: 'Antidis' }).first();
+    await title.waitFor();
+    await page.waitForTimeout(400);
+    catPx[name] = await title.evaluate((e) => parseFloat(getComputedStyle(e).fontSize));
+  }
+  assert(
+    cols <= 6 && Object.values(catPx).every((px) => px >= 30),
+    `a one-word category on a ${cols}-column board is hyphenated at 30 stage px or more in every theme (${JSON.stringify(catPx)})`,
+  );
+  if (shots)
+    await page
+      .locator('.board')
+      .first()
+      .screenshot({ path: `${shots}/one-word-category.png` });
+
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join(' | ')}` : ''));
   console.log('Board editor E2E passed.');
 } catch (e) {

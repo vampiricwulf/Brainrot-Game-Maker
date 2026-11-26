@@ -2,7 +2,7 @@
 <script lang="ts">
   import { categoryLabel, clueValue, formatPoints, isBoard, type Clue, type ClueRef, type Game, type Session } from '../lib/model';
   import { autofit, softHyphens } from '../lib/autofit';
-  import { CAT_FLOOR, CAT_MIN } from '../lib/boardfit';
+  import { CAT_FLOOR, CAT_MIN, oneWord } from '../lib/boardfit';
   import { imgFallback, mediaUrls } from '../lib/media.svelte';
   import { altHeader, altTile } from '../lib/theme';
 
@@ -110,18 +110,38 @@
                 onerror={imgFallback}
               />
               {#if cat.showTitleOverImage && cat.title}
-                <div class="caption" use:autofit={{ size: 40, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}
-                  ><div dir="auto">{softHyphens(cat.title)}</div></div
+                <div
+                  class="caption"
+                  use:autofit={{
+                    size: 40,
+                    min: CAT_MIN,
+                    floor: CAT_FLOOR,
+                    hyphenate: true,
+                    breakFirst: oneWord(cat.title),
+                    enabled: true,
+                    cache: true,
+                    text: cat.title,
+                  }}><div dir="auto">{softHyphens(cat.title)}</div></div
                 >
               {/if}
             </div>
           {:else}
             <!-- Readable on a scaled-down stream: down to CAT_MIN, then (words still whole) to CAT_FLOOR; only a word too
-                 long even then is hyphenated, at a syllable (softHyphens). -->
+                 long even then is hyphenated, at a syllable (softHyphens). A name that's one long word is hyphenated at
+                 CAT_MIN or more first (oneWord), whatever the theme's font. -->
             <div
               class="title"
               class:revealing={!!intro}
-              use:autofit={{ size: 54, min: CAT_MIN, floor: CAT_FLOOR, hyphenate: true, enabled: true, cache: true, text: cat.title }}
+              use:autofit={{
+                size: 54,
+                min: CAT_MIN,
+                floor: CAT_FLOOR,
+                hyphenate: true,
+                breakFirst: oneWord(cat.title),
+                enabled: true,
+                cache: true,
+                text: cat.title,
+              }}
             >
               <div dir="auto">{softHyphens(cat.title)}</div>
             </div>
