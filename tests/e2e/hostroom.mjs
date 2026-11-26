@@ -15,7 +15,8 @@
 // 5. a laptop at 200% zoom (640×360, three players, a clue): the chips' box, one chip in sight, says there are more
 //    (data-more, its foot faded), and stops saying it scrolled to its end;
 // 6. a phone on its side (844×390): a wheel or dice tile keeps 🎡 Spin! / 🎲 Roll! in sight (the chips give way first);
-// 7. a phone held upright (390×844): an RPG round's selection line keeps a row of its own, Clear selection in words.
+// 7. a phone held upright (390×844): a 🤫 cards tile's rows fade under the flow row with no "▾ more" tab over ＋ Award;
+//    an RPG round's selection line keeps a row of its own, Clear selection in words.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -526,11 +527,26 @@ try {
     await ctx.close();
   }
 
-  section('A phone held upright: the RPG selection line keeps a row of its own');
+  section('A phone held upright: the fade alone, and the RPG selection line on a row of its own');
   {
     // (The top row is full there, the screen's name and the party buttons: who's picked reads whole on a line of its
     // own, as with an audience window. Wider, it's on the top row: see above.)
     const { ctx, page } = await startAt(390, 844);
+    // (First a 🤫 cards tile: its rows going on under the flow row fade out there, with no "▾ more" tab, which would lie
+    // over the wrapped row's ＋ Award.)
+    await tile(page, 'Skibidi Lore for $400').click();
+    await mainButton(page).waitFor();
+    const flow = action(page).locator(':scope > [data-flowrow]');
+    await toEnd(action(page)).then(() => action(page).evaluate((e) => (e.scrollTop = 0)));
+    assert(
+      await until(async () => (await action(page).getAttribute('data-more')) !== null),
+      '390×844, a 🤫 cards tile: the action part goes on under the flow row',
+    );
+    const cue = await flow.evaluate((e) => ({ tab: getComputedStyle(e, '::before').content, fade: getComputedStyle(e, '::after').content }));
+    assert(cue.tab === 'none' && cue.fade !== 'none', `390×844: the fade over the flow row, no "▾ more" tab (${JSON.stringify(cue)})`);
+    await hostPanelIn(page)
+      .getByRole('button', { name: /Put back/ })
+      .click();
     const opts = await roundNavIn(page).locator('option').allInnerTexts();
     await roundNavIn(page)
       .locator('select')

@@ -2811,7 +2811,8 @@
      (data-more: see scrollmore.ts): a row cut there reads as more below, never as a strip of half-drawn buttons. Low,
      so a line above the foot still reads; it takes no room and never takes a click, and scrolled to the end, it goes.
      (On a window too short for a row above the foot, 200% zoom on a laptop, the tab would be cut by the box's top: the
-     fade alone says it there, and the players' chips have their own.) */
+     fade alone says it there, and the players' chips have their own. On a window 600px wide or less, a phone held
+     upright, the flow row wraps and the tab would lie over its right-hand button, ＋ Award: the fade alone there too.) */
   .panel:not(.side) > .act > .action:global([data-more]) > .flowrow::before,
   .panel.partnerclue:not(.dual) > .act > .action:global([data-more]) :global([data-partner-foot])::before {
     content: '▾ more';
@@ -2841,7 +2842,7 @@
     background: linear-gradient(transparent, var(--panel));
     pointer-events: none;
   }
-  @media (max-height: 499px) {
+  @media (max-height: 499px), (max-width: 600px) {
     .panel:not(.side) > .act > .action:global([data-more]) > .flowrow::before,
     .panel.partnerclue:not(.dual) > .act > .action:global([data-more]) :global([data-partner-foot])::before {
       content: none;

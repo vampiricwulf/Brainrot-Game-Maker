@@ -730,7 +730,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     where that button was). While the
     action part's rows go on under its sticky foot (the flow row, or a 🤝 partner clue's ✔ Got it row), they fade out
     just above it and a **▾ more** tab sits on its top edge at its right end (`data-more`, scrollmore.ts; the fade alone
-    on a window under 500px tall); it takes no room and no click, and goes at the end. An open 🎲 / 🎡 / 🏁 menu or the 📱 phones list stays inside it too,
+    on a window under 500px tall or 600px wide or less); it takes no room and no click, and goes at the end. An open 🎲 / 🎡 / 🏁 menu or the 📱 phones list stays inside it too,
     scrolling. A tools-row pop-up (🎲 Dice, 🎡 Wheel, 🏁 Who goes first, 🤫 Send a card…, 🎭 Deal…, the cards out, 🪟)
     closes when Tab or Shift+Tab takes the focus out of it and its button (the focus staying where it went), as a
     click outside does; Esc closes it and gives its button the keys back. The app moving the focus by itself (a check
