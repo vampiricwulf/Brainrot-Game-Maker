@@ -1664,7 +1664,9 @@ function renderBuzz(v: PhoneView): void {
     [cls, big, small] = [
       'off',
       v.status,
-      ans.text ? `${ans.auto ? autoSentLine(ans.auto, true) : team ? 'Your team’s guess' : 'Your guess'}: “${foldLines(ans.text)}”` : (v.statusSub ?? ''),
+      ans.text
+        ? `${ans.auto ? autoSentLine(ans.auto, { short: true }) : team ? 'Your team’s guess' : 'Your guess'}: “${foldLines(ans.text)}”`
+        : (v.statusSub ?? ''),
     ];
   } else if (ans && !ans.open) {
     // A ✍ clue whose answer is on screen: what this seat sent stays in sight (or that one is in, as for wagers). In the
@@ -1673,20 +1675,21 @@ function renderBuzz(v: PhoneView): void {
     const staked =
       wager?.kind === 'final' && wager.mine && wager.amount !== undefined ? `${team ? 'Your team’s wager' : 'Your wager'}: ${money(wager.amount, sym)} · ` : '';
     const picked = pickLine(ans);
+    // (Words typed and not sent that went by themselves: "⏱️ Sent as answers locked, unfinished" in place of "Yours",
+    // with a teammate's phone named. After the Final's wager, short, whose they are kept: else a team's words, or a
+    // phone held sideways's, didn't show at all.)
+    const whose = team ? 'Your team’s' : 'Yours';
+    const owner = !ans.auto
+      ? whose
+      : staked
+        ? autoSentLine(ans.auto, { short: whose })
+        : autoSentLine(ans.auto, { by: team && ans.by ? (ans.byYou ? 'your phone' : `${ans.by}’s phone`) : undefined });
     // Judged (a ✍ clue once the host judges it, the Final in its reveals): how it went over it ("✔ Right! +$1,200"),
     // green or red.
     [cls, big, small] = [
       ans.verdict ? (ans.verdict.right ? 'right' : 'wrong') : 'off',
       ans.verdict ? verdictLine(ans.verdict, sym) : 'Answers locked',
-      staked +
-        // (Words typed and not sent that went by themselves: said first, so a long answer is what gets cut. After the
-        // Final's wager, short: else a team's words, or a phone held sideways's, didn't show at all.)
-        (ans.auto && ans.text && !staked ? `${autoSentLine(ans.auto)} · ` : '') +
-        (ans.text
-          ? `${ans.auto && staked ? autoSentLine(ans.auto, true) : team ? 'Your team’s' : 'Yours'}: ${picked ?? `“${foldLines(ans.text)}”`}`
-          : ans.hidden
-            ? 'The host has it (not shown on this phone)'
-            : 'None sent'),
+      staked + (ans.text ? `${owner}: ${picked ?? `“${foldLines(ans.text)}”`}` : ans.hidden ? 'The host has it (not shown on this phone)' : 'None sent'),
     ];
   } else if (wager?.kind === 'dd' && wager.mine && !wager.open) {
     // This seat's Daily Double, the question up: they're on the spot, as on any clue they buzzed in on.
@@ -2350,7 +2353,7 @@ const overMax = (w: PhoneWager, amount: number): boolean => !!w.limit && w.max !
 function drawState(id: 'answer-state' | 'wager-state', state: string, sending: boolean): void {
   $(id).textContent = sending ? 'Sending…' : state;
   $(id).classList.toggle('sending', sending);
-  $(id).classList.toggle('unsent', !sending && /^(Not sent yet|Type .* or less|Sent automatically)/.test(state));
+  $(id).classList.toggle('unsent', !sending && /^(Not sent yet|Type .* or less|⏱️ Sent)/.test(state));
 }
 
 /** A refusal of what was typed (not of the connection): it goes once the box changes. */
@@ -2397,14 +2400,15 @@ function answerState(a: NonNullable<PhoneView['answer']>, team: boolean): string
     return [unsent, hidden].filter(Boolean).join(' ');
   }
   // Sent by this phone itself as time ran out (or a teammate's did): it may be unfinished, and Send answer sends what's
-  // in the box as the player's own (it can be changed until the host shows the answer, as ever).
+  // in the box as the player's own (it can be changed until the host shows the answer, as ever): all it changes is the
+  // unfinished mark, so the line says so, and that the tap is only if they're done.
   if (a.auto && !choices) {
-    const has = `${a.auto === 'time' ? 'when time ran out' : 'as answers locked'}${team && a.by ? `, from ${a.byYou ? 'your phone' : `${a.by}’s phone`}` : ''}`;
-    if (typed && !sameAnswer(box, a.text))
-      return typedErr(answerErr)
-        ? `What the host has (sent automatically ${has}: unfinished): ${quoted(a.text)}`
-        : `${tap('Not sent yet: tap Send answer to send it.')} What the host has (sent automatically ${has}: unfinished): ${quoted(a.text)}`;
-    return `${autoSentLine(a.auto)}${team && a.by ? ` (${a.byYou ? 'your phone' : `${a.by}’s phone`})` : ''}: ${quoted(a.text)}. ${tap('Tap Send answer to send it as it is.')}`;
+    const by = team && a.by ? (a.byYou ? 'your phone' : `${a.by}’s phone`) : undefined;
+    if (typed && !sameAnswer(box, a.text)) {
+      const has = `What the host has (${autoSentLine(a.auto, { by, lower: true })}): ${quoted(a.text)}`;
+      return typedErr(answerErr) ? has : `${tap('Not sent yet: tap Send answer to send it.')} ${has}`;
+    }
+    return `${autoSentLine(a.auto, { by })}: ${quoted(a.text)}. ${tap('Finished? Tap Send answer to mark it done.')}`;
   }
   if (!choices && typed && !sameAnswer(box, a.text))
     return typedErr(answerErr)

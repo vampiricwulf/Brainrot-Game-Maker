@@ -101,10 +101,15 @@ describe('words typed and not sent, sent by the phone itself (clockUp, autoSentL
   });
 
   it('says when they went, and that they may be unfinished: "time ran out" only when it did', () => {
-    expect(autoSentLine('time')).toBe('Sent automatically when time ran out: unfinished');
-    expect(autoSentLine('lock')).toBe('Sent automatically when answers locked: unfinished');
-    // (Short, in place of "Yours" where the locked line has less room: its words still show in its 3 lines.)
-    expect(autoSentLine('time', true)).toBe('Sent automatically, unfinished');
-    expect(autoSentLine('lock', true)).toBe('Sent automatically, unfinished');
+    // (⏱️ as the host's row has it.)
+    expect(autoSentLine('time')).toBe('⏱️ Sent when time ran out, unfinished');
+    expect(autoSentLine('lock')).toBe('⏱️ Sent as answers locked, unfinished');
+    // A teammate's phone, named the same way everywhere, and inside a sentence.
+    expect(autoSentLine('time', { by: 'Ann’s phone' })).toBe('⏱️ Sent when time ran out, from Ann’s phone, unfinished');
+    expect(autoSentLine('lock', { by: 'your phone', lower: true })).toBe('⏱️ sent as answers locked, from your phone, unfinished');
+    // (Short where the locked line has less room, its words still showing in its 3 lines: or whose they are in its place.)
+    expect(autoSentLine('time', { short: true })).toBe('⏱️ Sent, unfinished');
+    expect(autoSentLine('lock', { short: true })).toBe('⏱️ Sent, unfinished');
+    expect(autoSentLine('lock', { short: 'Your team’s' })).toBe('⏱️ Your team’s, unfinished');
   });
 });

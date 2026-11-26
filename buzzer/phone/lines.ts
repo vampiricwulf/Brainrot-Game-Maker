@@ -86,11 +86,15 @@ export function clockUp(t: ClockNow | null | undefined, now: number): boolean {
 
 /**
  * Words typed and not sent that the phone sent by itself (PhoneAnswer.auto): as time ran out (the box still open), or
- * as the answers locked (with no clock, before it ran out, or words typed on after it did). The host sees them marked ⏱️.
- * `short`: without when, in place of "Yours" before the words, where the locked line's 3 lines have less room (the
- * Final's, its wager first; a partner guess's, under the status): the words must still show.
+ * as the answers locked (with no clock, before it ran out, or words typed on after it did). The host sees them marked
+ * ⏱️, and so does the phone, in one pattern everywhere: "⏱️ Sent when time ran out, from Ann’s phone, unfinished", the
+ * words after it (": “…”", the caller's). `by`: a teammate's phone ("Ann’s phone", "your phone"). `short`: without
+ * when, where the locked line's 3 lines have less room: "⏱️ Sent, unfinished" (a partner guess's, under the status),
+ * or whose they are in its place ("⏱️ Your team’s, unfinished": the Final's, after its wager). The words must still
+ * show. `lower`: inside a sentence ("What the host has (⏱️ sent when time ran out, unfinished)").
  */
-export function autoSentLine(why: 'time' | 'lock', short = false): string {
-  if (short) return 'Sent automatically, unfinished';
-  return why === 'time' ? 'Sent automatically when time ran out: unfinished' : 'Sent automatically when answers locked: unfinished';
+export function autoSentLine(why: 'time' | 'lock', { short, by, lower }: { short?: boolean | string; by?: string; lower?: boolean } = {}): string {
+  const sent = lower ? 'sent' : 'Sent';
+  const head = typeof short === 'string' ? short : short ? sent : `${sent} ${why === 'time' ? 'when time ran out' : 'as answers locked'}`;
+  return `⏱️ ${head}${by ? `, from ${by}` : ''}, unfinished`;
 }

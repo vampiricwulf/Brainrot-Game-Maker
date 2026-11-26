@@ -1,17 +1,17 @@
 // @ts-check
 // Words typed on a phone and not sent go by themselves, marked unfinished (AnswerAsk.autoSend), against the real buzzer
 // room (buzzer/ under `wrangler dev`), in a single window (the host panel on stream). A ✍ clue locked by its answer with
-// no clock: Player 1's typed lines go as the answers lock, the phone says "Sent automatically when answers locked:
-// unfinished" over them and the host's row has them with ⏱️ sent at lock; Player 2, who typed nothing, has "None sent".
-// A second ✍ clue with a countdown: as it runs out, Player 1's words go ("Sent automatically when time ran out:
-// unfinished", the box still open), the host panel shows ✔ ⏱️ and never the words; edited and not sent, they go again at
-// the lock ("when answers locked": they weren't in at 0). Player 2's went at 0 too, then Send answer sends them as
+// no clock: Player 1's typed lines go as the answers lock, the phone says "⏱️ Sent as answers locked, unfinished: “…”"
+// and the host's row has them with ⏱️ sent at lock; Player 2, who typed nothing, has "None sent".
+// A second ✍ clue with a countdown: as it runs out, Player 1's words go ("⏱️ Sent when time ran out, unfinished: “…”.
+// Finished? Tap Send answer to mark it done.", the box still open), the host panel shows ✔ ⏱️ and never the words; edited and not sent, they go again at
+// the lock ("as answers locked": they weren't in at 0). Player 2's went at 0 too, then Send answer sends them as
 // their own (the ⏱️ goes), and that answer stays over an edit not sent; Player 3's went at 0 and were left as they
 // were: "when time ran out" and ⏱️ sent at time's up after the lock too (with a slow network, words typed between its
 // own 0 and the host's clock running out reaching it don't go as "when time ran out"). A partner clue whose guesser
-// types: the guess typed and not sent goes as the answer shows ("Sent automatically, unfinished: “…”" under the status;
+// types: the guess typed and not sent goes as the answer shows ("⏱️ Sent, unfinished: “…”" under the status;
 // the host's guess line ⏱️ sent at lock). Then the Final: words typed and not sent go
-// as its answer shows ("Sent automatically, unfinished: “…”" after the wager), and the reveal rows mark them ⏱️ without the words until each is revealed.
+// as its answer shows ("⏱️ Yours, unfinished: “…”" after the wager), and the reveal rows mark them ⏱️ without the words until each is revealed.
 // Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
 import {
@@ -156,10 +156,10 @@ try {
   const before = await stageH();
   await reveal();
   await p1.locator('#buzz-big').getByText('Answers locked').waitFor();
-  await until(async () => (await small(p1)).startsWith('Sent automatically'), { timeout: 5_000 });
+  await until(async () => (await small(p1)).startsWith('⏱️ Sent'), { timeout: 5_000 });
   assertEq(
     await small(p1),
-    'Sent automatically when answers locked: unfinished · Yours: “line one / line two”',
+    '⏱️ Sent as answers locked, unfinished: “line one / line two”',
     'the answers lock (no clock): the words typed and not sent go by themselves, and the phone says so over them',
   );
   assertEq(await small(p2), 'None sent', 'a phone that typed nothing still says “None sent”');
@@ -180,7 +180,7 @@ try {
     .locator('#buzz.wrong #buzz-big')
     .getByText(/^✘ Wrong/)
     .waitFor();
-  assert((await small(p1)).startsWith('Sent automatically when answers locked: unfinished · Yours:'), 'judged: the phone still says how it went in');
+  assert((await small(p1)).startsWith('⏱️ Sent as answers locked, unfinished:'), 'judged: the phone still says how it went in');
   await host.keyboard.press('Escape');
   await boardIn(stageBoxIn(host)).waitFor();
 
@@ -202,7 +202,7 @@ try {
   assert(
     (await p1.getByLabel(/Your answer/).inputValue()) === '' &&
       (await answersBox.locator('[data-answer-in]', { hasText: 'Player 1' }).innerText()).trim().endsWith('…') &&
-      !(await p1.locator('#answer-state').innerText()).includes('Sent automatically'),
+      !(await p1.locator('#answer-state').innerText()).includes('unfinished'),
     'back online with time up: the box is empty, and the last clue’s words don’t go as this one’s answer',
   );
   await p2.getByLabel(/Your answer/).fill('Bulldog');
@@ -223,7 +223,7 @@ try {
   // (Long enough for the host's clock run out to reach it, and an answer it sent then to come back: 1.5 s each way.)
   await sleep(6500);
   assert(
-    /^Not sent yet: (tap|click) Send answer to send it\. What the host has \(sent automatically when time ran out: unfinished\): “Persian”$/.test(
+    /^Not sent yet: (tap|click) Send answer to send it\. What the host has \(⏱️ sent when time ran out, unfinished\): “Persian”$/.test(
       await p3.locator('#answer-state').innerText(),
     ),
     `typed on just after 0, the host’s clock running out after that sends nothing more (${await p3.locator('#answer-state').innerText()})`,
@@ -231,15 +231,16 @@ try {
   await p3.getByLabel(/Your answer/).fill('Persian');
   net3.delay = 0;
   await p1.locator('#answer-clock').getByText('Time’s up').waitFor({ timeout: 10_000 });
-  await p1.locator('#answer-state').getByText('Sent automatically when time ran out: unfinished').waitFor();
+  await p1.locator('#answer-state').getByText('⏱️ Sent when time ran out, unfinished').waitFor();
   assert(
-    /^Sent automatically when time ran out: unfinished: “Siam”\. (Tap|Click) Send answer to send it as it is\.$/.test(
+    /^⏱️ Sent when time ran out, unfinished: “Siam”\. Finished\? (Tap|Click) Send answer to mark it done\.$/.test(
       await p1.locator('#answer-state').innerText(),
     ) &&
       (await p1.locator('#answer-send').innerText()) === 'Send answer' &&
       (await p1.locator('#answer-form').isVisible()),
     `time's up: the words go by themselves, the box stays open, and Send answer would send them as the player's own (${await p1.locator('#answer-state').innerText()})`,
   );
+  assert(await p1.locator('#answer-state.unsent').isVisible(), 'the line saying they went unfinished is amber, as an edit not sent is');
   // One window: the host panel says it's in and that it went by itself, never the words.
   const chip = answersBox.locator('[data-answer-in]', { hasText: 'Player 1' });
   await chip.filter({ hasText: '✔ ⏱️' }).waitFor();
@@ -262,7 +263,7 @@ try {
   await p1.getByLabel(/Your answer/).fill('Siamese');
   await p1.locator('#answer-state').getByText('Not sent yet').waitFor();
   assert(
-    /What the host has \(sent automatically when time ran out: unfinished\): “Siam”$/.test(await p1.locator('#answer-state').innerText()),
+    /What the host has \(⏱️ sent when time ran out, unfinished\): “Siam”$/.test(await p1.locator('#answer-state').innerText()),
     'edited: the phone says what the host has, and that it went by itself',
   );
   await reveal();
@@ -270,13 +271,13 @@ try {
   await until(async () => (await small(p1)).includes('Siamese'), { timeout: 5_000 });
   assertEq(
     await small(p1),
-    'Sent automatically when answers locked: unfinished · Yours: “Siamese”',
+    '⏱️ Sent as answers locked, unfinished: “Siamese”',
     'at the lock the words as they are go: “when answers locked”, the clock having run out before (they weren’t in at 0)',
   );
   assertEq(await small(p2), 'Yours: “Bulldog”', 'an answer sent on purpose stays over an edit not sent (no mark)');
   assertEq(
     await small(p3),
-    'Sent automatically when time ran out: unfinished · Yours: “Persian”',
+    '⏱️ Sent when time ran out, unfinished: “Persian”',
     'words that went at 0, left as they were: “when time ran out” at the lock too (not sent again)',
   );
   await row('Player 3').getByText('“Persian”').waitFor();
@@ -315,7 +316,7 @@ try {
   await until(async () => (await small(p1)).includes('Shrek-ish'), { timeout: 5_000 });
   assertEq(
     await small(p1),
-    'Sent automatically, unfinished: “Shrek-ish”',
+    '⏱️ Sent, unfinished: “Shrek-ish”',
     'the answer up: the guess typed and not sent goes, and the phone says so, short (under the status line)',
   );
   await guessLine.locator('[data-auto-sent]').waitFor();
@@ -357,7 +358,7 @@ try {
   await until(async () => (await small(p1)).includes('Tralaler'), { timeout: 5_000 });
   assertEq(
     await small(p1),
-    'Your wager: $0 · Sent automatically, unfinished: “Tralaler”',
+    'Your wager: $0 · ⏱️ Yours, unfinished: “Tralaler”',
     'the Final’s answer shows over words typed and not sent (its clock still running): they go, said short after the wager (its words in sight)',
   );
   const inChip = answersBox.locator('[data-answer-in]', { hasText: 'Player 1' });

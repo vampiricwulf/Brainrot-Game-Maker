@@ -1155,12 +1155,14 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      pongs, or the time left while paused; "⏱ 12 s left", amber from 5 s, then "Time's up: the host may still take a
      late answer", locking nothing); words typed and not sent go by themselves, marked unfinished (here, in the Final
      and as a partner clue's typed guess; `AnswerAsk.autoSend`, which a host from before leaves out, so its room takes
-     none): as the countdown runs out (the box stays open: the phone says "Sent automatically when time ran out:
-     unfinished: “…”", and Send answer sends them as the player's own), and as the answers lock, whether the clock ran
-     out or the host showed the answer first (the words as they are then, if not what went at 0: "Sent automatically
-     when answers locked: unfinished", even after the clock ran out, since they weren't in at 0; over "Yours: “…”" in
-     the locked line; in the Final's, after the wager, and a partner guess's, under its status, "Sent automatically,
-     unfinished: “…”" in place of "Yours", so the words still show in its 3 lines). The phone keeps the words until
+     none): as the countdown runs out (the box stays open: the phone says "⏱️ Sent when time ran out, unfinished: “…”.
+     Finished? Tap Send answer to mark it done.", and Send answer sends them as the player's own, which only drops the
+     mark), and as the answers lock, whether the clock ran out or the host showed the answer first (the words as they
+     are then, if not what went at 0: "⏱️ Sent as answers locked, unfinished: “…”", even after the clock ran out, since
+     they weren't in at 0; in place of "Yours: “…”" in the locked line; in the Final's, after the wager, "⏱️ Yours,
+     unfinished: “…”" (or "Your team’s"), and a partner guess's, under its status, "⏱️ Sent, unfinished: “…”", short,
+     so the words still show in its 3 lines). One pattern on every line, ⏱️ as the host's row has it; a teammate's
+     phone is named ", from Ann’s phone" before "unfinished". The phone keeps the words until
      then (nothing typed reaches the room before); the room takes one sent as the lock reaches the phone up to 3 s after
      it saw the lock, never over an answer sent on purpose (a teammate's half-typed words don't replace the team's), nor
      for a seat already judged (a partner guess judged before the answer shows too). The host's row has ⏱ sent at
