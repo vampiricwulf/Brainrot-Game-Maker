@@ -772,6 +772,38 @@ try {
     'and its ↶ Undo puts the category back and brings the undone step back',
   );
 
+  // ---------- 🗑 Clear history… asks in its own place ----------
+  await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click({ button: 'right' });
+  await page.locator('.hist').waitFor({ timeout: 3000 });
+  const clearBtn = page.getByRole('button', { name: '🗑 Clear history…' });
+  const was = await clearBtn.boundingBox();
+  const focusedText = () => page.evaluate(() => document.activeElement?.textContent?.trim() ?? '');
+  await clearBtn.click();
+  const clearAsk = page.locator('.hist .page-header [data-ask]');
+  await clearAsk.waitFor();
+  const askBox = await clearAsk.boundingBox();
+  assert(
+    !!was && !!askBox && askBox.y < was.y + was.height && Math.abs(askBox.x + askBox.width - (was.x + was.width)) < 4,
+    `the question stands where 🗑 Clear history… was, at the header's right end (${JSON.stringify(was)} → ${JSON.stringify(askBox)})`,
+  );
+  assert((await focusedText()) === 'Cancel', `the keys are on its Cancel (${await focusedText()})`);
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'the header still fits the window across');
+  await page.keyboard.press('Escape');
+  await clearBtn.waitFor();
+  await page.waitForFunction(() => document.activeElement?.textContent?.includes('Clear history'));
+  assert(true, 'Esc cancels, the keys back on 🗑 Clear history…');
+  await page.setViewportSize({ width: 390, height: 760 });
+  await clearBtn.click();
+  await clearAsk.waitFor();
+  assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'on a phone too, the question fits the window across');
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await answerAsk(clearAsk.getByRole('button', { name: 'Clear history' }));
+  await page.waitForFunction(() => document.activeElement?.matches('nav [aria-current="page"]'));
+  assert(
+    (await page.locator('.hist .hr:not(.origin)').count()) === 0 && (await clearBtn.isDisabled()),
+    'Clear history clears every step; the keys go to 🕘 History’s tab (the button is off now)',
+  );
+
   assert(dialogs.length === 0, `no browser dialogs (Open… asks in the page) (${dialogs.join(' | ')})`);
   assert(!errors.length, 'no page errors' + (errors.length ? `: ${errors.join('; ')}` : ''));
   console.log('History E2E passed.');

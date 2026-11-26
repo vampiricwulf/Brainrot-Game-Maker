@@ -1500,7 +1500,7 @@ There is no built-in SFX library in v1, but audio can be attached anywhere:
 - **Deleting, and one meaning per sign**: 🗑 Delete *thing* is the last button of its row, a little apart, in red
   (`.danger`), its tooltip saying "(Undo brings it back)"; one that can't be undone asks first ("…"), Cancel first,
   the red answer last (🚪 Exit's Discard & leave is red, apart from Keep & leave; 🕘 History's 🗑 Clear history… sits
-  at the far end). Wherever several things are selected the bar reads "N selected · ⧉ Duplicate · 📋 Copy (where
+  at the far end, and asks in its place, the keys on Cancel). Wherever several things are selected the bar reads "N selected · ⧉ Duplicate · 📋 Copy (where
   there's one) · Clear selection (Esc) · 🗑 Delete N things", and menus say Clear selection. The signs: 🗑 removes a
   thing (from the game, or Remove: off something, kept in the game); ⌫ empties a slot (⌫ Clear, the picture staying
   in 🖼 Media); ✕ only closes (✕ Close); ✘ is Wrong; − is only for numbers; ↩ takes back (↩ Take back, ↩ Put back);

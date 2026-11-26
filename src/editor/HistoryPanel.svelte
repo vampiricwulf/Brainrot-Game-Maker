@@ -137,7 +137,21 @@
 
   /** A jump is waiting for "Undo 34 steps, back to …?" to be answered (asked under the step clicked). */
   let asking = $state<{ n: number; text: string; ok: string } | null>(null);
+  /** 🗑 Clear history… asks in its own place (its question stands where the button was). */
   let clearing = $state(false);
+  let clearBtn = $state<HTMLButtonElement>();
+  /**
+   * The question goes: the keys go back to 🗑 Clear history…, or, once the steps are gone (it's off then, and so are
+   * ↶ ↷), to 🕘 History's tab.
+   */
+  function clearDone(cleared: boolean): void {
+    clearing = false;
+    if (cleared) clear();
+    void tick().then(() => {
+      if (clearBtn && !clearBtn.disabled) clearBtn.focus({ preventScroll: true });
+      else document.querySelector<HTMLElement>('.editor nav [aria-current="page"]')?.focus({ preventScroll: true });
+    });
+  }
 
   /** Go to the game as it was just after entries[n - 1] (0: where the history starts). */
   function pick(n: number): void {
@@ -275,10 +289,27 @@
     {#snippet actions()}
       <button onclick={() => undo('list')} disabled={!history.canUndo} title={history.undoTitle}>↶ Undo</button>
       <button onclick={() => redo('list')} disabled={!history.canRedo} title={history.redoTitle}>↷ Redo</button>
-      <!-- (At the far end, apart from ↶ ↷: it can't be undone.) -->
-      <button class="ghost danger clear" onclick={() => (clearing = true)} disabled={!history.entries.length} title="Clear every step (asks first)"
-        >🗑 Clear history…</button
-      >
+      <!-- (At the far end, apart from ↶ ↷: it can't be undone. It asks in its place, Cancel ready for Enter or Esc.) -->
+      {#if clearing}
+        <div class="clear">
+          <InlineAsk
+            text={`Clear all ${history.entries.length} step${history.entries.length === 1 ? '' : 's'}? You can't undo them afterwards.`}
+            ok="Clear history"
+            danger
+            focusCancel
+            onok={() => clearDone(true)}
+            oncancel={() => clearDone(false)}
+          />
+        </div>
+      {:else}
+        <button
+          class="ghost danger clear"
+          bind:this={clearBtn}
+          onclick={() => (clearing = true)}
+          disabled={!history.entries.length}
+          title="Clear every step (asks first)">🗑 Clear history…</button
+        >
+      {/if}
     {/snippet}
   </PageHeader>
   <!-- (Also while a filter is typed, with fewer steps: it still hides them, so its box and ✕ Show all stay.) -->
@@ -304,17 +335,6 @@
         <span class="muted small" role="status">{shown ? `${shown} of ${history.entries.length} steps` : 'No steps match'}</span>
         <button class="ghost small" onclick={() => (filter = '')}>✕ Show all</button>
       {/if}
-    </div>
-  {/if}
-  {#if clearing}
-    <div class="ask">
-      <InlineAsk
-        text={`Clear all ${history.entries.length} step${history.entries.length === 1 ? '' : 's'}? You can't undo them afterwards.`}
-        ok="Clear history"
-        danger
-        onok={() => ((clearing = false), clear())}
-        oncancel={() => (clearing = false)}
-      />
     </div>
   {/if}
 
@@ -402,8 +422,13 @@
   .hist {
     max-width: 1200px;
   }
-  .ask {
-    margin: 0 0 10px;
+  /* Where the title and 🗑 Clear history…'s question can't share a line (a phone), the buttons go under the title
+     rather than squeezing it to a word a line. */
+  .hist > :global(.page-header) {
+    flex-wrap: wrap;
+  }
+  .hist > :global(.page-header .titles) {
+    flex: 1 1 240px;
   }
   .filter {
     display: flex;
