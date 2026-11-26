@@ -410,6 +410,11 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   as does one not checked yet; once checked, its card also says, on a line of its own, to convert it to MP4 (H.264)
   or MP3 with another program and then Replace everywhere… (the card's strong button then), and the checklist's line
   says 🖼 Media says what to do.
+- A picture (not an SVG) is decoded as it's added, from every way in (upload, drop, paste, Replace…, a link's copy): one
+  the browser can't show (damaged, or not really a picture) is refused with a toast ("“pic.png” can't be shown: it may
+  be damaged, or not really a picture…"), as a HEIC photo is. One already in a game (kept from before) says so on its
+  slide in the editor and the host's copy of the stage ("Couldn't show this picture (a damaged file?)", no file name),
+  where viewers see an empty spot. A picture that takes over 5 s to decode is let in unchecked.
 - **🔄 Convert** (editor only): a video or sound added in the editor that won't play here (or plays without its sound)
   gets a note at the top of the editor and a toast (naming nothing; added in the clue editor, which covers that
   note, the toast points to the item's own panel and its 🔄 Convert…; added in a window with no such panel, a wheel

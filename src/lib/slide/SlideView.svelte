@@ -54,13 +54,14 @@
     return el.kind;
   }
 
-  // Online pictures that wouldn't load (keyed by address): a Drive picture tries its thumbnail first.
+  // Pictures that wouldn't load (keyed by address): online ones (a Drive picture tries its thumbnail first), and
+  // stored files the browser can't show (damaged, or not really pictures: one kept from before they were checked).
   let broken = $state<Record<string, boolean>>({});
   function imgError(e: Event, src: string): void {
     const img = e.currentTarget as HTMLImageElement;
     const next = imageFallback(src);
     if (next && img.src !== next) img.src = next;
-    else if (!src.startsWith('blob:')) broken[src] = true;
+    else broken[src] = true;
   }
 </script>
 
@@ -103,7 +104,9 @@
         {@const src = mediaUrls[el.editedMedia ?? el.media] ?? mediaUrls[el.media]}
         {#if src && broken[src]}
           <!-- Viewers (and OBS) see an empty spot; only the host is told why. -->
-          {#if hostView}<div class="missing"><span>Couldn't load the picture from {linkHost(src)}</span></div>{/if}
+          {#if hostView}<div class="missing">
+              <span>{src.startsWith('blob:') ? "Couldn't show this picture (a damaged file?)" : `Couldn't load the picture from ${linkHost(src)}`}</span>
+            </div>{/if}
         {:else if src}
           <img {src} alt="" style:object-fit={el.fit} style:border-radius="{el.radius ?? 0}px" draggable="false" onerror={(e) => imgError(e, src)} />
         {:else}

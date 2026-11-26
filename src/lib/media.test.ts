@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   addMediaFile,
+  canShowPicture,
   dropPhoneCopies,
   getBlob,
   identicalMedia,
@@ -63,6 +64,46 @@ describe('adding files', () => {
     const d = await addMediaFile(game, new File(['same bytes'], 'again.png', { type: 'image/png' }), 'again.png', {}, { quiet: true });
     expect(d).toBe(a);
     expect(app.toast).toBe('');
+  });
+
+  it('refuses a picture the browser can’t decode (damaged, or not really a picture), as it does a HEIC photo', async () => {
+    const game = newGame();
+    vi.stubGlobal('createImageBitmap', () => Promise.reject(new DOMException('The source image could not be decoded.', 'InvalidStateError')));
+    try {
+      await expect(addMediaFile(game, new File(['\x89PNG\r\n\x1a\n\0\0\0'], 'pic.png', { type: 'image/png' }))).rejects.toThrow(
+        '“pic.png” can’t be shown: it may be damaged, or not really a picture.',
+      );
+      expect(game.media).toEqual([]);
+      // A sound isn't a picture: it isn't decoded here.
+      await addMediaFile(game, new File(['beep'], 'beep.wav', { type: 'audio/wav' }));
+      expect(game.media.map((m) => m.name)).toEqual(['beep.wav']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('lets a picture in when it decodes, when there’s no decoder, and when decoding takes too long', async () => {
+    const blob = new Blob(['x'], { type: 'image/png' });
+    const close = vi.fn();
+    vi.stubGlobal('createImageBitmap', () => Promise.resolve({ close }));
+    try {
+      expect(await canShowPicture(blob)).toBe(true);
+      expect(close).toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+    expect(typeof globalThis.createImageBitmap).toBe('undefined');
+    expect(await canShowPicture(blob)).toBe(true);
+    vi.useFakeTimers();
+    vi.stubGlobal('createImageBitmap', () => new Promise(() => {}));
+    try {
+      const slow = canShowPicture(blob);
+      await vi.advanceTimersByTimeAsync(5000);
+      expect(await slow).toBe(true);
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
   });
 
   it('keeps a file in memory when storage fails, and says the write failed', async () => {

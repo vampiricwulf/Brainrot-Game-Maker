@@ -312,9 +312,57 @@ export function mimeFor(name: string, mime?: string): string {
 /** HEIC photos (the iPhone's format): no browser, nor the desktop app, can show them. */
 const isHeic = (name: string, mime: string) => /^image\/hei[cf]/.test(mime) || /^hei[cf]$/.test(extOf(name));
 
+/** How long a picture's decoding may take before it's let in unchecked (a huge photo on a slow computer). */
+const DECODE_WAIT = 5000;
+
+/**
+ * Whether the browser can show this picture: false only when it definitely can't decode it (a damaged file, or one
+ * that isn't really a picture). With no decoder here (tests), or decoding that takes too long, it's let in.
+ */
+export async function canShowPicture(blob: Blob): Promise<boolean> {
+  const bitmap = async () => {
+    if (typeof createImageBitmap !== 'function') return null;
+    try {
+      (await createImageBitmap(blob)).close();
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  // (What actually shows it on a slide: a picture createImageBitmap won't take may still show there.)
+  const img = async () => {
+    if (typeof Image !== 'function' || typeof URL.createObjectURL !== 'function' || typeof Image.prototype.decode !== 'function') return null;
+    const url = URL.createObjectURL(blob);
+    try {
+      const el = new Image();
+      el.src = url;
+      await el.decode();
+      return true;
+    } catch {
+      return false;
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  };
+  const check = async () => {
+    const b = await bitmap();
+    if (b) return true;
+    // (Refused only when a decoder said no: with neither here, it's let in.)
+    return (await img()) ?? b !== false;
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<boolean>((done) => (timer = setTimeout(() => done(true), DECODE_WAIT)));
+  try {
+    return await Promise.race([check(), late]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * The checks every file added to the game goes through: a HEIC photo is refused (it would stay blank rather than show),
- * so is a file that isn't a picture, video, sound or font; an SVG is sanitized. Returns what to store.
+ * so is a picture the browser can't decode (damaged, or not really a picture), and a file that isn't a picture, video,
+ * sound or font; an SVG is sanitized. Returns what to store.
  */
 async function checkedFile(file: Blob, name: string): Promise<{ mime: string; kind: MediaKind; blob: Blob }> {
   const mime = mimeFor(name, file.type);
@@ -323,6 +371,8 @@ async function checkedFile(file: Blob, name: string): Promise<{ mime: string; ki
   // (In the editor's words, as a file dropped on it is told: straydrop.ts.)
   if (!kind) throw new Error(`“${name}” isn’t a picture, video, sound or font file.`);
   const blob = mime === 'image/svg+xml' ? new Blob([sanitizeSvg(await file.text())], { type: mime }) : file;
+  if (kind === 'image' && mime !== 'image/svg+xml' && !(await canShowPicture(blob)))
+    throw new Error(`“${name}” can’t be shown: it may be damaged, or not really a picture. Try saving it again, or use another copy.`);
   return { mime, kind, blob };
 }
 

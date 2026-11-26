@@ -2,7 +2,7 @@
 // (rename, drop to replace, select several to remove; a card's foot in fixed places and 🗑 in the same spot on every
 // card, "used 1× ▾" listing where and going there, a card's menu by a right-click and by Shift+F10), the slide's
 // right-click menus, renaming layers, board images on the slides' clipboard, and the ⌨ Shortcuts sheet.
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -10,6 +10,7 @@ import {
   answerReplace,
   macClicks,
   openGameFile,
+  packGame,
   failureShots,
   assert,
   launchChromium,
@@ -114,6 +115,15 @@ try {
       '“wall-copy.png” is already in 🖼️ Media as “wall.png”: using that one. “notes.txt” isn’t a picture, video, sound or font file.' &&
       (await mediaCount()) === 1,
     `＋ Add files… with a file already in the game and one it can’t use: one toast says both (${await toast.innerText()})`,
+  );
+  // A picture the browser can't show (a PNG's first bytes, then nothing: a broken download) is refused, saying why.
+  const damaged = Buffer.concat([Buffer.from(PNG, 'base64').subarray(0, 16), Buffer.alloc(42)]);
+  const [badChooser] = await Promise.all([page.waitForEvent('filechooser'), page.getByRole('button', { name: '＋ Add files…' }).click()]);
+  await badChooser.setFiles([{ name: 'pic.png', mimeType: 'image/png', buffer: damaged }]);
+  await page.waitForFunction(() => document.querySelector('.toast')?.textContent?.includes('pic.png'));
+  assert(
+    (await toast.innerText()).includes('“pic.png” can’t be shown: it may be damaged, or not really a picture') && (await mediaCount()) === 1,
+    `a damaged picture isn't added: a toast says it can't be shown (${await toast.innerText()})`,
   );
 
   // ---------- An open picker takes a dropped file, and a pasted one ----------
@@ -898,6 +908,39 @@ try {
     await row.locator('.name').click();
     assert((await inspectorIn(b).locator('p.missing').count()) === 0, 'and its panel has no note');
     await fresh.close();
+  }
+
+  // ---------- A damaged picture already in a game (kept from before pictures were checked) says so on its slide ----------
+  {
+    const el = { id: 'e1', x: 100, y: 100, w: 800, h: 400, rotation: 0, opacity: 1, zIndex: 1, kind: 'image', media: 'bad', fit: 'contain' };
+    const game = {
+      id: 'g_damaged',
+      version: 2,
+      title: 'Damaged picture',
+      settings: { allowNegativeScores: true, deductOnWrong: false, defaultTimerSeconds: 30, finalTimerSeconds: 30, currencySymbol: '$', maxPlayers: 8 },
+      players: [],
+      rounds: [],
+      media: [{ id: 'bad', name: 'pic.png', mime: 'image/png', size: damaged.length, kind: 'image' }],
+      audio: {},
+      wheels: [],
+      dice: [],
+      theme: {},
+      cards: [{ id: 'sc_bad', name: 'Bad', background: {}, elements: [el] }],
+    };
+    const packPath = resultsPath('editormedia-damaged.brainrot');
+    writeFileSync(packPath, await packGame(game, { bad: damaged }));
+    const ctx = await browser.newContext({ viewport: { width: 1400, height: 900 } });
+    const c = await ctx.newPage();
+    c.on('pageerror', (e) => errors.push(`[damaged] ${e.message}`));
+    await c.goto(pathToFileURL(file).href);
+    await openGameFile(c, packPath);
+    await c.locator('nav > button', { hasText: '🤫 Cards' }).click();
+    await c.locator('.canvas').getByText("Couldn't show this picture (a damaged file?)").waitFor();
+    assert(
+      (await c.locator('.canvas').getByText('pic.png').count()) === 0,
+      'a damaged picture already in the game says so on its slide (not its file name), not just an empty box',
+    );
+    await ctx.close();
   }
 
   assert(!errors.length, `no page errors (${errors.join(' | ')})`);
