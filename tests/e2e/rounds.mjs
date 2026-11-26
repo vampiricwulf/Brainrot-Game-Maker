@@ -393,9 +393,7 @@ try {
   // Show question ▶ is never greyed: pressed with a wager missing, the keys go to its box and the status line says whose.
   assert((await showQuestion.isEnabled()) && (await waiting.count()) === 1, 'Show question waits for the wagers, never greyed');
   await showQuestion.click();
-  await statusLineIn(page)
-    .locator('[data-click-note]', { hasText: /Waiting on .+: type their wagers, or untick them to sit out/ })
-    .waitFor();
+  await statusLineIn(page).locator('[data-click-note]', { hasText: 'Type their wagers in the boxes below, or untick them to sit out' }).waitFor();
   assert(
     (await wagerBoxes.first().evaluate((b) => b === document.activeElement)) &&
       (await statusLineIn(page).innerText()).includes('taking wagers') &&

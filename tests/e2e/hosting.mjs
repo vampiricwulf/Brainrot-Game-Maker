@@ -777,12 +777,18 @@ try {
   await statusLineIn(page).click();
   await page.keyboard.press('n');
   await statusLineIn(page)
-    .locator('[data-click-note]', { hasText: /Waiting on .+: type their wagers?, or untick them to sit out/ })
+    .locator('[data-click-note]', { hasText: /^Type their wagers? in the box(es)? below, or untick them to sit out$/ })
     .waitFor();
   assert(
     (await page.evaluate(() => document.activeElement?.matches('.fj .wagers input[data-wager]') && document.activeElement.value === '')) &&
-      !(await toastsIn(page, { hasText: 'Waiting on' }).count()),
-    'N with a wager missing says whose in the status line (not a toast at the foot) and goes to that box',
+      !(await toastsIn(page, { hasText: 'untick them to sit out' }).count()),
+    'N with a wager missing says what to do in the status line (not a toast at the foot) and goes to that box',
+  );
+  // (Whose is said once, in the box's first line right under it, never again in the status line.)
+  const waitWords = await finalControlsIn(page).locator('[data-wagers-line]').innerText();
+  assert(
+    waitWords.startsWith('Waiting on ') && !(await statusLineIn(page).innerText()).includes('Waiting on'),
+    `the names are in the box's first line, not repeated in the status line (${waitWords})`,
   );
   const n = await boxes.count();
   for (let i = 0; i < n; i++) await boxes.nth(i).fill(String(100 + i));

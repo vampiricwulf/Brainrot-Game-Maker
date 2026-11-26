@@ -2684,6 +2684,8 @@
         session.phase === 'boardgame'
           ? { editing: boardEdit.on, steps: bgSteps, noNumber: bgNoNumber, question: bgQuestion?.turn === bgAmountKey ? bgQuestion : null }
           : null,
+      // (The controls hidden: a wager missing is said in a toast, naming whose, with no box under it.)
+      controlsHidden: hideControls,
       act: goActs,
     };
   });
@@ -3113,7 +3115,8 @@
   /**
    * The Final's wagers with some still to type, not whole or over the max (or, in the reveals, the spotlit player's
    * missing): typed values, so no check opens (goon.ts finalWaits). The keys go to the first box to fill, its row
-   * flashes, and the status line says whose and what to do ("Waiting on Bob's phone & Cat…"). True: it waits.
+   * flashes, and the status line says what to do (the box's first line, under it, says whose; the controls hidden, the
+   * toast says whose too: "Waiting on Bob's phone & Cat…"). True: it waits.
    */
   function wagersWaiting(): boolean {
     const w = finalWaits(go);

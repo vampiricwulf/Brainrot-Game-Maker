@@ -401,14 +401,18 @@ try {
     'phones send the wagers: no wager box takes the focus (the keys stay the host’s)',
   );
   // The blue Show question ▶ is never greyed: N with wagers still to come puts the keys in the first box to fill (no
-  // check opens: they're typed), and the status line says whose, a phone's on its way. (Players 2 and 3 at $0 can wager
-  // up to $2,000: nothing is filled in for them.)
+  // check opens: they're typed), the status line says what to do, and the box's first line under it says whose, a
+  // phone's on its way. (Players 2 and 3 at $0 can wager up to $2,000: nothing is filled in for them.)
   assert(await mainButton(host, 'Show question ▶').isEnabled(), 'the Final’s wagers: the blue Show question ▶ is not greyed while some are missing');
-  // (On a narrower window, here 1000 wide, it doesn't fit the status line: cut off there, it's said in full at the foot.)
-  await host.setViewportSize({ width: 1000, height: 900 });
+  // (On a narrower window, here 700 wide, it doesn't fit the status line: cut off there, it's said in full at the foot.)
+  await host.setViewportSize({ width: 700, height: 900 });
   await host.keyboard.press('n');
-  const waitNote = 'Waiting on Player 1’s phone, Player 2’s phone & Player 3: type their wagers, or untick them to sit out';
+  const waitNote = 'Type their wagers in the boxes below, or untick them to sit out';
   await statusLineIn(host).locator('[data-click-note]', { hasText: waitNote }).waitFor();
+  assert(
+    (await finalControlsIn(host).locator('[data-wagers-line]').innerText()) === 'Waiting on Player 1’s phone, Player 2’s phone & Player 3',
+    'the box’s first line says whose, a phone’s on its way',
+  );
   const noteCut = await statusLineIn(host)
     .locator('[data-click-note] .nt')
     .evaluate((e) => e.scrollWidth > e.clientWidth + 1);

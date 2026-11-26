@@ -855,8 +855,11 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   whether it spun. A Daily Double's who found it and wager, and the Final's wagers, are typed, so they never open it:
   `N`, `Enter` in the wager box or a click on Show question ▶ with one missing (or over the max) keeps the keys in the
   box (the Final's: the first to fill; in its reveals, Show wager ▶ with none in goes to that player's row), flashes the
-  names or the box and says what's missing in the status line (“Waiting on Bob's phone & Cat: type their wagers, or Sits
-  out”; never a phone's wager in one window). Each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
+  names or the box and says what's missing in the status line (never a phone's wager in one window). The Final's wagers
+  box's first line already names whose (“Waiting on Bob's phone & Cat”), so there the status line says only what to do
+  (“Type their wagers in the boxes below, or untick them to sit out”, “Type a whole number, 0 or more”, “Type less, or
+  tick Ignore the limits”); with the controls hidden it's a toast that names them (“Waiting on Bob's phone & Cat: type
+  their wagers, or untick them to sit out”). Each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
   `Shift+Enter`, 🔔 Open the buzzers `U`, 🎲 Roll for it `O`, ⏱ Start the countdown `T`, ✔ Judge all ▶ board, ✍ Judge
   them, ✘ The rest are wrong, 📤 Send it; a partner clue's 🎡 Spin for a partner `W`, the players by number, Solo, ↩ Put
   back `Shift+Esc`, 📤 Send and start `Enter` (never within a second of the question), ⏱ Start the clock (`Enter`, or

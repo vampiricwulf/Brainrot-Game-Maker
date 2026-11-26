@@ -559,14 +559,15 @@ try {
   const catBox = finalControlsIn(host).locator('input[data-wager="p3"]');
   assert((await bobBox.inputValue()) === '' && (await catBox.inputValue()) === '', 'Bob and Cat on $0 have no 0 filled in: they can wager up to $2,000');
   await finalControlsIn(host).locator('[data-wagers-line]', { hasText: 'Waiting on Bob’s phone & Cat’s phone' }).waitFor();
-  // A click on the stage never shows the Final's question: the status line says who it waits on (names only).
+  // A click on the stage never shows the Final's question: the status line says what to do (the box's first line, under
+  // it, says whose: names only).
   const note = statusLineIn(host).locator('[data-click-note]');
   await stageBoxIn(host).click();
   const clickedAt = Date.now();
-  await note.filter({ hasText: /^Waiting on Bob.*Cat/ }).waitFor();
+  await note.filter({ hasText: 'Type their wagers in the boxes below, or untick them to sit out' }).waitFor();
   assert(
     !(await note.innerText()).includes('300') && (await statusLineIn(host, { hasText: 'Question on screen' }).count()) === 0,
-    `a click on the wagers says who they wait on, never Ann’s amount, and the question stays off (${await note.innerText()})`,
+    `a click on the wagers says what to do, never Ann’s amount, and the question stays off (${await note.innerText()})`,
   );
   await finalControlsIn(host).locator('input[data-wager="p2"]').fill('200');
   await finalControlsIn(host).locator('input[data-wager="p3"]').fill('100');

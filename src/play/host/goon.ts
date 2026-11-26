@@ -345,6 +345,11 @@ export type GoCtx = {
   final: FinalNow;
   /** A board game's turn (null outside one). */
   board: BoardNow | null;
+  /**
+   * One window, the controls hidden (the stage alone): what's said goes in a toast, with no box under it, so it names
+   * whom it waits on (left out: the controls show).
+   */
+  controlsHidden?: boolean;
   act: GoActs;
 };
 
@@ -1448,6 +1453,8 @@ export function ddWaits(c: GoCtx): { say: string; at: 'names' | 'wager' } | null
  * The Final's typed values (3.1, 3.4 I): a wager missing, not a whole number or over the max, at Show question ▶; the
  * spotlit player with no wager, at Show wager ▶. No check opens: the keys go to the first box to fill (`at`), its row
  * flashes (`row`), and the status line says what to do. Null: it can go. In one window a phone's wager is never said.
+ * At the wagers the box's first line (wagersLine) names whose, right under the status line, so this says only what to
+ * do; with the controls hidden (a toast, no box) it names them too.
  */
 export function finalWaits(c: GoCtx): { say: string; at: string; row: string } | null {
   const s = c.session;
@@ -1459,12 +1466,17 @@ export function finalWaits(c: GoCtx): { say: string; at: string; row: string } |
     const rows = s.players.map((p) => p.id).filter((id) => f.players.includes(id));
     const first = rows.find((id) => missing.includes(id) || whole.includes(id) || over.includes(id));
     if (!first) return null;
+    const one = missing.length === 1;
+    if (missing.length && !c.controlsHidden)
+      return { say: `Type ${one ? 'their wager in the box' : 'their wagers in the boxes'} below, or untick them to sit out`, ...box(first) };
     if (missing.length)
       return {
-        say: `Waiting on ${waitingOn(s, missing, c.final.wagerPhones)}: type ${missing.length === 1 ? 'their wager' : 'their wagers'}, or untick them to sit out`,
+        say: `Waiting on ${waitingOn(s, missing, c.final.wagerPhones)}: type ${one ? 'their wager' : 'their wagers'}, or untick them to sit out`,
         ...box(first),
       };
+    if (whole.length && !c.controlsHidden) return { say: 'Type a whole number, 0 or more', ...box(first) };
     if (whole.length) return { say: `Not a whole number: ${named(c, whole)} (type a whole number, 0 or more)`, ...box(first) };
+    if (!c.controlsHidden) return { say: 'Type less, or tick Ignore the limits', ...box(first) };
     if (over.length === 1)
       return {
         say: `Over ${name(c, over[0])}’s max (${formatPoints(finalWagerCap(s, c.game, over[0]), sym(c))}): type less, or tick Ignore the limits`,

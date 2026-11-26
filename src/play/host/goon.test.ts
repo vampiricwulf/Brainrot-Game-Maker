@@ -1195,21 +1195,37 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     f.wagers = { a: 100 };
     const c = (over: Partial<GoCtx> = {}) => ctx(g, s, { final: { ...FIN, wagerPhones: ['b'] }, ...over });
     const cards = [{ id: 'k', name: 'Card “Hint”', to: ['a'] }];
+    // (The box's first line, right under the status line, names whose: the status line says only what to do. With the
+    // controls hidden, a toast and no box: it names them.)
+    const hid = (over: Partial<GoCtx> = {}) => c({ controlsHidden: true, ...over });
     expect(finalWaits(c())).toEqual({
-      say: 'Waiting on Bob’s phone & Cat: type their wagers, or untick them to sit out',
+      say: 'Type their wagers in the boxes below, or untick them to sit out',
       at: '.play .panel input[data-wager="b"]',
       row: '.play .panel .wrow[data-player="b"]',
     });
+    expect(finalWaits(hid())!.say).toBe('Waiting on Bob’s phone & Cat: type their wagers, or untick them to sit out');
     // (The blue button is never greyed, and no check opens while a wager is missing, a card or not.)
     const st = mainStep(c({ cards }))!;
     expect([st.busy, leftNow(c({ cards }), st)]).toEqual([undefined, []]);
     f.phonesLocked = true;
-    expect(finalWaits(c())!.say).toBe('Waiting on Bob & Cat: type their wagers, or untick them to sit out');
+    expect(finalWaits(hid())!.say).toBe('Waiting on Bob & Cat: type their wagers, or untick them to sit out');
+    f.wagers = { a: 100, b: 50 };
+    expect([finalWaits(c())!.say, finalWaits(hid())!.say]).toEqual([
+      'Type their wager in the box below, or untick them to sit out',
+      'Waiting on Cat: type their wager, or untick them to sit out',
+    ]);
     f.wagers = { a: 100, b: 50, c: 2.5 };
-    expect(finalWaits(c())!.say).toBe('Not a whole number: Cat (type a whole number, 0 or more)');
+    expect([finalWaits(c())!.say, finalWaits(hid())!.say]).toEqual([
+      'Type a whole number, 0 or more',
+      'Not a whole number: Cat (type a whole number, 0 or more)',
+    ]);
     applyScore(s, g, ['a'], 300, 'x');
     f.wagers = { a: 5000, b: 0, c: 0 };
-    expect([finalWaits(c({ wagerLimitsOff: true })), finalWaits(c())!.say]).toEqual([null, 'Over Ann’s max ($2,000): type less, or tick Ignore the limits']);
+    expect([finalWaits(c({ wagerLimitsOff: true })), finalWaits(c())!.say, finalWaits(hid())!.say]).toEqual([
+      null,
+      'Type less, or tick Ignore the limits',
+      'Over Ann’s max ($2,000): type less, or tick Ignore the limits',
+    ]);
     // Cat at $0 can wager up to $2,000 too.
     f.wagers = { a: 2000, b: 0, c: 2000 };
     expect(finalWaits(c())).toBeNull();
