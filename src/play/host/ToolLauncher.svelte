@@ -489,11 +489,23 @@
     flex-wrap: wrap;
     gap: 6px;
   }
-  /* Up to 1240px wide: 🤫 and 🎭 alone (their tooltips say what they do, and they're still read out by name), so on the
-     board the tools and the round's ◀ / picker / ▶ stay on one line, and the single-window stage keeps one size from
-     the board to a clue. */
-  @media (max-width: 1240px) {
+  /* With a mouse, up to 1240px wide: 🤫 and 🎭 alone (their tooltips say what they do, and they're still read out by
+     name), so on the board the tools and the round's ◀ / picker / ▶ stay on one line. A touch screen shows no
+     tooltips: there they keep their words (the row wraps in the panel on a phone, never into the stage). */
+  @media (max-width: 1240px) and (hover: hover) {
     .tl .word {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+  }
+  /* On a touch screen, a phone held upright and not tall (up to 800px: 360×740), 🤫 🎭 and 📊 as their signs after all:
+     their words would take the tools row a line more, out of the room the moment's box needs there. */
+  @media (hover: none) and (max-width: 560px) and (max-height: 800px) {
+    .tl :is(.word, .name) {
       position: absolute;
       width: 1px;
       height: 1px;
@@ -546,8 +558,9 @@
     vertical-align: bottom;
   }
   /* (And up to 1040px wide 📊 Scoreboard as 📊: room for 🔇 and 🤫 2 beside a Go to round with a long round name in it.
-     In DejaVu Sans, the widest font it's drawn in, that row takes 998px with the word: a 1026px window.) */
-  @media (max-width: 1040px) {
+     In DejaVu Sans, the widest font it's drawn in, that row takes 998px with the word: a 1026px window. With a mouse
+     only: a touch screen shows no tooltip, so there it keeps its word.) */
+  @media (max-width: 1040px) and (hover: hover) {
     .tl .name {
       position: absolute;
       width: 1px;

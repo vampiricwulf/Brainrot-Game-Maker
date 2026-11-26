@@ -2118,7 +2118,7 @@
     <!-- What goes to the stream: its sound, the audience window and the scores-only window (a lower third for OBS).
          Closing the audience window blacks out the stream capture, so it asks first. -->
     <span class="group g-windows">
-      <button onclick={onsound} title="Test the sound: hear it, pick where it plays, and see how to stream it (Discord, OBS)"
+      <button class="snd" onclick={onsound} title="Test the sound: hear it, pick where it plays, and see how to stream it (Discord, OBS)"
         >🔊 <span class="txt">Sound</span></button
       >
       <button
@@ -2900,9 +2900,9 @@
       padding-right: 9px;
     }
   }
-  /* Under the stage up to 1340px wide, ▭ Scores window as ▭ (still read out by name, its ● when open), first: with its
-     word the bar would wrap to two lines there, shrinking the stage. */
-  @media (max-width: 1340px) {
+  /* With a mouse, under the stage up to 1340px wide, ▭ Scores window as ▭ (still read out by name, its ● when open),
+     first: with its word the bar would wrap to two lines there. (A touch screen keeps the words: see below.) */
+  @media (max-width: 1340px) and (hover: hover) {
     .panel:not(.side) > .fixed .sw .txt {
       position: absolute;
       width: 1px;
@@ -2912,9 +2912,10 @@
       white-space: nowrap;
     }
   }
-  /* Under the stage up to 1040px wide, ❔ Help as its sign (still read out by name), before the others: its word would
-     wrap the bar to two lines (with ▶ Uncover and 📺 Audience ●, up to 1008px), where it fitted on one before. */
-  @media (max-width: 1040px) {
+  /* With a mouse, under the stage up to 1040px wide, ❔ Help as its sign (still read out by name), before the others:
+     its word would wrap the bar to two lines (with ▶ Uncover and 📺 Audience ●, up to 1008px), where it fitted on one
+     before. */
+  @media (max-width: 1040px) and (hover: hover) {
     .panel:not(.side) > .fixed .g-exit .txt {
       position: absolute;
       width: 1px;
@@ -2924,10 +2925,9 @@
       white-space: nowrap;
     }
   }
-  /* Narrower still under the stage (a laptop zoomed in): ↶ ↷ 🔊 📜 👥 ⚖ 🙈 📺 ❔ as their signs only (still read out by
-     name, their tooltips say what they do), so the fixed bar stays one line, 🚪 Exit at its right, and the stage keeps
-     its height. */
-  @media (max-width: 940px) {
+  /* With a mouse, narrower still under the stage (a laptop zoomed in): ↶ ↷ 🔊 📜 👥 ⚖ 🙈 📺 ❔ as their signs only (still
+     read out by name, their tooltips say what they do), so the fixed bar stays one line, 🚪 Exit at its right. */
+  @media (max-width: 940px) and (hover: hover) {
     .panel:not(.side) > .fixed :is(.word, .txt) {
       position: absolute;
       width: 1px;
@@ -2935,6 +2935,41 @@
       overflow: hidden;
       clip-path: inset(50%);
       white-space: nowrap;
+    }
+  }
+  /* A touch screen shows no tooltips, so under the stage the bar keeps the words a sign can't say at every width:
+     ▭ Scores window, 📺 Audience and 🙈 Hide (beside ⏸ Cover). The others (↶ ↷ 📜 👥 ⚖ 🔊 ❔) keep theirs where all
+     of it fits on one line (from 1100px wide, a tablet on its side, with its buttons a little smaller up to 1340px
+     as at 1180px with a mouse); narrower, they go to their signs. On a phone held upright the bar wraps anyway: its
+     rows come out of the panel, never the stage. */
+  @media (hover: none) and (max-width: 1099px) {
+    .panel:not(.side) > .fixed :is(.g-edit .word, .g-lists .txt, .snd .txt, .g-exit .txt) {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+    /* (Its buttons 4px apart, as beside the stage: one line from about 760px wide, a tablet held upright.) */
+    .panel:not(.side) > .fixed,
+    .panel:not(.side) > .fixed > .group {
+      gap: 4px;
+    }
+  }
+  /* (On a phone held upright its buttons wrap one by one, not a group at a time, so it takes one row more at most.) */
+  @media (hover: none) and (max-width: 560px) {
+    .panel:not(.side) > .fixed > .group {
+      display: contents;
+    }
+  }
+  @media (hover: none) and (max-width: 1340px) {
+    .panel:not(.side) > .fixed :global(button) {
+      padding: 5px 8px;
+      font-size: 13px;
+    }
+    .panel:not(.side) > .fixed > .divider {
+      margin: 0;
     }
   }
   /* A touch screen (no mouse): the fixed bar's buttons and ⋯ Tools at least 32px to tap (they're 26-28px otherwise).

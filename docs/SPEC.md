@@ -797,8 +797,15 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   finds), then a fixed
   bar in groups by purpose (Undo, Redo · Log, Players, Rules · Cover, Hide · Sound, Audience, ▭ Scores window, ● while
   open · ❔ Help, Exit; 📜 Log shows pressed while the Log is open, which with an audience window sits beside the host's
-  stage preview and info, taking its room from them, so the host panel under them keeps its full width; ▭ Scores window as ▭ up to 1340 px wide, ❔ Help as its sign only up to 1040 px, and under about
-  940 px the others too, so it stays one line; beside the stage a grid: Undo Redo and the lists, then Sound, Audience
+  stage preview and info, taking its room from them, so the host panel under them keeps its full width; with a mouse ▭ Scores window as ▭ up to 1340 px wide, ❔ Help as its sign only up to 1040 px, and under about
+  940 px the others too, so it stays one line (their tooltips say what they are); a touch screen with no mouse shows no
+  tooltips, so there ▭ Scores window, 📺 Audience and 🙈 Hide keep their words at every width, and the rest theirs from
+  1100 px wide (one line, its buttons a little smaller up to 1340 px), under that as their signs, 4 px apart (one line
+  from about 760 px wide, 780 with ▶ Uncover), on a phone held upright wrapping button by button, its rows 2 px apart
+  (three rows from 320 to 390 px wide, as tall as its two or three were, so the moment's box keeps its room);
+  likewise the tools row's 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard keep their words on a touch screen (as signs
+  only with a mouse up to 1240 and 1040 px), the row wrapping in the panel where it must, except on a phone held
+  upright up to 800 px tall (360×740), where their words would take the row a line more out of that room; beside the stage a grid: Undo Redo and the lists, then Sound, Audience
   and Scores window across both columns, then Cover Hide and Help Exit, every word kept). On a short window the round's own
   box keeps a few rows in sight (the panel scrolls), a roll's box above it too. **A clue's flow row** (the row level with
   the main button: the Amount row, or the folded one with ± Other points…) keeps fixed places: ↩ Put back (keep tile)
