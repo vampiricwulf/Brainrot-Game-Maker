@@ -1,6 +1,7 @@
 // The round modes a game can mix (spec: docs/GAMES-MAKER-SPEC.md §5.2). Their icons mean the mode and nothing else
-// (⭐ is a Daily Double, 🎲 dice, 🎨 the theme). A sign that's text by default (🗺️, ♟️, 🖼️) has U+FE0F after it, so
-// it shows in colour beside the others, not as a grey outline where the system's first font has it as text.
+// (⭐ is a Daily Double, 🎲 dice, 🎨 the theme, 🖼️ a picture or 🖼️ Media). A sign that's text by default (🗺️, ♟️, 📽️)
+// has U+FE0F after it, so it shows in colour beside the others, not as a grey outline where the system's first font
+// has it as text.
 import type { RoundMode } from './model';
 
 export interface ModeInfo {
@@ -15,5 +16,5 @@ export const ROUND_MODES: Record<RoundMode, ModeInfo> = {
   final: { label: 'Final Jeopardy', icon: '🏆', hint: 'One category, private wagers, one question, reveals player by player' },
   rpg: { label: 'RPG', icon: '🗺️', hint: 'A world of screens on a map: move the players’ avatars, doorways, items, shops' },
   boardgame: { label: 'Board game', icon: '♟️', hint: 'Spaces in a loop or a path: take turns to spin or roll, step along, pass Start, get sent away' },
-  slides: { label: 'Slides', icon: '🖼️', hint: 'Slides shown one after another: an introduction, the rules, a break (nothing to answer)' },
+  slides: { label: 'Slides', icon: '📽️', hint: 'Slides shown one after another: an introduction, the rules, a break (nothing to answer)' },
 };

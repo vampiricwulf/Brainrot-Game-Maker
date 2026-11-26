@@ -100,7 +100,7 @@ try {
   for (const [icon, name] of [
     ['🗺', 'RPG'],
     ['♟', 'Board game'],
-    ['🖼', 'Slides'],
+    ['📽', 'Slides'],
   ])
     assert(
       rounds.some((t) => t.startsWith(`${icon}${VS} ${name}`)),
@@ -147,7 +147,7 @@ try {
     deals.some((t) => t.startsWith(`🕵${VS} Odd one out`)),
     '📋 Ready-made deal…: 🕵️ Odd one out too',
   );
-  // (The sidebar lists 🖼️ Media under the rounds, beside 🖼️ Slides ones.)
+  // (The sidebar lists 🖼️ Media under the rounds; 🖼️ means pictures only, a Slides round is 📽️.)
   const mediaTab = (await page.locator('nav > button', { hasText: 'Media (' }).innerText()).trim();
   assert(mediaTab.startsWith(`🖼${VS} Media (`), `the sidebar: 🖼️ Media too (${mediaTab})`);
   // Its Game list is in sentence case, like every other heading and button: no Title Case names.

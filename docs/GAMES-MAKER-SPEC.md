@@ -297,7 +297,8 @@ interface Session {
 
 ### 5.4 Round order and navigation
 
-- The editor's nav lists rounds in play order with a mode icon: 🟦 board, ⭐ final, 🗺 RPG. Rounds can be
+- The editor's nav lists rounds in play order with a mode icon: 🟦 board, 🏆 Final, 🗺️ RPG, ♟️ board game, 📽️
+  slides (`src/lib/modes.ts`; each icon means its mode only, so 🖼️ stays for pictures and 🖼️ Media). Rounds can be
   reordered, duplicated, and have their mode chosen when created (§8.1).
 - In play, **RoundNav** moves to the previous or next round. The **round picker** lets the host jump to any round,
   because the rule of funny allows playing out of order. Leaving a round keeps its state, so coming back resumes it.

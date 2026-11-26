@@ -5,6 +5,7 @@
 import { categoryLabel, clueCardName, formatPoints, questionSlides, roundName, savedCardName, type Action, type Game, type Slide } from './model';
 import type { ClueSide, Place } from './historylabel';
 import { libraryMedia } from './phonecopies';
+import { ROUND_MODES } from './modes';
 
 export interface Hit {
   icon: string;
@@ -168,7 +169,7 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
       const n = questionSlides(r).length;
       questionSlides(r).forEach((sl, j) =>
         look(
-          '🖼️',
+          ROUND_MODES.slides.icon,
           slideWords(sl),
           `${rn} › Slide${n > 1 ? ` ${j + 1}` : ''}`,
           { tab: 'round', round: r.id, part: { kind: 'slides', ...(j ? { slide: r.extraSlides![j - 1].id } : {}) } },

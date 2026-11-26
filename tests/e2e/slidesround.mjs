@@ -52,7 +52,7 @@ try {
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /Welcome and rules/ }).click();
   await toastsIn(page, { hasText: 'at the start of the game: drag its tab to move it' }).waitFor();
-  assert((await roundNames())[0] === 'Introduction', 'the 🖼️ Welcome and rules template goes first, and says so');
+  assert((await roundNames())[0] === 'Introduction', 'the 📽️ Welcome and rules template goes first, and says so');
   await page.locator('.editor > header').getByRole('button', { name: 'Undo (Ctrl+Z)' }).click();
   await page.waitForFunction(() => document.querySelectorAll('nav > button.round-tab').length === 2);
   await page.getByRole('button', { name: '＋ Add round' }).click();
