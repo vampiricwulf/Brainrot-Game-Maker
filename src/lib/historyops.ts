@@ -248,6 +248,92 @@ export function mediaIdsIn(ops: readonly Op[]): string[] {
   return [...ids];
 }
 
+const prefixOf = (a: readonly Seg[], b: readonly Seg[]) => a.length <= b.length && a.every((s, i) => s === b[i]);
+const inList = (t: Op['t']) => t !== 'set';
+
+/** Two ops that can't be applied in either order to the same end: see clashes. */
+function opsClash(x: Op, y: Op): boolean {
+  // Elements added, removed or moved in the same id-array: positions (an insert's index) depend on each other.
+  if (inList(x.t) && inList(y.t) && JSON.stringify(x.p) === JSON.stringify(y.p)) return true;
+  const px = opPath(x);
+  const py = opPath(y);
+  // A reorder moves the same objects: only what replaces the array (or what holds it) clashes with it, not a change inside
+  // one of its elements.
+  if (x.t === 'ord') return prefixOf(py, px);
+  if (y.t === 'ord') return prefixOf(px, py);
+  return prefixOf(px, py) || prefixOf(py, px);
+}
+
+/** The string `id`s anywhere in a value. */
+function idsIn(v: Json | undefined, out = new Set<string>()): Set<string> {
+  if (Array.isArray(v)) for (const x of v) idsIn(x, out);
+  else if (isObj(v)) {
+    if (typeof v.id === 'string') out.add(v.id);
+    for (const k in v) idsIn(v[k], out);
+  }
+  return out;
+}
+
+/** Ids of things the ops add or remove (an element inserted or deleted, an object set or unset): others can refer to them. */
+function idsMade(ops: readonly Op[]): Set<string> {
+  const out = new Set<string>();
+  for (const op of ops) {
+    if (op.t === 'ins' || op.t === 'del') {
+      out.add(op.id);
+      idsIn(op.v, out);
+    } else if (op.t === 'set') {
+      const b = idsIn(op.b);
+      const a = idsIn(op.a);
+      for (const id of b) if (!a.has(id)) out.add(id);
+      for (const id of a) if (!b.has(id)) out.add(id);
+    }
+  }
+  return out;
+}
+
+/**
+ * Whether two steps' ops depend on each other, so one can't be undone or redone without the other: a path one changes
+ * holds or is inside what the other changes (a whole array set, an element added and then edited), both add, remove or
+ * move elements of the same array, or one refers to something the other adds or removes (a slide's picture set to a file
+ * added in the other step). Cautious: two steps it lets through give the same game in either order.
+ */
+export function clashes(a: readonly Op[], b: readonly Op[]): boolean {
+  if (a.some((x) => b.some((y) => opsClash(x, y)))) return true;
+  const refers = (made: Set<string>, ops: readonly Op[]) => {
+    if (!made.size) return false;
+    const text = JSON.stringify(ops);
+    return [...made].some((id) => text.includes(JSON.stringify(id)));
+  };
+  return refers(idsMade(a), b) || refers(idsMade(b), a);
+}
+
+/**
+ * Whether `ops` apply to `root` forward (dir 1) or backward (-1) exactly as they were recorded: every value set is what
+ * it was then (an option filled in as false since counts as not there, see history's fillIn), every element added isn't
+ * there yet and every one removed or moved is. Tried on a copy: `root` is left as it is.
+ */
+export function replaysCleanly(root: object, ops: readonly Op[], dir: 1 | -1): boolean {
+  const copyOf = structuredClone(root);
+  for (const op of dir === 1 ? ops : [...ops].reverse()) {
+    try {
+      const c = resolve(copyOf, op.p);
+      if (op.t === 'set') {
+        const now = Array.isArray(c) ? c[op.k as number] : c[op.k];
+        const was = dir === 1 ? op.b : op.a;
+        if (!same(now, was) && !(now === false && was === undefined) && !(now == null && was == null)) return false;
+      } else if (!Array.isArray(c)) return false;
+      else if (op.t === 'ord') {
+        if ((dir === 1 ? op.b : op.a).some((id) => indexOfId(c, id) < 0)) return false;
+      } else if (indexOfId(c, op.id) >= 0 === ((op.t === 'ins') === (dir === 1))) return false;
+      applyOps(copyOf, [op], dir);
+    } catch (err) {
+      if (err instanceof PathGone) return false;
+      throw err;
+    }
+  }
+  return true;
+}
+
 /**
  * Ids of the slide items (and board images) that ops add, remove or change, in the order they first come. Not the
  * ones only restacked: moving one item up or down the stack renumbers the items around it.

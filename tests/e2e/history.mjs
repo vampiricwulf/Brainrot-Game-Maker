@@ -275,6 +275,80 @@ try {
     'and the focus is there, not on the page',
   );
 
+  // ---------- One step on its own: ↷ Redo just this, ↶ Undo just this ----------
+  const was = await Promise.all([1, 2, 3].map((i) => catName(i).inputValue()));
+  for (const [i, t] of ['Alpha', 'Beta', 'Gamma'].entries()) {
+    await catName(i + 1).fill(t);
+    await clickAway();
+  }
+  await page.waitForTimeout(300);
+  for (let i = 0; i < 3; i++) await key('Control+z');
+  await historyTab.click();
+  const undoneText = () => page.locator('.hist .hr.undone .lb').allInnerTexts();
+  const label = (t) => `Renamed category “${t}”`;
+  assert(
+    JSON.stringify(await undoneText()) === JSON.stringify(['Gamma', 'Beta', 'Alpha'].map(label)),
+    `three renames undone (${(await undoneText()).join(' | ')})`,
+  );
+  const justItem = (name) => page.getByRole('menu').getByRole('menuitem', { name });
+  /** A menu item's line under it (what a screen reader reads with it). */
+  const detailOf = (item) => item.evaluate((b) => document.getElementById(b.getAttribute('aria-describedby') ?? '')?.textContent ?? '');
+  await rows.nth(0).click({ button: 'right' });
+  assert(!(await justItem('↷ Redo just this').isDisabled()), 'an undone step that depends on none undone before it: ↷ Redo just this');
+  await justItem('↷ Redo just this').click();
+  await page.waitForTimeout(250);
+  assert(
+    JSON.stringify(await undoneText()) === JSON.stringify(['Beta', 'Alpha'].map(label)) &&
+      (await page.locator('.hist .hr.current').innerText()).includes(label('Gamma')),
+    `↷ Redo just this brings back only that step, now under ● Now; the two undone before it stay undone (${(await undoneText()).join(' | ')})`,
+  );
+  await saidHas(/Redid “Renamed category “Gamma”” on its own\.$/);
+  // Ctrl+Y goes on with the oldest still undone; the next one's own item says Redo brings it back.
+  await clickAway();
+  await key('Control+y');
+  assert(
+    (await page.locator('.hist .hr.current').innerText()).includes(label('Alpha')) && JSON.stringify(await undoneText()) === JSON.stringify([label('Beta')]),
+    'Ctrl+Y then redoes the oldest undone step',
+  );
+  await rows.nth(0).click({ button: 'right' });
+  const nextOne = justItem('↷ Redo just this');
+  assert(
+    (await nextOne.isDisabled()) && (await detailOf(nextOne)) === 'It’s next: ↷ Redo brings it back',
+    `the next undone step's ↷ Redo just this is greyed, saying why (${await detailOf(nextOne)})`,
+  );
+  await page.keyboard.press('Escape');
+  // ↶ Undo just this on an older step: it goes, the newer ones stay. U on a step does it too, R brings one back.
+  const rowOf = (t) => page.locator('.hist .hr', { hasText: label(t) });
+  await rowOf('Gamma').click({ button: 'right' });
+  await justItem('↶ Undo just this').click();
+  await page.waitForTimeout(250);
+  assert(
+    JSON.stringify(await undoneText()) === JSON.stringify(['Beta', 'Gamma'].map(label)) &&
+      (await page.locator('.hist .hr.current').innerText()).includes(label('Alpha')),
+    `↶ Undo just this takes back only that step: it's the next undone one, the step after it stays (${(await undoneText()).join(' | ')})`,
+  );
+  await rowOf('Beta').locator('.pick').focus();
+  await page.keyboard.press('r');
+  await page.waitForTimeout(250);
+  await rowOf('Alpha').locator('.pick').focus();
+  await page.keyboard.press('u');
+  await page.waitForTimeout(250);
+  assert(
+    JSON.stringify(await undoneText()) === JSON.stringify(['Gamma', 'Alpha'].map(label)) &&
+      (await page.locator('.hist .hr.current').innerText()).includes(label('Beta')),
+    `R on an undone step redoes just it, U on a done one undoes just it (${(await undoneText()).join(' | ')})`,
+  );
+  // Kept over a reload, and the game is what the list says.
+  const order = await page.locator('.hist .hr .lb').allInnerTexts();
+  await reload();
+  await historyTab.click();
+  assert(JSON.stringify(await page.locator('.hist .hr .lb').allInnerTexts()) === JSON.stringify(order), 'after a reload the steps keep their new order');
+  await page.locator('.hist .hr.current .gobtn').click();
+  await page.waitForTimeout(300);
+  const nowNames = await Promise.all([1, 2, 3].map((i) => catName(i).inputValue()));
+  assert(JSON.stringify(nowNames) === JSON.stringify([was[0], 'Beta', was[2]]), `only Beta's rename is in the game (${nowNames.join(', ')})`);
+  for (let i = 0; i < 2; i++) await key('Control+y');
+
   // ＋ Add round is a step of its own: a name and a field typed right after it are steps too, so one Ctrl+Z never
   // takes the whole new round.
   const roundCount = await roundTabsIn(page).count();
@@ -292,6 +366,30 @@ try {
       !(await page.locator('[data-field="final-category"]').inputValue()),
     `one Ctrl+Z right after adding a Final and typing its name and category takes back only the category (${await notice.innerText()})`,
   );
+  // A step that depends on one undone before it (the new round's name, on the round added): its ↷ Redo just this is
+  // greyed, naming that step; the added round's ↶ Undo just this, the same the other way.
+  await key('Control+z');
+  await key('Control+z');
+  await historyTab.click();
+  await page.locator('.hist .hr', { hasText: 'Renamed round “The Big Finish”' }).click({ button: 'right' });
+  const dependent = page.getByRole('menu').getByRole('menuitem', { name: '↷ Redo just this' });
+  const why = await dependent.evaluate((b) => document.getElementById(b.getAttribute('aria-describedby') ?? '')?.textContent ?? '');
+  assert(
+    (await dependent.isDisabled()) && /^It depends on “Added round “.*”, undone before it: use ↷ Redo to here$/.test(why),
+    `a step that depends on one undone before it can't be redone on its own, and says on which (${why})`,
+  );
+  await page.keyboard.press('Escape');
+  await key('Control+y');
+  await key('Control+y');
+  await page.locator('.hist .hr', { hasText: 'Added round “Final round 2”' }).click({ button: 'right' });
+  const held = page.getByRole('menu').getByRole('menuitem', { name: '↶ Undo just this' });
+  const heldWhy = await held.evaluate((b) => document.getElementById(b.getAttribute('aria-describedby') ?? '')?.textContent ?? '');
+  assert(
+    (await held.isDisabled()) && heldWhy === '“Renamed round “The Big Finish””, made after it, depends on it: use ↶ Undo to here',
+    `and a step a later one depends on can't be undone on its own (${heldWhy})`,
+  );
+  await page.keyboard.press('Escape');
+  await roundTabsIn(page).last().click();
 
   // ---------- RPG screens ----------
   await page.getByRole('button', { name: '＋ Add round' }).click();

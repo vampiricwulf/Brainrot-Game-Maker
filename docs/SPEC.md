@@ -600,6 +600,15 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   steps, back to 3:04 PM?" / "Redo 22 steps, up to …?"). The origin row undoes everything back to where the history
   starts. ↶ Undo / ↷ Redo (Ctrl+Z / Ctrl+Y) go one step at a time. 📜 Log › 🕘 History in play uses the same words
   (§6.5).
+- One step on its own (its right-click menu, or a key on the focused step): **↷ Redo just this** (R) on an undone step
+  brings back only it: it moves to just under "● Now" (Ctrl+Z takes it back first) and the steps undone before it stay
+  undone, in their order. **↶ Undo just this** (U) on a done step takes back only it and keeps the steps made after it:
+  it moves to just above "● Now" (Ctrl+Y brings it back first). Only when the steps don't depend on each other (the
+  same value changed, something added and then changed, the same list's items added, removed or moved, a reference to
+  something the other added or removed, the same file): otherwise the item is greyed, saying which step it depends on
+  ("It depends on “Added round “Final””, undone before it: use ↷ Redo to here"), as it is for the next undone step
+  ("It's next: ↷ Redo brings it back") and the latest done one. Nothing is recorded again or dropped: the history stays
+  one line, saved with its new order.
 
 ---
 

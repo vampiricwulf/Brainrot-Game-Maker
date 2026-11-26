@@ -7,7 +7,23 @@
   import { untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { announce } from '../lib/announce';
-  import { clear, heldMedia, history, jumpTo, maxSteps, redo, undo, type HistoryEntry, type Mark, type Origin } from '../lib/history.svelte';
+  import {
+    clear,
+    heldMedia,
+    history,
+    jumpTo,
+    maxSteps,
+    redo,
+    redoJust,
+    redoJustBlocker,
+    undo,
+    undoJust,
+    undoJustBlocker,
+    type HistoryEntry,
+    type JustResult,
+    type Mark,
+    type Origin,
+  } from '../lib/history.svelte';
   import { formatBytes, getBlob } from '../lib/media.svelte';
   import { focusPlace, goTo, placeKey } from '../lib/nav.svelte';
   import { showMenu } from '../lib/menustate.svelte';
@@ -167,10 +183,29 @@
     if (to) focusPlace(placeKey(to), list);
   }
 
-  /** A step's right-click menu (Shift+F10 on it too): what a click and its Go there › do, and copying its name. */
+  /**
+   * ↶ Undo just this / ↷ Redo just this: one step taken back or brought back, the others staying as they are (when it
+   * doesn't depend on them: greyed out otherwise, saying which).
+   */
+  function just(e: HistoryEntry, applied: boolean): void {
+    asking = null;
+    const r: JustResult = applied ? undoJust(e.id) : redoJust(e.id);
+    if (r === 'done') announce(`${applied ? 'Undid' : 'Redid'} “${e.label}” on its own`);
+    else if (r === 'clash')
+      toast(
+        applied
+          ? 'Couldn’t undo just this step: a step after it depends on it. ↶ Undo to here takes both back'
+          : 'Couldn’t redo just this step: it depends on a step undone before it. ↷ Redo to here brings both back',
+      );
+    else toast('History moved on: try again');
+  }
+
+  /** A step's right-click menu (Shift+F10 on it too): what a click and its Go there › do, one step on its own, and copying its name. */
   function stepMenu(ev: MouseEvent, e: HistoryEntry, i: number): void {
     const applied = i < history.index;
     const current = i === history.index - 1;
+    // (Worked out as the menu opens, not for every row.)
+    const blocker = applied ? undoJustBlocker(e.id) : redoJustBlocker(e.id);
     showMenu(ev, [
       { heading: e.label },
       applied
@@ -182,6 +217,15 @@
             hint: current ? 'The game is here now' : undefined,
           }
         : { label: '↷ Redo to here', onclick: () => pick(i + 1), keys: 'Enter' },
+      {
+        label: applied ? '↶ Undo just this' : '↷ Redo just this',
+        onclick: () => just(e, applied),
+        disabled: !!blocker,
+        keys: applied ? 'U' : 'R',
+        ...(blocker
+          ? { detail: blocker }
+          : { hint: applied ? 'Only this step: the steps made after it stay' : 'Only this step: the steps undone before it stay undone' }),
+      },
       { label: 'Go there ›', onclick: () => goThere(e, applied), disabled: !(applied ? e.place : e.undoPlace), keys: 'G' },
       { sep: true },
       { label: '📋 Copy step name', onclick: () => void copyText(e.label, 'Copied the step’s name') },
@@ -189,7 +233,10 @@
   }
 
   let list = $state<HTMLDivElement>();
-  /** ↑/↓ move between steps, G shows where the focused one changed things (Enter picks it, as a click). */
+  /**
+   * ↑/↓ move between steps, G shows where the focused one changed things (Enter picks it, as a click), U / R undo or
+   * redo just that one.
+   */
   function onkey(e: KeyboardEvent): void {
     const picks = [...(list?.querySelectorAll<HTMLButtonElement>('.pick') ?? [])];
     const at = picks.indexOf(document.activeElement as HTMLButtonElement);
@@ -200,6 +247,15 @@
     } else if (e.key.toLowerCase() === 'g') {
       e.preventDefault();
       picks[at].parentElement?.querySelector<HTMLButtonElement>('.gobtn')?.click();
+    } else if (!e.shiftKey && (e.key.toLowerCase() === 'u' || e.key.toLowerCase() === 'r')) {
+      const i = Number(picks[at].dataset.i);
+      const step = history.entries[i];
+      const applied = i < history.index;
+      if (!step || applied !== (e.key.toLowerCase() === 'u')) return;
+      e.preventDefault();
+      const blocker = applied ? undoJustBlocker(step.id) : redoJustBlocker(step.id);
+      if (blocker) toast(blocker);
+      else just(step, applied);
     }
   }
 </script>
@@ -208,7 +264,7 @@
   <PageHeader
     title="History"
     sub={history.entries.length
-      ? 'Every change to this game, newest first. Click a step to undo back to just after it (↷ steps were undone: click one to redo up to it). Go there › shows where it changed. Ctrl+Z / Ctrl+Y step one at a time.'
+      ? 'Every change to this game, newest first. Click a step to undo back to just after it (↷ steps were undone: click one to redo up to it). Go there › shows where it changed. Right-click a step to undo or redo just that one. Ctrl+Z / Ctrl+Y step one at a time.'
       : 'No changes yet. Everything you change in this game shows up here, and you can go back to any point. Ctrl+Z undoes, Ctrl+Y redoes.'}
   >
     {#snippet actions()}
@@ -282,6 +338,7 @@
           <!-- (One Tab stop for the list, on the step the game is at: ↑/↓ move between them.) -->
           <button
             class="pick"
+            data-i={r.i}
             tabindex={r.key === tabStep ? 0 : -1}
             onclick={() => pick(r.i + 1)}
             aria-current={current ? 'step' : undefined}

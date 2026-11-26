@@ -4,7 +4,7 @@
 // live game in place, so editors keep changing the game as they always have. A step's name and where it happened
 // come from its ops (historylabel.ts), unless the editor names it.
 import { app, toast } from './app.svelte';
-import { applyOps, diff, mediaIdsIn, mergeOps, opsSize, PathGone, type Op } from './historyops';
+import { applyOps, clashes, diff, mediaIdsIn, mergeOps, opsSize, PathGone, replaysCleanly, type Op } from './historyops';
 import { loadGameMedia, pruneMedia, registerLinks, restoreStash } from './media.svelte';
 import { describe, placeWhere, type Place } from './historylabel';
 import { newId, type Game } from './model';
@@ -498,6 +498,94 @@ export function jumpTo(n: number): number {
   h.index = n;
   for (const fn of appliedFns) fn(list[list.length - 1], moved < 0 ? -1 : 1, 'list');
   return moved;
+}
+
+/** Two steps that depend on each other (see clashes), or swap the same file's bytes, or bring back the same file. */
+function depends(a: HistoryEntry, b: HistoryEntry): boolean {
+  if (clashes(a.ops, b.ops)) return true;
+  const files = (e: HistoryEntry) => [...(e.blobs ?? []).map((s) => s.id), ...(e.media ?? [])];
+  const theirs = new Set(files(b));
+  return files(a).some((id) => theirs.has(id));
+}
+
+/**
+ * Why ↷ Redo just this can't bring back the undone step `id` on its own (null: it can): the step is next anyway, or it
+ * depends on a step undone before it (named, as 🕘 History lists it).
+ */
+export function redoJustBlocker(id: string): string | null {
+  if (h.pending) return 'Finish your change first';
+  const n = h.entries.findIndex((e) => e.id === id);
+  if (n < h.index) return 'It isn’t undone';
+  if (n === h.index) return 'It’s next: ↷ Redo brings it back';
+  const e = h.entries[n];
+  for (let j = n - 1; j >= h.index; j--) if (depends(e, h.entries[j])) return `It depends on “${h.entries[j].label}”, undone before it: use ↷ Redo to here`;
+  return null;
+}
+
+/**
+ * Why ↶ Undo just this can't take back the step `id` on its own (null: it can): it's the latest anyway, or a step made
+ * after it depends on it (named).
+ */
+export function undoJustBlocker(id: string): string | null {
+  if (h.pending) return 'Finish your change first';
+  const n = h.entries.findIndex((e) => e.id === id);
+  if (n < 0 || n >= h.index) return 'It isn’t done';
+  if (n === h.index - 1) return 'It’s the latest: ↶ Undo takes it back';
+  const e = h.entries[n];
+  for (let j = n + 1; j < h.index; j++) if (depends(e, h.entries[j])) return `“${h.entries[j].label}”, made after it, depends on it: use ↶ Undo to here`;
+  return null;
+}
+
+/** What redoJust and undoJust did: done, refused (it depends on another step), not now (a change being made), or the step moved on. */
+export type JustResult = 'done' | 'clash' | 'busy' | 'gone';
+
+/**
+ * ↷ Redo just this: bring back the undone step `id` and nothing else. It moves to just under "● Now" (the newest step
+ * done, so Ctrl+Z takes it back first); the steps undone before it stay undone, in their order. Only when it doesn't
+ * depend on them (redoJustBlocker), so the history stays one line that replays both ways: nothing is re-recorded or
+ * dropped. A change being made isn't made a step first (that would drop every undone step).
+ */
+export function redoJust(id: string, via: Via = 'list'): JustResult {
+  if (!ready() || h.pending) return 'busy';
+  const n = h.entries.findIndex((e) => e.id === id);
+  if (n < h.index) return 'gone';
+  if (n === h.index) return redo(via) ? 'done' : 'gone';
+  const e = h.entries[n];
+  if (redoJustBlocker(id) || !replaysCleanly(watch!.value(), e.ops, 1)) return 'clash';
+  if (!apply([e], 1)) return 'gone';
+  const at = h.index;
+  h.entries = [...h.entries.slice(0, at), e, ...h.entries.slice(at, n), ...h.entries.slice(n + 1)];
+  h.index = at + 1;
+  e.sealed = true;
+  // Marks among the steps it skipped stood for games that are no longer on the line (as a new step drops them).
+  h.marks = h.marks.filter((m) => m.at <= at || m.at > n);
+  // (The order is saved with the history's index; the step written again keeps a rescued copy whole.)
+  unsaved.add(e.id);
+  keepLimits();
+  for (const fn of appliedFns) fn(e, 1, via);
+  return 'done';
+}
+
+/**
+ * ↶ Undo just this: take back the step `id` and keep the steps made after it. It moves to just above "● Now" (the
+ * next undone step, so Ctrl+Y brings it back first). Only when no step after it depends on it (undoJustBlocker).
+ */
+export function undoJust(id: string, via: Via = 'list'): JustResult {
+  if (!ready() || h.pending) return 'busy';
+  const n = h.entries.findIndex((e) => e.id === id);
+  if (n < 0 || n >= h.index) return 'gone';
+  if (n === h.index - 1) return undo(via) ? 'done' : 'gone';
+  const e = h.entries[n];
+  if (undoJustBlocker(id) || !replaysCleanly(watch!.value(), e.ops, -1)) return 'clash';
+  if (!apply([e], -1)) return 'gone';
+  const at = h.index;
+  h.entries = [...h.entries.slice(0, n), ...h.entries.slice(n + 1, at), e, ...h.entries.slice(at)];
+  h.index = at - 1;
+  e.sealed = true;
+  h.marks = h.marks.filter((m) => m.at <= n || m.at >= at);
+  unsaved.add(e.id);
+  for (const fn of appliedFns) fn(e, -1, via);
+  return 'done';
 }
 
 /**

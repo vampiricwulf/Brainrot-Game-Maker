@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyOps, diff, itemIdsIn, mediaIdsIn, mergeOps, opPath, PathGone, same, type Json, type Op } from './historyops';
+import { applyOps, clashes, diff, itemIdsIn, mediaIdsIn, mergeOps, opPath, PathGone, replaysCleanly, same, type Json, type Op } from './historyops';
 
 type Obj = { [k: string]: Json };
 const clone = <T>(v: T): T => structuredClone(v);
@@ -370,5 +370,103 @@ describe('op helpers', () => {
     expect(itemIdsIn(diff(slide({ ...el('a'), zIndex: 1 }, { ...el('b'), zIndex: 2 }), slide({ ...el('a'), zIndex: 2 }, { ...el('b'), zIndex: 1 })))).toEqual(
       [],
     );
+  });
+});
+
+describe('clashes and replaysCleanly (undo or redo just one step)', () => {
+  const base = (): Obj => ({
+    a: { b: 1, c: 2 },
+    slides: [el('s1'), el('s3')],
+    cats: [
+      { id: 'c1', name: 'One' },
+      { id: 'c2', name: 'Two' },
+    ],
+    media: [],
+    pic: '',
+  });
+  /** The ops of one change to the base. */
+  const ops = (change: (g: Obj) => void, from = base()): Op[] => {
+    const after = clone(from);
+    change(after);
+    return diff(from, after);
+  };
+  const slides = (g: Obj) => g.slides as Obj[];
+  const cats = (g: Obj) => g.cats as Obj[];
+
+  it('lets steps on different values through, and catches ones that touch the same or hold each other', () => {
+    expect(
+      clashes(
+        ops((g) => ((g.a as Obj).b = 5)),
+        ops((g) => ((g.a as Obj).c = 6)),
+      ),
+    ).toBe(false);
+    expect(
+      clashes(
+        ops((g) => ((g.a as Obj).b = 5)),
+        ops((g) => ((g.a as Obj).b = 7)),
+      ),
+    ).toBe(true);
+    // A whole array set holds anything inside it.
+    const whole: Op[] = [{ t: 'set', p: [], k: 'slides', b: [], a: [] }];
+    expect(
+      clashes(
+        whole,
+        ops((g) => (slides(g)[0].text = 'x')),
+      ),
+    ).toBe(true);
+    // Two elements added and removed in one array: their places depend on each other.
+    expect(
+      clashes(
+        ops((g) => slides(g).splice(1, 0, el('s2'))),
+        ops((g) => slides(g).splice(1, 1)),
+      ),
+    ).toBe(true);
+    // An element added beside one edited is fine; one added and then edited isn't.
+    expect(
+      clashes(
+        ops((g) => slides(g).splice(1, 0, el('s2'))),
+        ops((g) => (slides(g)[0].text = 'x')),
+      ),
+    ).toBe(false);
+    const added = base();
+    slides(added).splice(1, 0, el('s2'));
+    expect(
+      clashes(
+        ops((g) => slides(g).splice(1, 0, el('s2'))),
+        ops((g) => (slides(g)[1].text = 'x'), added),
+      ),
+    ).toBe(true);
+    // Reordering categories moves the same objects: renaming one of them is fine.
+    expect(
+      clashes(
+        ops((g) => cats(g).reverse()),
+        ops((g) => (cats(g)[0].name = 'Uno')),
+      ),
+    ).toBe(false);
+    // Something that refers to a file another step added (by its id) isn't.
+    expect(
+      clashes(
+        ops((g) => (g.media as Obj[]).push({ id: 'm1', name: 'cat.png' })),
+        ops((g) => (g.pic = 'm1')),
+      ),
+    ).toBe(true);
+  });
+
+  it('replays only when the game still has what the ops were recorded on, and never changes it', () => {
+    const g = base();
+    const was = clone(g);
+    const rename = ops((x) => ((x.a as Obj).b = 5));
+    expect(replaysCleanly(g, rename, 1)).toBe(true);
+    expect(replaysCleanly(g, rename, -1)).toBe(false);
+    expect(replaysCleanly({ ...g, a: { b: 4, c: 2 } }, rename, 1)).toBe(false);
+    // An option filled in as false since counts as not there.
+    const set: Op[] = [{ t: 'set', p: ['a'], k: 'flag', a: true }];
+    expect(replaysCleanly({ ...g, a: { b: 1, c: 2, flag: false } }, set, 1)).toBe(true);
+    // A container gone, an element already there, one not there to remove.
+    expect(replaysCleanly({ pic: '' }, rename, 1)).toBe(false);
+    const add = ops((x) => slides(x).push(el('s9')));
+    expect(replaysCleanly(g, add, 1)).toBe(true);
+    expect(replaysCleanly(g, add, -1)).toBe(false);
+    expect(g).toStrictEqual(was);
   });
 });

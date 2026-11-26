@@ -22,6 +22,8 @@ import {
   onDropped,
   onNotify,
   redo,
+  redoJust,
+  redoJustBlocker,
   savedSinceChange,
   savePoint,
   startHistory,
@@ -29,6 +31,8 @@ import {
   stepAsync,
   toSave,
   undo,
+  undoJust,
+  undoJustBlocker,
   wholeHistory,
   whenSettled,
 } from './history.svelte';
@@ -587,6 +591,133 @@ describe('undo history: undo, redo, jump', () => {
     expect(history.entries).toEqual([]);
     expect(history.origin.label).toBe("History restarted: a step couldn't be undone");
     expect(g.title).toBe('Three');
+  });
+});
+
+describe('undo history: redo or undo just one step', () => {
+  const cats = () => board(g).categories;
+  const names = () => cats().map((c) => c.title);
+  const labels = () => history.entries.map((e) => e.label);
+  /** Three categories renamed, one step each: A, B, C. */
+  function three(): string[] {
+    for (const [i, t] of ['Ay', 'Bee', 'Cee'].entries()) step(null, () => (cats()[i].title = t));
+    return history.entries.map((e) => e.id);
+  }
+
+  it('↷ Redo just this brings back one undone step: it moves under Now, the ones before it stay undone', async () => {
+    const was = names();
+    const [a, b, c] = three();
+    const applied = vi.fn();
+    const off = onApplied(applied);
+    jumpTo(0);
+    applied.mockClear();
+    expect(redoJustBlocker(a)).toBe('It’s next: ↷ Redo brings it back');
+    expect(redoJustBlocker(c)).toBeNull();
+    expect(redoJust(c)).toBe('done');
+    expect(names().slice(0, 3)).toEqual([was[0], was[1], 'Cee']);
+    expect(history.entries.map((e) => e.id)).toEqual([c, a, b]);
+    expect(history.index).toBe(1);
+    expect(history.redoLabel).toBe(labels()[1]);
+    expect(applied).toHaveBeenCalledOnce();
+    expect(applied).toHaveBeenCalledWith(expect.objectContaining({ id: c }), 1, 'list');
+    off();
+    // Its own change isn't a step.
+    await seen();
+    vi.advanceTimersByTime(1000);
+    expect(history.pending).toBe(false);
+    expect(history.entries).toHaveLength(3);
+    // The line still replays both ways: to the end, to the start, and Ctrl+Z takes it back first.
+    jumpTo(3);
+    expect(names().slice(0, 3)).toEqual(['Ay', 'Bee', 'Cee']);
+    jumpTo(0);
+    expect(names()).toEqual(was);
+    jumpTo(1);
+    expect(undo()?.id).toBe(c);
+    expect(names()).toEqual(was);
+  });
+
+  it('↶ Undo just this takes back one step and keeps the ones after it: it moves just above Now', () => {
+    const was = names();
+    const [a, b, c] = three();
+    expect(undoJustBlocker(c)).toBe('It’s the latest: ↶ Undo takes it back');
+    expect(undoJustBlocker(a)).toBeNull();
+    expect(undoJust(a)).toBe('done');
+    expect(names().slice(0, 3)).toEqual([was[0], 'Bee', 'Cee']);
+    expect(history.entries.map((e) => e.id)).toEqual([b, c, a]);
+    expect(history.index).toBe(2);
+    expect(redo()?.id).toBe(a);
+    expect(names().slice(0, 3)).toEqual(['Ay', 'Bee', 'Cee']);
+    jumpTo(0);
+    expect(names()).toEqual(was);
+  });
+
+  it('refuses a step that depends on another, naming it, and changes nothing', async () => {
+    const before = () => JSON.stringify([history.entries.map((e) => e.id), history.index, history.marks, history.origin, $state.snapshot(g)]);
+    // A category added, then renamed: the rename can't come back without it, and it can't go without the rename.
+    step('Added a category', () => cats().push({ id: 'new', title: '', clues: [] }));
+    step(null, () => (cats().at(-1)!.title = 'New'));
+    step(null, () => (g.title = 'Other'));
+    const [add, rename] = history.entries.map((e) => e.id);
+    expect(undoJustBlocker(add)).toMatch(/^“Renamed category “New””, made after it, depends on it: use ↶ Undo to here$/);
+    let now = before();
+    expect(undoJust(add)).toBe('clash');
+    expect(before()).toBe(now);
+    jumpTo(0);
+    expect(redoJustBlocker(rename)).toBe('It depends on “Added a category”, undone before it: use ↷ Redo to here');
+    now = before();
+    expect(redoJust(rename)).toBe('clash');
+    expect(before()).toBe(now);
+    // The same value changed twice.
+    jumpTo(3);
+    step(null, () => (g.title = 'Again'));
+    const again = history.entries[3].id;
+    jumpTo(2);
+    expect(redoJustBlocker(again)).toMatch(/^It depends on “Renamed the game “Other””/);
+    // The same file's bytes swapped.
+    jumpTo(0);
+    const [x, , z] = history.entries;
+    Object.assign(x, { blobs: [{ id: 'f1', before: null, after: null }] });
+    Object.assign(z, { blobs: [{ id: 'f1', before: null, after: null }] });
+    expect(redoJustBlocker(z.id)).toMatch(/^It depends on “Added a category”/);
+    // A change being made: refused without making it a step (that would drop every undone step).
+    g.rounds[0].name = 'Typing';
+    await seen();
+    expect(redoJustBlocker(z.id)).toBe('Finish your change first');
+    expect(redoJust(z.id)).toBe('busy');
+    expect(history.entries).toHaveLength(4);
+  });
+
+  it('keeps the marks that still stand for a game on the line, and the order through a reload', () => {
+    step(null, () => (cats()[0].title = 'Ay'));
+    mark('saved', 'Saved');
+    step(null, () => (cats()[1].title = 'Bee'));
+    mark('played', 'Played');
+    step(null, () => (cats()[2].title = 'Cee'));
+    step(null, () => (cats()[3].title = 'Dee'));
+    mark('exported', 'Exported');
+    jumpTo(1);
+    expect(savedSinceChange()).toBe(true);
+    const d = history.entries[3].id;
+    expect(redoJust(d)).toBe('done');
+    expect(history.marks.map((m) => [m.kind, m.at])).toEqual([
+      ['saved', 1],
+      ['exported', 4],
+    ]);
+    expect(savedSinceChange()).toBe(false);
+    // Saved and reopened: the same order, at the same place.
+    const { history: saved } = toSave('rev');
+    expect(saved.ids[1]).toBe(d);
+    expect(saved.index).toBe(2);
+    const steps = history.entries.map(({ target: _t, focusSession: _f, ...e }) => e);
+    const again = live(JSON.parse(JSON.stringify($state.snapshot(g))));
+    const w2 = watchGame(again);
+    arriving({ kind: 'reopened', label: 'Reopened' }, { saved, steps });
+    startHistory(again, w2);
+    expect(history.entries.map((e) => e.id)[1]).toBe(d);
+    expect(history.index).toBe(2);
+    jumpTo(4);
+    expect((again.rounds[0] as BoardRound).categories.slice(0, 4).map((c) => c.title)).toEqual(['Ay', 'Bee', 'Cee', 'Dee']);
+    w2.destroy();
   });
 });
 
