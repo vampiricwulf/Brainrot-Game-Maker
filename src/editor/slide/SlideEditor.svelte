@@ -848,7 +848,13 @@
   /** Ends the preview's media scope: a game left mid-clue gets back where its media was. */
   let endPreview: (() => void) | null = null;
   onDestroy(() => endPreview?.());
+  /** ▶ Preview's cell: ▶ Preview, or ↻ Replay and ■ Stop while previewing. */
+  let previewCell = $state<HTMLElement>();
   function togglePreview(): void {
+    // The keys in the cell stay in it: on ■ Stop once it starts, back on ▶ Preview once it stops (the button pressed
+    // is hidden then).
+    if (previewCell?.contains(document.activeElement))
+      void tick().then(() => previewCell?.querySelector<HTMLElement>(previewing ? '[data-stop-preview]' : '[data-preview]')?.focus());
     previewing = !previewing;
     endPreview?.();
     endPreview = null;
@@ -1398,22 +1404,22 @@
       {/if}
     </fieldset>
     <!-- One group that keeps to the right and wraps as a whole, so 🔈 ↶ ↷ never end up alone on a line.
-         Starting a preview doesn't change its width (which could wrap it and shrink the slide): ↻ Replay
-         is always there, hidden until then, and the Preview button has room for both of its labels. (The whole
-         slide's 📋 Copy and Paste are by the slide tabs, and in the slide's right-click menu.) -->
+         Starting a preview doesn't change its width (which could wrap it and shrink the slide): ▶ Preview and,
+         while previewing, ↻ Replay with ■ Stop are two layers of one cell, as wide as the wider of them, one shown at a
+         time (the other hidden and inert, out of the Tab order). (The whole slide's 📋 Copy and Paste are by the slide
+         tabs, and in the slide's right-click menu.) -->
     <div class="right">
       <!-- (On an RPG screen, whose own objects fill the row, Background ▾ leads this group: the add buttons wrap instead.) -->
       {#if tools}{@render bgBox()}{/if}
-      <button class="ghost small" class:hide={!previewing} onclick={() => previewKey++} title="Play the animations again">↻ Replay</button>
-      <button
-        class="small swap"
-        class:primary={previewing}
-        onclick={togglePreview}
-        title={previewing ? 'Back to editing (Esc)' : 'Play entrance animations and media'}
-      >
-        <span class:hide={previewing}>▶ Preview</span>
-        <span class:hide={!previewing}>■ Stop preview</span>
-      </button>
+      <div class="pv" bind:this={previewCell}>
+        <div class="layer" class:hide={previewing} inert={previewing}>
+          <button class="small" data-preview onclick={togglePreview} title="Play entrance animations and media">▶ Preview</button>
+        </div>
+        <div class="layer" class:hide={!previewing} inert={!previewing}>
+          <button class="ghost small" onclick={() => previewKey++} title="Play the animations again">↻ Replay</button>
+          <button class="small primary" data-stop-preview onclick={togglePreview} title="Back to editing (Esc)">■ Stop</button>
+        </div>
+      </div>
       <button
         class="ghost small"
         onclick={() => ((previewMuted = !previewMuted), previewing && previewKey++)}
@@ -1435,7 +1441,7 @@
   <div class="body">
     <div class="cell">
       <!-- The padding is a pasteboard, so handles on items at the slide's edges stay visible and grabbable.
-           A click on it stops a preview (from the keyboard: Esc, or ■ Stop preview in the toolbar). -->
+           A click on it stops a preview (from the keyboard: Esc, or ■ Stop in the toolbar). -->
       <!-- A Tab stop (a click on an item puts the focus here too): Tab and Shift+Tab then go through the items. -->
       <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions, a11y_no_noninteractive_tabindex -->
       <div
@@ -1562,7 +1568,7 @@
       </details>
     {/if}
     {#if previewing}
-      <p class="muted">Previewing the {nouns.page} as players will see it. Press <b>Esc</b>, click the {nouns.page} or <b>■ Stop preview</b> to edit again.</p>
+      <p class="muted">Previewing the {nouns.page} as players will see it. Press <b>Esc</b>, click the {nouns.page} or <b>■ Stop</b> to edit again.</p>
     {:else if single}
       <Inspector
         el={single}
@@ -1740,6 +1746,16 @@
   }
   .swap > span {
     grid-area: 1 / 1;
+  }
+  .pv {
+    display: inline-grid;
+  }
+  .pv > .layer {
+    grid-area: 1 / 1;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: flex-end;
   }
   .linkbox {
     width: 360px;

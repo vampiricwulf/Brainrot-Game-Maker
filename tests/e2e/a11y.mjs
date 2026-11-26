@@ -481,6 +481,24 @@ try {
     (await page.locator('[role="list"]:not(:has([role="listitem"]))').count()) === 0 && (await page.locator('nav [aria-current="page"]').count()) === 1,
     'nor with a card in it',
   );
+  // Its slide toolbar at 1280: ▶ Preview and 🔈 stay on the add buttons' line (no hidden ↻ Replay keeping a slot of its
+  // own), before and during a preview; the keys go from ▶ Preview to ■ Stop and back.
+  const cardBar = page.locator('main .toolbar');
+  const barSize = () => cardBar.evaluate((t) => `${Math.round(t.getBoundingClientRect().width)}×${Math.round(t.getBoundingClientRect().height)}`);
+  const barBefore = await barSize();
+  assert(Number(barBefore.split('×')[1]) <= 24, `🤫 Cards' slide toolbar is one line at 1280 (${barBefore})`);
+  const previewBtn = page.getByRole('button', { name: '▶ Preview', exact: true });
+  await previewBtn.focus();
+  await page.keyboard.press('Enter');
+  const stopBtn = page.getByRole('button', { name: '■ Stop', exact: true });
+  await page.waitForFunction(() => document.activeElement?.matches('[data-stop-preview]'));
+  assert(
+    (await barSize()) === barBefore && (await page.getByRole('button', { name: '↻ Replay' }).isVisible()) && (await previewBtn.count()) === 0,
+    `previewing, ↻ Replay and ■ Stop take ▶ Preview's place (the toolbar stays ${await barSize()}), the keys on ■ Stop`,
+  );
+  await stopBtn.press('Enter');
+  await page.waitForFunction(() => document.activeElement?.matches('[data-preview]'));
+  assert((await page.getByRole('button', { name: '↻ Replay' }).count()) === 0, '■ Stop puts the keys back on ▶ Preview, and ↻ Replay is out of reach again');
   await page.keyboard.press('Control+z');
   await page.locator('[data-saved-card]').waitFor({ state: 'detached' });
 

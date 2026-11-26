@@ -636,12 +636,12 @@ const media = () => page.locator('.canvas audio, .canvas video');
 await page.getByRole('button', { name: '▶ Preview' }).click();
 await page.waitForFunction(() => [...document.querySelectorAll('.canvas audio, .canvas video')].every((m) => !m.paused && m.currentTime > 0));
 assert((await media().evaluateAll((els) => els.map((m) => m.muted).join())) === 'false,false', 'preview plays the audio and the video with sound');
-await page.getByRole('button', { name: '■ Stop preview' }).click();
+await page.getByRole('button', { name: '■ Stop' }).click();
 assert(await media().evaluateAll((els) => els.every((m) => m.paused)), 'stopping the preview stops them');
 await page.getByRole('button', { name: 'Preview sound is on' }).click();
 await page.getByRole('button', { name: '▶ Preview' }).click();
 assert((await media().evaluateAll((els) => els.map((m) => m.muted).join())) === 'true,true', 'the preview sound toggle mutes them');
-await page.getByRole('button', { name: '■ Stop preview' }).click();
+await page.getByRole('button', { name: '■ Stop' }).click();
 await page.getByRole('button', { name: 'Preview sound is off' }).click();
 for (let i = 0; i < 2; i++) {
   await page.locator('.canvas .hit').last().click();

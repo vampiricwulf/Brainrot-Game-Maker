@@ -353,7 +353,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
   its paste as a new slide). Ctrl+D and Alt+←/→ work on a card's tab too. A
   tab's tooltip starts with its slide's first words ("S3 · “House rules”"). The slide editor's toolbar keeps only what
   goes on a slide, the background, ▶ Preview, sound and ↶ ↷ (📋 Copy slide and 📋 Paste over this slide are in the
-  slide's right-click menu everywhere, for slides with no tabs too).
+  slide's right-click menu everywhere, for slides with no tabs too). While previewing, ▶ Preview's place holds ↻ Replay
+  and ■ Stop (one cell, as wide as the wider of the two, so starting a preview never changes the toolbar's width).
 - **The selected item's bar** (ItemBar), pinned at the top of the side panel, there in every state so the panel never
   moves as things are selected: the item's icon and name (several: "3 items selected"; none: "Nothing selected", its
   buttons greyed) and ⋯ for its menu (none selected: the slide's), then its edit (as its menu names it: ✎ Edit text, ✎

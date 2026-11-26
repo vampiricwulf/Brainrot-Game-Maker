@@ -118,7 +118,7 @@ describe('the editor’s ▶ Preview after a game left mid-clue', () => {
     const end = previewMediaScope();
     expect(comesUp('a')).toEqual([]);
     updateMedia('a', { time: 5 });
-    // ■ Stop preview: its own media goes after the scope is back.
+    // ■ Stop: its own media goes after the scope is back.
     end();
     unregisterMedia('a');
     // Resume: the game's clip paused where the host left it, not where the preview was.
