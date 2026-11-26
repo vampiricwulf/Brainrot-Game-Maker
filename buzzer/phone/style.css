@@ -1206,6 +1206,43 @@ html:has(#s-buzz:not([hidden])) {
     height: 28px;
   }
 }
+/*
+ * A small phone on its side (667x375, 568x320): the box's lines tighter and smaller, so Send answer and the line under
+ * it ("⏱️ Sent when time ran out…") are on screen with nothing to scroll. The Final's "Your wager: $600 (locked)" and
+ * the clock share a row where they fit.
+ */
+@media (min-aspect-ratio: 4/3) and (max-height: 420px) {
+  #wager-form,
+  #answer-form {
+    gap: 3px;
+  }
+  #answer-in {
+    font-size: 18px;
+    padding: 6px 10px;
+  }
+  #answer-form :is(.primary, .sent) {
+    min-height: 46px;
+  }
+  #answer-label,
+  #answer-sub,
+  #answer-state,
+  #wager-info {
+    font-size: 13px;
+    line-height: 1.25;
+  }
+  #answer-form {
+    flex-flow: row wrap;
+    align-content: center;
+  }
+  #answer-form > * {
+    flex: 1 0 100%;
+  }
+  #answer-form > :is(#answer-sub, #answer-clock) {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-self: baseline;
+  }
+}
 
 /* ---- Private cards: only the phones the host sent them to ---- */
 

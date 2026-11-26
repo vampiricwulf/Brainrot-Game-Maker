@@ -12,6 +12,10 @@
 // types: the guess typed and not sent goes as the answer shows ("⏱️ Sent, unfinished: “…”" under the status;
 // the host's guess line ⏱️ sent at lock). Then the Final: words typed and not sent go
 // as its answer shows ("⏱️ Yours, unfinished: “…”" after the wager), and the reveal rows mark them ⏱️ without the words until each is revealed.
+// Along the way, small phones: a long question at 320x568 takes the room kept under the box (a line coming there
+// moves nothing; a short one keeps it); the picker's phone says "Your pick!" big, "Tell the host which clue" under it;
+// on its side (667x375, 568x320), the time-up box's Send answer and the line under it, and the Final's Send answer, on
+// screen.
 // Needs `npm ci` in buzzer/.
 import { pathToFileURL } from 'node:url';
 import {
@@ -124,6 +128,14 @@ try {
   /** @param {string} name */
   const row = (name) => answersBox.locator('li', { hasText: name });
   const small = (/** @type {import('playwright-core').Page} */ p) => p.locator('#buzz-small').innerText();
+  /** Where the answer box's Send and the line under it end, against the screen's height and the page's. */
+  const sidewaysBox = async (/** @type {import('playwright-core').Page} */ p) => {
+    await sleep(300);
+    return p.evaluate(() => {
+      const bottom = (/** @type {string} */ id) => Math.ceil(/** @type {HTMLElement} */ (document.getElementById(id)).getBoundingClientRect().bottom);
+      return { send: bottom('answer-send'), state: bottom('answer-state'), h: innerHeight, scroll: document.documentElement.scrollHeight };
+    });
+  };
   const stageH = () => stageBoxIn(host).evaluate((e) => Math.round(e.getBoundingClientRect().height));
   /** R shows the answer: with answers still to come in, the check asks first, and R again shows it anyway. */
   const reveal = async () => {
@@ -269,6 +281,18 @@ try {
     `time's up: the words go by themselves, the box stays open, and Send answer would send them as the player's own (${await p1.locator('#answer-state').innerText()})`,
   );
   assert(await p1.locator('#answer-state.unsent').isVisible(), 'the line saying they went unfinished is amber, as an edit not sent is');
+  // A small phone on its side: Send answer and that line on screen, nothing to scroll (667x375); Send answer, at least,
+  // on the smallest (568x320).
+  await p1.setViewportSize({ width: 667, height: 375 });
+  let sideways = await sidewaysBox(p1);
+  assert(
+    sideways.send <= sideways.h && sideways.state <= sideways.h && sideways.scroll <= sideways.h,
+    `667x375, time's up: Send answer and the line under it on screen (${JSON.stringify(sideways)})`,
+  );
+  await p1.setViewportSize({ width: 568, height: 320 });
+  sideways = await sidewaysBox(p1);
+  assert(sideways.send <= sideways.h, `568x320, time's up: Send answer on screen (${JSON.stringify(sideways)})`);
+  await p1.setViewportSize({ width: 360, height: 640 });
   // One window: the host panel says it's in and that it went by itself, never the words.
   const chip = answersBox.locator('[data-answer-in]', { hasText: 'Player 1' });
   await chip.filter({ hasText: '✔ ⏱️' }).waitFor();
@@ -387,6 +411,17 @@ try {
   await finalControlsIn(host).click({ position: { x: 2, y: 2 } });
   await mainButton(host, 'Show question ▶').click();
   for (const p of [p1, p2]) await p.getByLabel(/Your answer/).waitFor();
+  // A small phone on its side: the Final's box, its wager over it, Send answer on screen.
+  await p1.setViewportSize({ width: 568, height: 320 });
+  sideways = await sidewaysBox(p1);
+  assert(
+    sideways.send <= sideways.h && (await p1.locator('#answer-sub').innerText()).includes('(locked)'),
+    `568x320, the Final: Send answer on screen under the wager line (${JSON.stringify(sideways)})`,
+  );
+  await p1.setViewportSize({ width: 667, height: 375 });
+  sideways = await sidewaysBox(p1);
+  assert(sideways.send <= sideways.h && sideways.scroll <= sideways.h, `667x375, the Final: nothing to scroll (${JSON.stringify(sideways)})`);
+  await p1.setViewportSize({ width: 360, height: 640 });
   await p1.getByLabel(/Your answer/).fill('Tralaler');
   await p2.getByLabel(/Your answer/).fill('Bombardiro');
   await p2.getByRole('button', { name: 'Send answer' }).click();
