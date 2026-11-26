@@ -593,11 +593,11 @@ try {
     // row, and the chips' box says there are more.)
     const { ctx, page } = await startAt(844, 390);
     for (const [name, label] of [
-      ['Memes for $600', /Spin!/],
-      ['Movies for $600', /Roll!/],
+      ['Memes for $600', 'Spin!'],
+      ['Movies for $600', 'Roll!'],
     ]) {
-      await tile(page, String(name)).click();
-      const go = action(page).getByRole('button', { name: label });
+      await tile(page, name).click();
+      const go = action(page).getByRole('button', { name: new RegExp(label) });
       await go.waitFor();
       await sleep(300);
       const seen = await go.evaluate((b) => {
@@ -609,7 +609,7 @@ try {
           ? ''
           : `${Math.round(r.top)}–${Math.round(r.bottom)} out of ${Math.round(a.top)}–${Math.round(a.bottom)}`;
       });
-      assertEq(seen, '', `844×390, ${name}: its ${label.source} in sight in the action part`);
+      assertEq(seen, '', `844×390, ${name}: its ${label} in sight in the action part`);
       assert(
         await hostPanelIn(page)
           .locator('[data-host-players]')
