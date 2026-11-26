@@ -502,10 +502,14 @@
       white-space: nowrap;
     }
   }
-  /* On a touch screen, a phone held upright and not tall (up to 800px: 360×740), or any window up to 500px tall (a
-     phone on its side), 🤫 🎭 and 📊 as their signs after all: their words would take the tools row a line more, out of
-     the room the moment's box needs there (on its side, the fixed bar too). */
-  @media (hover: none) and (max-width: 560px) and (max-height: 800px), (hover: none) and (max-height: 500px) {
+  /* On a touch screen, a phone held upright and not tall (up to 800px: 360×740), a tablet on its side shorter than
+     768px up to 1240px wide (1024×700: the panel's at its shortest there, and with their words the row takes two lines),
+     or any window up to 500px tall (a phone on its side), 🤫 🎭 and 📊 as their signs after all: their words would take
+     the tools row a line more, out of the room the moment's box needs there (a 🎲 roll's, a round's; on its side, the
+     fixed bar too). */
+  @media (hover: none) and (max-width: 560px) and (max-height: 800px),
+    (hover: none) and (max-width: 1240px) and (max-height: 767px),
+    (hover: none) and (max-height: 500px) {
     .tl :is(.word, .name) {
       position: absolute;
       width: 1px;

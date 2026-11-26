@@ -8,8 +8,9 @@
 // one by one (three rows from 320 to 390px wide, no more than one more than before), on a tablet held upright (768,
 // 820) it's one line; on a phone on its side (740×360) the panel is too short for a second line: signs, one line. The
 // tools row keeps 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard in words, but on an upright phone up to 800px tall
-// (360×740). Each moment's box keeps its room (60px, or all it needs), the stage is the same size as with a mouse, and
-// the fixed bar on screen. With a mouse, nothing changes: the bar's words go to signs at 940–1340px as before, and the
+// (360×740), a tablet on its side shorter than 768px (1024×700, 1024×600: there the row stays one line) and a phone on
+// its side. Each moment's box keeps its room (60px, or all it needs: the RPG's and the board game's at 1024×600 too),
+// the stage is the same size as with a mouse, and the fixed bar on screen. With a mouse, nothing changes: the bar's words go to signs at 940–1340px as before, and the
 // tools row's at 1040–1240px.
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
@@ -106,6 +107,7 @@ const bar = (page) =>
       foot: Math.round(fixed.getBoundingClientRect().bottom),
       fold: fold && seen(fold) ? { w: Math.round(fold.getBoundingClientRect().width), h: Math.round(fold.getBoundingClientRect().height) } : null,
       tools: tools.map((b) => ({ name: name(b), word: word(b) })),
+      toolRows: rows(tools),
     };
   });
 
@@ -138,6 +140,7 @@ try {
     [820, 1180],
     [1024, 768],
     [1280, 800],
+    [1024, 700],
     [740, 360],
   ]) {
     const t = touch(w, h);
@@ -180,17 +183,20 @@ try {
       const was = before[/** @type {320 | 360 | 390} */ (w)];
       assert(b.rows <= was + 1 && b.rows <= 3, `${say(t)}: the bar takes ${b.rows} rows, at most one more than its ${was}`);
     } else assert(b.rows === 1, `${say(t)}: the bar on one line (${b.rows} rows)`);
-    // (Up to 700px tall the row is folded behind ⋯ Tools. On a phone up to 800px tall the words would take it a line
-    // more, out of the moment's room: signs there.)
-    if (h > 700) {
+    // (On a phone up to 700px tall the row is folded behind ⋯ Tools. On a phone up to 800px tall, a tablet on its side
+    // shorter than 768px (1024×700, its panel at its shortest) or a phone on its side, the words would take it a line
+    // more, out of the moment's room: signs there, and on a tablet so the row stays one line.)
+    if (b.tools.length) {
       const tw = [/^🤫 Send a card/, /^🎭 Deal/, /^📊/].map((re) => toolWord(b, re));
-      if (w > 560 || h > 800) assert(tw.every(Boolean), `${say(t)}: the tools row keeps 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard in words (${tw})`);
+      const signs = (w <= 560 && h <= 800) || (w <= 1240 && h < 768) || h <= 500;
+      if (!signs) assert(tw.every(Boolean), `${say(t)}: the tools row keeps 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard in words (${tw})`);
       else
         assert(
           tw.every((x) => x === false),
           `${say(t)}: the tools row's 🤫 🎭 📊 as their signs, a line less (${tw})`,
         );
-    }
+      if (w > 560 && h > 500 && h < 768) assert(b.toolRows === 1, `${say(t)}: a short tablet's tools row on one line (${b.toolRows} rows)`);
+    } else assert(w < 600 && h <= 700, `${say(t)}: the tools row out (not folded) but on a small phone`);
     const tight = await roomless(page);
     assert(tight.length === 0, `${say(t)}: the moment's box has room (60px, or all it needs)${tight.length ? ` (not: ${tight.join(', ')})` : ''}`);
     // The stage as with a mouse at the same size: the bigger buttons and the words come out of the panel.
@@ -290,10 +296,10 @@ try {
     await m.ctx.close();
   }
 
-  section('The RPG’s and the board game’s menus on a touch screen: 28px to tap');
+  section('The RPG’s and the board game’s menus on a touch screen: 28px to tap; their boxes keep their room on a short tablet');
   const roundsFile = resultsPath('touchsize-rounds.json');
   writeFileSync(roundsFile, JSON.stringify(roundsGame()));
-  for (const o of [touch(1024, 768), mouse(1024, 768)]) {
+  for (const o of [touch(1024, 768), mouse(1024, 768), touch(1024, 600)]) {
     const { ctx, page } = await newPage(o);
     await openGameFile(page, roundsFile);
     await page.getByText(/^Opened “/).waitFor();
@@ -322,6 +328,11 @@ try {
         if (o.hasTouch) assert(hh >= 28, `${say(o)}: the ${round}’s “${n}” menu at least 28px tall (${hh}px)`);
         else assert(hh < 28, `${say(o)}: the ${round}’s “${n}” menu as it was (${hh}px)`);
       }
+      // (On a tablet on its side 600px tall the panel's at its shortest: the tools row stays one line, so the round's
+      // box keeps its 60px.)
+      await settle(page);
+      const tight = await roomless(page);
+      assert(tight.length === 0, `${say(o)}: the ${round}’s box has room (60px, or all it needs)${tight.length ? ` (not: ${tight.join(', ')})` : ''}`);
     }
     await ctx.close();
   }

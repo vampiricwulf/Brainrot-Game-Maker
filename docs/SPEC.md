@@ -806,8 +806,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   a phone on its side (up to 500 px tall, the panel too short for a second line) all signs, on one line;
   likewise the tools row's 🤫 Send a card…, 🎭 Deal… and 📊 Scoreboard keep their words on a touch screen (as signs
   only with a mouse up to 1240 and 1040 px), the row wrapping in the panel where it must, except on a phone held
-  upright up to 800 px tall (360×740) or on its side, where their words would take the row a line more out of that
-  room; beside the stage a grid: Undo Redo and the lists, then Sound, Audience
+  upright up to 800 px tall (360×740), a tablet on its side shorter than 768 px up to 1240 px wide (1024×700, the panel
+  at its shortest; there the row stays one line) or a phone on its side, where their words would take the row a line
+  more out of that room; beside the stage a grid: Undo Redo and the lists, then Sound, Audience
   and Scores window across both columns, then Cover Hide and Help Exit, every word kept). On a short window the round's own
   box keeps a few rows in sight (the panel scrolls), a roll's box above it too. **A clue's flow row** (the row level with
   the main button: the Amount row, or the folded one with ± Other points…) keeps fixed places: ↩ Put back (keep tile)
