@@ -24,7 +24,9 @@ runs the board, decides who gets points, and controls media.
 - Built-in sound-effect library. Users can attach their own audio anywhere (see §9).
 - Mobile-optimized editing. Play mode should still render acceptably on tablets. A phone (a touch screen under
   700 px) gets a note under the header, "💻 Made for a computer. Players join from their phones with the host's code.",
-  closed for good with its ✕ (💡 Show all tips again brings it back). A touch screen with no mouse shows no keys on
+  closed for good with its ✕ (💡 Show all tips again brings it back). On a screen under 700 px with no rounds yet, the
+  first screen (✨ Try a sample game, the kinds of round) comes before the sidebar's list, which follows it, nothing
+  hidden; on another page, or once there's a round, the list is first again. A touch screen with no mouse shows no keys on
   buttons and in menus, nor "or drop it here"; the keys window still lists them. On ▶ Play's page before the game, a
   touch screen with no mouse makes every button at least 32 px to tap (the small ones too: ✎ Rename, a player row's ▲
   ▼ 🗑, ± Start scores, 🔊 Test the sound…), and the ⚖ Game rules and 📺 On stream headings too, with 🗑 further

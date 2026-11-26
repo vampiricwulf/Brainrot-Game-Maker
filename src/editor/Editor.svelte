@@ -1514,7 +1514,7 @@
   {#if naming}<NameDialog onname={naming.answer} exporting={naming.exporting} />{/if}
 
   <svelte:boundary onerror={(e) => console.error('The editor failed to show this game', e)}>
-    <div class="body" use:inertWhile={replacing || !!opening} use:focusRescue>
+    <div class="body" class:welcome={!game.rounds.length && typeof tab === 'number'} use:inertWhile={replacing || !!opening} use:focusRescue>
       <nav aria-label="Editor" class:more-below={navMore} style:scroll-padding-bottom="{checkH}px" bind:this={navEl} onscroll={measureNav}>
         <div class="navlabel muted">Rounds</div>
         {#each game.rounds as round, i (round.id)}
@@ -2338,6 +2338,21 @@
       border-right: none;
       border-bottom: 1px solid var(--border);
       max-height: 30vh;
+    }
+    /* (No rounds yet, on the first screen: ✨ Try a sample game and the kinds of round come before the list, so they're on
+       a small phone's screen; the list is under them, nothing hidden, the two scrolling as one. Once there's a round, or
+       on 🔊 Sounds and the rest, the list is first again.) */
+    .body.welcome {
+      overflow-y: auto;
+    }
+    .body.welcome > main {
+      flex: none;
+      overflow: visible;
+    }
+    .body.welcome > nav {
+      order: 1;
+      border-bottom: none;
+      border-top: 1px solid var(--border);
     }
     /* (The checklist, whose top fades to say "more below" on a computer, is hidden here: the list's foot fades instead.) */
     nav.more-below {

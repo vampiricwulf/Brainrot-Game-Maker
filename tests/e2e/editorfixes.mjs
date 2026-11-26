@@ -7,7 +7,7 @@
 // sidebar at 1280×720, pages opening at their top, and a round's name on a tablet; its round pages at 1920 (one header
 // width; the slide of a slides round, a Final and the tiebreaker filling it, and the clue editor the window), the slide's
 // buttons all one size, and the board's two count lines level. And a reload mid-edit coming back on the page, round and
-// clue it left. And on a phone, 🔊 Sounds, 📊 Stats & items, the board game and the slide tabs not scrolling sideways.
+// clue it left. And on a phone, 🔊 Sounds, 📊 Stats & items, the board game and the slide tabs not scrolling sideways; and on a small phone, the first screen's ✨ Try a sample game in sight, the sidebar under it.
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -1073,6 +1073,50 @@ try {
     const laptop = await page();
     assert(laptop.canvas >= 700, `at 1280×720 the Final's slide keeps the size it has at the readable width (${JSON.stringify(laptop)})`);
     await wp.context().close();
+  }
+
+  // ---------- On a small phone, the first screen's ✨ Try a sample game is in sight, the sidebar under it ----------
+  for (const [w, h] of [
+    [320, 568],
+    [360, 640],
+  ]) {
+    const ctx = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
+    const pp = await ctx.newPage();
+    pp.on('pageerror', (e) => errors.push(e.message));
+    await pp.goto(pathToFileURL(file).href);
+    const sample = pp.getByRole('button', { name: /Try a sample game/ });
+    await sample.waitFor();
+    const at = () =>
+      pp.evaluate(() => {
+        const top = (s) => Math.round(document.querySelector(s)?.getBoundingClientRect().top ?? -1);
+        const s = document.querySelector('.first-round .sample')?.getBoundingClientRect();
+        return { sampleBottom: s ? Math.round(s.bottom) : -1, nav: top('nav'), main: top('main'), screen: innerHeight };
+      });
+    const first = await at();
+    assert(
+      first.sampleBottom > 0 && first.sampleBottom <= first.screen && first.nav > first.sampleBottom,
+      `${w}×${h}: ✨ Try a sample game is on the first screen, the sidebar under it (${JSON.stringify(first)})`,
+    );
+    // (The sidebar's buttons are all there, below: nothing hidden.)
+    assert((await pp.locator('nav > button', { hasText: 'Sounds' }).count()) === 1, `${w}×${h}: the sidebar keeps 🔊 Sounds and the rest`);
+    // 🔊 Sounds (no round yet) and once there's a round: the sidebar is first again.
+    await pp.locator('nav > button', { hasText: 'Sounds' }).click();
+    await pp.locator('.sound').first().waitFor();
+    const sounds = await at();
+    assert(sounds.nav < sounds.main, `${w}×${h}: on 🔊 Sounds the sidebar is above the page again (${JSON.stringify(sounds)})`);
+    await ctx.close();
+    const ctx2 = await browser.newContext({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
+    const pp2 = await ctx2.newPage();
+    pp2.on('pageerror', (e) => errors.push(e.message));
+    await pp2.goto(pathToFileURL(file).href);
+    await pp2.getByRole('button', { name: /Try a sample game/ }).click();
+    await roundTabsIn(pp2).first().waitFor();
+    const rounds = await pp2.evaluate(() => ({
+      nav: document.querySelector('nav')?.getBoundingClientRect().top,
+      main: document.querySelector('main')?.getBoundingClientRect().top,
+    }));
+    assert(rounds.nav < rounds.main, `${w}×${h}: with rounds the sidebar is above the page (${JSON.stringify(rounds)})`);
+    await ctx2.close();
   }
 
   // ---------- On a phone (390×844), the sample's pages don't scroll sideways ----------
