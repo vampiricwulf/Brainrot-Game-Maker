@@ -2296,10 +2296,11 @@
   .panel:not(.dual) > .act {
     margin-top: auto;
   }
-  /* (A phone held upright, whose panel takes the screen's height left: the action part stays under the chips there, in
-     the thumb's reach and with no tall gap above it, the room to spare above the tools row. The check before going on
-     is drawn over that part, and a tap where the blue button was presses nothing on it: see GoOnCheck.) */
-  @media (orientation: portrait) and (max-width: 600px) {
+  /* (A narrow window, a phone held upright, whose panel takes the screen's height left: the action part stays under the
+     chips there, in the thumb's reach and with no tall gap above it, the room to spare above the tools row. The check
+     before going on is drawn over that part there, with no spot kept for the blue button, and a tap where that button
+     was presses nothing on it: see GoOnCheck, whose "… anyway" sat right there with the part at the foot.) */
+  @media (max-width: 600px) {
     .panel:not(.dual):not(.side) > .act {
       margin-top: 0;
       margin-bottom: auto;
