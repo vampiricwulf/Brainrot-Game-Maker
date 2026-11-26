@@ -10,8 +10,8 @@
 // own button, 🎲 Roll then ▶ Move in a board game, Finish now… and its Finish. Up to 700px tall the tools row (with the
 // round's ◀ / ▶) folds behind ⋯ Tools, out again with a tap, and the status line's how-to keeps to one line (whole in
 // its tooltip, at every moment); with the row kept out (📊 Scoreboard on, at 320×568) the moment's box still has room
-// and the panel scrolls (a tablet never folds it). A phone on its side, one window (844×390, 932×430, 667×375): the
-// host panel is a column beside the stage at every moment, the stage twice as wide as under it was and one size and
+// and the panel scrolls (a tablet never folds it). A phone on its side, one window (844×390, 932×430, 667×375, 640×360):
+// the host panel is a column beside the stage at every moment, the stage far wider than under it was and one size and
 // place all game; the tools row folds behind ⋯ Tools there too, the status line's how-to keeps to one line, and with
 // nothing scrolled the fixed bar's 🚪 Exit, the RPG's pad and the board game's 🎲 Roll are in sight where a tap reaches
 // them. A laptop (1280×720, 1920×1080), a mouse (768×1024, 844×390), a short touch window too narrow for the column
@@ -260,6 +260,7 @@ try {
     [844, 390],
     [932, 430],
     [667, 375],
+    [640, 360],
   ]) {
     const where = `${w}×${h}, one window`;
     const sideways = w > h;

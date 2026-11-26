@@ -563,7 +563,7 @@
   // window, on a wide window, it goes beside the host's stage copy instead of under it. In one window it stays under the
   // stage, as in every other round: the stage viewers see keeps one size and place the whole game (its rows scroll).
   // A phone on its side, one window, is the exception: there the panel is a column beside the stage at every moment,
-  // the whole game, so the stage is twice as wide as under it and still keeps one size and place.
+  // the whole game, so the stage is far wider than under it (about twice on a big phone) and still keeps one size and place.
   const side = $derived(dual ? wide.current && (session.phase === 'rpg' || session.phase === 'boardgame') : phoneSide.current);
 
   // Timeouts that touch the live state (score pops, roll-off pickers) are cancelled if the game is left.

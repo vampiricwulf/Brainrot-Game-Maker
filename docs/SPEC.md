@@ -732,8 +732,9 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     named for screen readers, their tooltips say what they do), so 🚪 Exit, the RPG's pad and the board game's 🎲 Roll
     are in sight with nothing scrolled. The tools row folds behind **⋯ Tools** there as on a short phone, and the
     Amount row keeps to one line (the word Amount as its box's placeholder). If its rows still can't all fit, the
-    column scrolls. A short touch window narrower than that (480×320, a phone upright with its keyboard up) keeps the
-    rule above: there a column would leave the stage smaller than it was (`tests/e2e/phonepanel.mjs`).
+    column scrolls (on the smallest, 568×320, a roll's box with the tools row out is a few rows and scrolls). A short
+    touch window narrower than that (480×320, a phone upright with its keyboard up) keeps the rule above: there a
+    column would leave the stage smaller than it was (`tests/e2e/phonepanel.mjs`).
 - **The host panel's rules** (everything below follows them):
   1. **Each action has one place: its situation's box**, beside the manual choices it's an alternative to (🤝 a partner
      clue, ⭐ a Daily Double, 🎡 / 🎲 a wheel or dice, the Final's wagers and reveals, a tie at the end, the buzzers' row,
