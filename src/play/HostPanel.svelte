@@ -430,8 +430,8 @@
   );
   /**
    * A clue whose tile has a box of its own up in the action part (its 🤫 cards, or a wheel or dice tile's tool), single
-   * window: the players' chips are kept whole first, as in a partner clue (.tilebox), so every chip's ✔ / ✘ stays in
-   * sight and the box scrolls instead.
+   * window: the players' chips are kept whole first, as in a partner clue (.tilebox, on a window 500px tall or more), so
+   * every chip's ✔ / ✘ stays in sight and the box scrolls instead.
    */
   const tilebox = $derived(
     !side && session.phase === 'clue' && !!info && !partner && (info.clue.type === 'wheel' || info.clue.type === 'dice' || cardSlides(info.clue).length > 0),
@@ -2793,8 +2793,8 @@
   /* In the column: the action part takes the height left and scrolls; the tools and the fixed bar stay at its foot. */
   /* In a single window (the panel one height: see .panel:not(.dual)), a 🤝 partner clue's box scrolls, its foot kept in
      sight (📤 Send and start and ✔ Got it / ✘ Missed; the steal's row); a wheel or dice tile's tool keeps its height at
-     the top, what's under it scrolls (the action part gives way before the players' chips: .tilebox, so on a short
-     window the tool itself scrolls under the flow row). */
+     the top, what's under it scrolls (on a window 500px tall or more the action part gives way before the players'
+     chips, .tilebox, so there on a short laptop window the tool itself scrolls under the flow row). */
   .panel.held:not(.dual) > .act > .action > .tools {
     flex-shrink: 0;
   }
@@ -3372,23 +3372,27 @@
      first (it scrolls, ✔ Got it / ✘ Missed or the steal's row kept at its foot), down to room for that row and the main
      button: the chips stay whole, quick buttons and all, while there's room. Then they scroll, as above. The same at
      the end and in the tiebreaker (held too), down to one row of buttons: every score in sight to fix, and every
-     player to pick the winner from. And in a clue whose tile has a box of its own (its 🤫 cards, a wheel or dice tile's
-     tool: .tilebox): that box scrolls in the action part (the flow row at its foot), and every chip's ✔ / ✘ stays in
-     reach. */
-  .panel:is(.partnerclue, .keepchips, .tilebox):not(.dual) > .players {
+     player to pick the winner from. */
+  .panel:is(.partnerclue, .keepchips):not(.dual) > .players {
     flex-shrink: 1;
   }
-  .panel:is(.partnerclue, .keepchips, .tilebox):not(.dual) > .act {
+  .panel:is(.partnerclue, .keepchips):not(.dual) > .act {
     flex-shrink: 1000;
   }
   .panel.partnerclue:not(.dual) > .act {
     min-height: 80px;
   }
-  /* (A tile's box keeps its first line in sight above the flow row: the row's 32px, the gap and a line of buttons. On a
-     window with the room: on a short one, 200% zoom on a laptop, that row and the main button are all it keeps, so the
-     fixed bar stays in the window.) */
+  /* And in a clue whose tile has a box of its own (its 🤫 cards, a wheel or dice tile's tool: .tilebox), on a window
+     500px tall or more: that box scrolls in the action part (the flow row at its foot), keeping its first line in sight
+     above the flow row (the row's 32px, the gap and a line of buttons), and every chip's ✔ / ✘ stays in reach. (On a
+     shorter one, a phone on its side or 200% zoom on a laptop, the chips give way first as on any clue: the tool's
+     🎡 Spin! / 🎲 Roll! stays in sight over the flow row, and the chips' box says there are more below.) */
   @media (min-height: 500px) {
+    .panel.tilebox:not(.dual) > .players {
+      flex-shrink: 1;
+    }
     .panel.tilebox:not(.dual) > .act {
+      flex-shrink: 1000;
       min-height: 76px;
     }
   }

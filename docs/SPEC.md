@@ -739,9 +739,10 @@ The mode isn't saved with the game: it's dual while the audience window is open.
     Each score chip keeps room for the mark and the score a clue of the round can give it, counted from its
     score before the clue's marks (the ★ of who picks next takes none), so the chips don't reflow. What scrolls in
     there comes into view as it comes (a board-game move's landing row, a tool's outcome), and at the end, in the
-    tiebreaker clue and in a clue whose tile has a box of its own (its 🤫 cards, a wheel or dice tile's tool, up or
-    landed) the score chips stay whole, every ✔ / ✘ in reach, while the part under them scrolls (that box keeping its
-    first line in sight above the flow row on a window 500px tall or more). Where the chips' box itself scrolls (a
+    tiebreaker clue and, on a window 500px tall or more, in a clue whose tile has a box of its own (its 🤫 cards, a wheel
+    or dice tile's tool, up or landed) the score chips stay whole, every ✔ / ✘ in reach, while the part under them
+    scrolls (that box keeping its first line in sight above the flow row; on a shorter window, a phone on its side, the
+    chips give way first as on any clue, so 🎡 Spin! / 🎲 Roll! stays in sight). Where the chips' box itself scrolls (a
     short window: a laptop at 200% zoom shows one chip), its foot fades while more chips are below (`data-more`, a
     mask: no room, no click), and shows the last chip whole at its end (`tests/e2e/hostroom.mjs`).
   - **A phone or a touch tablet held upright** (portrait, up to 600px wide, or any portrait touch screen), one window:

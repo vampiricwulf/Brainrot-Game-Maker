@@ -13,7 +13,8 @@
 //    and the minimap's first row in sight at the box's top, the same with a player picked on the stage (which leaves the
 //    row folded); a player's number opens it, ✕ Close folds it (players picked or not), ± Adjust score opens it;
 // 5. a laptop at 200% zoom (640×360, three players, a clue): the chips' box, one chip in sight, says there are more
-//    (data-more, its foot faded), and stops saying it scrolled to its end.
+//    (data-more, its foot faded), and stops saying it scrolled to its end;
+// 6. a phone on its side (844×390): a wheel or dice tile keeps 🎡 Spin! / 🎲 Roll! in sight (the chips give way first).
 import { writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import {
@@ -543,6 +544,43 @@ try {
     assertEq(await playerRowsIn(chips).count(), 3, 'three chips in it');
     await toEnd(chips);
     assert(await until(async () => !(await chips.evaluate((e) => e.hasAttribute('data-more')))), 'scrolled to its end: no more to say, the last chip whole');
+    await ctx.close();
+  }
+
+  section('A phone on its side: a wheel or dice tile keeps its button in sight');
+  {
+    // (Under 500px tall the chips give way first, as on any clue: the tool's 🎡 Spin! / 🎲 Roll! stays over the flow
+    // row, and the chips' box says there are more.)
+    const { ctx, page } = await startAt(844, 390);
+    for (const [name, label] of [
+      ['Memes for $600', /Spin!/],
+      ['Movies for $600', /Roll!/],
+    ]) {
+      await tile(page, String(name)).click();
+      const go = action(page).getByRole('button', { name: label });
+      await go.waitFor();
+      await sleep(300);
+      const seen = await go.evaluate((b) => {
+        const box = b.closest('[data-host-action]');
+        if (!box) return 'no action part';
+        const r = b.getBoundingClientRect();
+        const a = box.getBoundingClientRect();
+        return r.top >= a.top - 0.5 && r.bottom <= a.bottom + 0.5
+          ? ''
+          : `${Math.round(r.top)}–${Math.round(r.bottom)} out of ${Math.round(a.top)}–${Math.round(a.bottom)}`;
+      });
+      assertEq(seen, '', `844×390, ${name}: its ${label.source} in sight in the action part`);
+      assert(
+        await hostPanelIn(page)
+          .locator('[data-host-players]')
+          .evaluate((e) => e.hasAttribute('data-more')),
+        `844×390, ${name}: the chips' box says there are more below`,
+      );
+      await hostPanelIn(page)
+        .getByRole('button', { name: /Put back/ })
+        .click();
+      await sleep(300);
+    }
     await ctx.close();
   }
 
