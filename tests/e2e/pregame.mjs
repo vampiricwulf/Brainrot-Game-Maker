@@ -28,6 +28,7 @@ import {
   stageBoxIn,
   statusBarIn,
   toastsIn,
+  until,
   resultsPath,
 } from './helpers.mjs';
 
@@ -624,6 +625,32 @@ try {
   await page.getByRole('button', { name: '◀ Back to editor', exact: true }).click();
   await kept.waitFor();
   assert((await roundTabsIn(page).nth(1).getAttribute('aria-current')) === 'page', 'Exit comes back to the editor on the round tested');
+  // The keys are back on ▶ Test this round (not ▶ Play), so Enter tests the round again.
+  const focusedIs = (what) => page.evaluate((w) => !!document.activeElement?.matches(w), what);
+  assert(
+    await until(() => focusedIs('main [data-test-round]'), 3000),
+    `back from a test, the keys are on the round's ▶ Test this round (${await page.evaluate(() => document.activeElement?.textContent?.trim())})`,
+  );
+  const leaveTest = async () => {
+    await page.getByRole('button', { name: /Exit/ }).first().click();
+    await page.waitForTimeout(450);
+    await page.getByRole('button', { name: '◀ Back to editor', exact: true }).click();
+    await kept.waitFor();
+  };
+  await page.keyboard.press('Enter');
+  await roundNavIn(page).locator('.test').waitFor();
+  assert(true, 'Enter there tests the round again');
+  await leaveTest();
+  // Started from the round tab's menu: the keys go back to that tab.
+  const secondId = (await roundTabsIn(page).nth(1).getAttribute('data-place')) ?? '';
+  await roundTabsIn(page).nth(1).click({ button: 'right' });
+  await page.getByRole('menuitem', { name: '▶ Test this round' }).click();
+  await roundNavIn(page).locator('.test').waitFor();
+  await leaveTest();
+  assert(
+    secondId.startsWith('round:') && (await until(() => focusedIs(`nav [data-place="${secondId}"]`), 3000)),
+    `a test started from the round tab's menu gives the keys back to that tab (${await page.evaluate(() => document.activeElement?.outerHTML.slice(0, 80))})`,
+  );
   await kept.getByRole('button', { name: 'Resume game' }).click();
   await page.locator('.mode-ask .mode', { hasText: 'Single window' }).click();
   await boardIn(page).waitFor();

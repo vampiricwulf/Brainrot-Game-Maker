@@ -219,7 +219,8 @@ RollEvent  { id, ts, source: 'wheel' | 'dice', presetName?, result: string /* la
 - **A round's menu** is the same from a right-click (or Shift+F10) on its tab, ⋯ at the end of its page's top bar, and a
   right-click on that bar: ▶ Test this round · ✎ Rename (F2) · ⧉ Duplicate (Ctrl+D) · 📋 Copy round (Ctrl+C) · 📋 Paste
   round after it (Ctrl+V) · ▲ Move up (Alt+↑) · ▼ Move down (Alt+↓) · 🗑 Delete round (Delete). The keys work on its tab;
-  text selected on the page still copies as text.
+  text selected on the page still copies as text. Leaving a ▶ Test this round puts the keys back where it was started
+  (the page's ▶ Test this round, or the round's tab when its tab's menu started it), so Enter tests it again.
 - **A category's menu** (a right-click on it, its ⋯, or Shift+F10 in its name): 🖼 Image… · ⧉ Duplicate · 📋 Copy category ·
   📋 Paste category here (its name, picture and clues over this column, with the files, wheels and dice they use from
   another game; one step, with the bottom note's Undo, also over an empty column; clues past this board's rows

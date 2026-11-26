@@ -840,7 +840,7 @@
    * game's players, or three sample players). Nothing is saved: the game kept to resume, and a buzzer room left open,
    * stay as they are. Exit comes back to the editor on that round.
    */
-  async function testRound(index: number): Promise<void> {
+  async function testRound(index: number, from: 'page' | 'tab' = 'page'): Promise<void> {
     if (!app.game.rounds[index] || !(await stopJobsFirst())) return;
     const round = app.game.rounds[index];
     if (!round) return;
@@ -863,6 +863,7 @@
         s.players.push({ id: newId(), name, color: nextFreeColor(s.players.map((p) => p.color)), startScore: 0 });
     s.players.forEach((p, i) => blankName(p.name) && (p.name = `Player ${i + 1}`));
     app.test = round.id;
+    testFrom = from;
     app.playGame = game;
     app.session = s;
     app.live = newLive();
@@ -873,6 +874,8 @@
     app.screen = 'play';
   }
 
+  /** Where ▶ Test this round was pressed (the round's page, or its tab's menu): the keys go back there after. */
+  let testFrom: 'page' | 'tab' = 'page';
   /** The tab the editor opens on when it's back (the round just tested, the tab ▶ Play was pressed on). */
   let backTo = $state<string | null>(null);
   /** The editor's tab when ▶ Play was pressed. */
@@ -1066,7 +1069,22 @@
     });
   }
 
+  /**
+   * Back from ▶ Test this round: the keys go back to what started it (the round page's ▶ Test this round, or the
+   * round's tab, from its menu), so Enter tests it again; ▶ Play when neither is there.
+   */
+  function focusAfterTest(id: string, from: 'page' | 'tab'): void {
+    void tick().then(() => {
+      const el =
+        (from === 'page' ? document.querySelector<HTMLElement>('.editor main [data-test-round]') : null) ??
+        document.querySelector<HTMLElement>(`.editor nav [data-place="round:${id}"]`);
+      if (el) el.focus({ preventScroll: true });
+      else focusMain();
+    });
+  }
+
   function leavePlay(): void {
+    const tested = app.test;
     // The audience window stays up (OBS keeps its capture source between games): in the editor it shows the "Starting
     // soon" card. Only its ✕ (or closing it) closes it. The scores window belongs to the game.
     closeScoresWindow();
@@ -1076,7 +1094,8 @@
     app.pregame = false;
     app.live = newLive();
     app.test = null;
-    focusMain();
+    if (tested) focusAfterTest(tested, testFrom);
+    else focusMain();
   }
 
   /**

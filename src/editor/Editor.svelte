@@ -133,8 +133,8 @@
   }: {
     /** ▶ Play, from the tab shown (a round's id, or 'theme', 'media'…: ◀ Back to editor opens it again). */
     onplay: (from?: string) => void;
-    /** ▶ Test this round (its index). */
-    ontest?: (index: number) => void;
+    /** ▶ Test this round (its index; `from`: its page's button, or its tab's menu, where the keys go back after). */
+    ontest?: (index: number, from: 'page' | 'tab') => void;
     checklist: ChecklistLine[];
     /** The tab to open on: a round's id (back from testing it), or a tab such as 'theme' (back from ▶ Play). */
     startRound?: string | null;
@@ -431,13 +431,13 @@
 
   /**
    * A round's menu, the same from its tab (right-click, Shift+F10) and its page's header (⋯, or a right-click on it), with
-   * the keys its tab takes.
+   * the keys its tab takes. (`from`: where its ▶ Test this round gives the keys back after: the tab, or the page's button.)
    */
-  function roundMenu(i: number): MenuEntry[] {
+  function roundMenu(i: number, from: 'page' | 'tab' = 'tab'): MenuEntry[] {
     const round = game.rounds[i];
     return menuOf({
       heading: roundName(round, i),
-      verbs: ontest ? [{ label: '▶ Test this round', onclick: () => ontest(i), hint: 'Play just this round (nothing kept)' }] : [],
+      verbs: ontest ? [{ label: '▶ Test this round', onclick: () => ontest(i, from), hint: 'Play just this round (nothing kept)' }] : [],
       rename: menuItem.rename(() => (renamingRound = round.id)),
       duplicate: menuItem.duplicate(() => duplicateRound(i)),
       copy: menuItem.copy(() => copyRoundOf(game, i), { label: '📋 Copy round', hint: 'To paste in this game or another' }),
@@ -1747,8 +1747,8 @@
                 onmove={(d) => moveRound(i, i + d)}
                 onduplicate={() => duplicateRound(i)}
                 ondelete={() => removeRound(i)}
-                ontest={ontest && (() => ontest(i))}
-                menu={() => roundMenu(i)}
+                ontest={ontest && (() => ontest(i, 'page'))}
+                menu={() => roundMenu(i, 'page')}
               />
               {#if isBoard(round)}
                 <RoundEditor {round} />

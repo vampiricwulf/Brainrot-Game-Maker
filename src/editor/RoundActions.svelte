@@ -45,6 +45,7 @@
     {#snippet actions()}
       {#if ontest}
         <button
+          data-test-round
           onclick={ontest}
           title="Play just this round to try it out, with sample players if the game has none. Nothing is kept, and the game kept to resume stays as it is. Exit comes back here."
           >▶ Test this round</button
