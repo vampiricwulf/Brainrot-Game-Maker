@@ -772,8 +772,8 @@ try {
   // Time's up is said as a part of its own of the status line.
   await boardIn(page).locator('.tile:not(.used)').first().click();
   await page.waitForFunction(() => document.activeElement?.textContent?.includes('Reveal answer'));
-  await page.getByLabel('Timer seconds').fill('1');
-  await page.getByLabel('Timer seconds').press('Enter');
+  await page.getByLabel('Countdown seconds').fill('1');
+  await page.getByLabel('Countdown seconds').press('Enter');
   await saidHas(/Time's up/);
   assert(/ · Time's up\.$/.test(await said()), `“Time's up” comes after a “·” in what's said (“${await said()}”)`);
   await page.keyboard.press('Escape');

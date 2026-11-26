@@ -99,7 +99,7 @@
     ['reveal', '👁 Reveal an object'],
     ['hide', '🙈 Hide an object'],
     ['shop', '🛒 Open a shop'],
-    ['timer', '⏱️ Start a timer'],
+    ['timer', '⏱️ Start a countdown'],
     ['note', '📝 Host note'],
   ];
   const LABEL = Object.fromEntries(KINDS) as Record<ActionKind, string>;

@@ -759,13 +759,13 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     expect(said(st)).toBe('👁 Reveal answer · N · reveals');
     const items = leftNow(c, st);
     expect(lines(items)).toEqual([
-      ['first: Card 1 hasn’t gone to Cat’s phone, and the clock hasn’t started: they haven’t played yet.', '📤 Send and start ⏎ · close'],
+      ['first: Card 1 hasn’t gone to Cat’s phone, and the countdown hasn’t started: they haven’t played yet.', '📤 Send and start ⏎ · close'],
     ]);
     const ck = open(st, items);
     expect([ringOf(items), anywayLabel(ck), items[0].quick[0].after]).toEqual([
       'handout',
       '👁 Reveal anyway: they haven’t played',
-      'Card sent, clock running: ✔ Got it (Enter) or ✘ Missed (Shift+Enter) once they’ve played',
+      'Card sent, countdown running: ✔ Got it (Enter) or ✘ Missed (Shift+Enter) once they’ve played',
     ]);
     // N, N, N: never the answer. Enter sends; R reveals anyway.
     for (let i = 0; i < 3; i++)
@@ -774,26 +774,28 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     expect(inside({ key: 'r' }, ck, after)).toEqual({ do: 'anyway' });
     // With the controls hidden in one window: it holds (nothing on stream changes).
     expect(goOnDecision('n', st, items, true, false)).toBe('hold');
-    // The room full: greyed with why. The clock running (T): 📤 Send the cards (clock running).
+    // The room full: greyed with why. The clock running (T): 📤 Send the cards (countdown running).
     const full = leftNow(ctx(g, s, { partner: pnow({ send: [{ name: 'Card 1', to: ['c'] }], full: 'The room takes 8 cards' }) }), st);
     expect([full[0].quick[0].why, inside({ key: 'Enter' }, open(st, full), after)]).toEqual([
       'The room takes 8 cards',
       { do: 'flash', say: 'The room takes 8 cards' },
     ]);
     const t = leftNow(ctx(g, s, { partner: pnow({ send: [{ name: 'Card 1', to: ['c'] }], clock: { left: 40, running: true } }) }), st);
-    expect(lines(t)).toEqual([['first: Card 1 hasn’t gone to Cat’s phone yet, though the clock is running.', '📤 Send the cards (clock running) ⏎ · close']]);
+    expect(lines(t)).toEqual([
+      ['first: Card 1 hasn’t gone to Cat’s phone yet, though the countdown is running.', '📤 Send the cards (countdown running) ⏎ · close'],
+    ]);
     expect(JSON.stringify(items)).not.toMatch(/words|clue text/i);
   });
 
-  it('the hand-out copied by hand: ⏱️ Start the clock (⏎) and 📋 Copy; no cards to hand out: the clock', () => {
+  it('the hand-out copied by hand: ⏱️ Start the countdown (⏎) and 📋 Copy; no cards to hand out: the clock', () => {
     const { g, s } = question('distribute');
     const copy = [{ id: 'k1', name: 'Card 1', to: ['c'], phoneless: true, what: 'words' as const }];
     const c = ctx(g, s, { partner: pnow({ copy }) });
     const items = leftNow(c, mainStep(c)!);
     expect(lines(items)).toEqual([
       [
-        'first: Card 1 is for Cat (no phone here): copy it to them, then start the clock.',
-        '⏱️ Start the clock (45 s) [T] ⏎ · close',
+        'first: Card 1 is for Cat (no phone here): copy it to them, then start the countdown.',
+        '⏱️ Start the countdown (45 s) [T] ⏎ · close',
         '📋 Copy Card 1’s words · keep',
       ],
     ]);
@@ -806,18 +808,18 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     const both = leftNow(ctx(g, s, { partner: pnow({ send: [{ name: 'Card 2', to: ['a'] }], copy }) }), mainStep(c)!);
     expect(lines(both)).toEqual([
       [
-        'first: Card 2 hasn’t gone to Ann’s phone, and the clock hasn’t started: they haven’t played yet. Card 1 is to copy by hand for Cat (no phone here).',
+        'first: Card 2 hasn’t gone to Ann’s phone, and the countdown hasn’t started: they haven’t played yet. Card 1 is to copy by hand for Cat (no phone here).',
         '📤 Send and start ⏎ · close',
         '📋 Copy Card 1’s words · keep',
       ],
     ]);
     expect(lines(leftNow(ctx(g, s, { partner: pnow() }), mainStep(c)!))).toEqual([
-      ['first: The clock hasn’t started: they haven’t played yet.', '⏱️ Start the clock (45 s) [T] ⏎ · close'],
+      ['first: The countdown hasn’t started: they haven’t played yet.', '⏱️ Start the countdown (45 s) [T] ⏎ · close'],
     ]);
     // T presses it, as outside (Shift+T is nothing here).
     const clock = open(mainStep(c)!, leftNow(ctx(g, s, { partner: pnow() }), mainStep(c)!));
     expect([inside({ key: 't' }, clock, after), inside({ key: 'T', shift: true }, clock, after)]).toMatchObject([
-      { do: 'quick', quick: { label: '⏱️ Start the clock (45 s)' } },
+      { do: 'quick', quick: { label: '⏱️ Start the countdown (45 s)' } },
       { do: 'ignore' },
     ]);
   });
@@ -838,7 +840,7 @@ describe('a 🤝 partner clue (3.4 H)', () => {
     expect(leftNow(ctx(g, s, { partner: pnow({ clock: 'out' }) }), st)).toEqual([]);
     expect(lines(leftNow(ctx(g, s, { partner: pnow() }), st))[0][0]).toBe('first: Not judged yet: did Bob & Ann get it?');
     expect(lines(leftNow(ctx(g, s, { partner: pnow({ cards: 0 }) }), st))).toEqual([
-      ['first: The clock hasn’t started: they haven’t played yet.', '⏱️ Start the clock (45 s) [T] ⏎ · close'],
+      ['first: The countdown hasn’t started: they haven’t played yet.', '⏱️ Start the countdown (45 s) [T] ⏎ · close'],
     ]);
     // Judged, a steal open: who steals it (their number); one picked: right or wrong.
     const steal = leftNow(ctx(g, s, { partner: pnow({ judged: true, stealers: ['c'] }) }), st);
@@ -1281,12 +1283,12 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     expect(leftNow(c, st)).toEqual([]);
   });
 
-  it('the clock still running at 👁 Reveal answer: ⏱️ Let it run (⏎), ⏸ Pause the clock (T) or 👁 Reveal anyway (R); stopped or run out, none', () => {
+  it('the clock still running at 👁 Reveal answer: ⏱️ Let it run (⏎), ⏸ Pause the countdown (T) or 👁 Reveal anyway (R); stopped or run out, none', () => {
     const { g, s } = final('question');
     const c = (clock: FinalNow['clock'], over: Partial<GoCtx> = {}) => ctx(g, s, { final: { ...FIN, clock }, ...over });
     const st = mainStep(c(null))!;
     const items = leftNow(c({ left: 27, running: true }), st);
-    expect(lines(items)).toEqual([['first: The clock is still running (27 s left).', '⏱️ Let it run ⏎ · close', '⏸ Pause the clock [T] · close']]);
+    expect(lines(items)).toEqual([['first: The countdown is still running (27 s left).', '⏱️ Let it run ⏎ · close', '⏸ Pause the countdown [T] · close']]);
     const ck = open(st, items);
     expect([
       anywayLabel(ck),
@@ -1305,7 +1307,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     expect([doneSay(c('out'), 'clock'), doneSay(c({ left: 0, running: true }), 'clock'), doneSay(c({ left: 20, running: false }), 'clock')]).toEqual([
       'Time’s up',
       'Time’s up',
-      'The clock stopped',
+      'The countdown stopped',
     ]);
     expect(leftNow(c({ left: 0, running: true }), st)).toEqual([]);
     // Typed answers still coming: theirs only (its ⏱️ 10 more seconds is the clock's); silenced, the clock's.
@@ -1315,7 +1317,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     // Its T pauses the clock, as in the clock's own check (⇧T is its 10 more seconds): N then shows the answer.
     const coming = leftNow(c({ left: 27, running: true }, phones), st);
     expect(lines(coming)).toEqual([
-      ['first: 1 of 2 phones answered (Bob hasn’t yet) · Cat answers out loud.', '⏱️ 10 more seconds [⇧T] ⏎ · close', '⏸ Pause the clock [T] · close'],
+      ['first: 1 of 2 phones answered (Bob hasn’t yet) · Cat answers out loud.', '⏱️ 10 more seconds [⇧T] ⏎ · close', '⏸ Pause the countdown [T] · close'],
     ]);
     const ack = open(st, coming);
     expect([inside({ key: 't' }, ack, after), inside({ key: 'T', shift: true }, ack, after)]).toEqual([
@@ -1330,7 +1332,7 @@ describe('the Final, the tiebreaker and the end screen (3.4 I, J, K)', () => {
     expect([doneSay(c({ left: 20, running: true }, phones), 'answers'), doneSay(c('out', phones), 'answers')]).toEqual(['All phones answered', 'Time’s up']);
     delete s.final!.answers.b;
     expect([doneSay(c({ left: 20, running: false }, phones), 'answers'), doneSay(c({ left: 20, running: true }, phones), 'answers')]).toEqual([
-      'The clock is paused',
+      'The countdown is paused',
       undefined,
     ]);
     // No clock: its ⏱️ starts one. Run out or paused: N goes on, the answers lock (asked again, its ⏱️ would only start the

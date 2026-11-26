@@ -767,7 +767,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      names the blue button when the next thing is the show's step. The action due now wears a ring (`.ring`, one at a
      time). No action shows twice: not in the main cell, not beside it, not in the clue's row, not in the stage's menu.
   2. **The main button is the show's next step: Next or Reveal.** One blue button, always in the same cell at the right,
-     `N` its key, in FLOW's words only (goon.ts `mainStep`). It never spins, rolls, sends cards, starts the clock, opens
+     `N` its key, in FLOW's words only (goon.ts `mainStep`). It never spins, rolls, sends cards, starts the countdown, opens
      the buzzers, gives points or judges; it's never greyed for something the host can do (pressed with something left,
      it opens the check), only while a wheel turns or dice roll. With no next step the cell is empty (a board with tiles
      left, an RPG round, the end screen, ✎ Edit board), except for **Next ▶** while something is over the stage. In an
@@ -783,7 +783,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      (Show answer ▶, Show wager ▶, Next player ▶; never a verdict), the tiebreaker's answer (🏁 Back to results, asking
      who won). Where it's what the stage itself shows, the click
      does it: a title card, a wheel spins, dice roll, landed board-game dice move the token, a pop-up's answer, and a
-     partner clue's clock while its cards are handed out with none for a phone (the status line: “Clock started” with
+     partner clue's countdown while its cards are handed out with none for a phone (the status line: “Countdown started” with
      ↶ Undo a few seconds, which takes it back while nothing has happened since). Where no Next is involved it only
      says what to do: the Final's wagers (who it waits on, never the question), a card to copy by hand not 📋 copied
      yet, a click within a second of a partner clue's question. A slides round's last slide and finishing the Final
@@ -800,7 +800,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   anyway** (the buyer goes below zero); Other price… asks the price (Cancel · Sell), and 📦 the stock left (Cancel ·
   Set; blank is unlimited).
 - **The host panel** has one layout in every round: the status line (📱 phones and ⏱ timer chips; ⏱ Start and its
-  seconds box only where a clock fits, a clue, the Final's wagers and question, the tiebreaker and a board game's turns,
+  seconds box only where a countdown fits, a clue, the Final's wagers and question, the tiebreaker and a board game's turns,
   and while a countdown is up: `T` and the stage menu's ⏱ Start the countdown start one anywhere), the players' score
   chips, the row of what this moment needs with the one main button (and its key) at its right, the tools with the
   round navigation (a played-out board keeps Next round ▶'s room there, unseen: the blue button is it; while a
@@ -862,12 +862,12 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   width, and a tap where the blue button was, and any while it's new, presses or ticks nothing). Its
   heading is “First:” (a step to take first: phone buzzers never opened, a buzzer tie, ✍ answers still coming in, a
   tile's 🤫 card not sent; a 🤝 partner clue's who picked it, the partner, who describes or nobody to partner with on
-  PARTNER UP!, all musts with no “anyway”, then at the reveal its cards not handed out or the clock not started, the pair
+  PARTNER UP!, all musts with no “anyway”, then at the reveal its cards not handed out or the countdown not started, the pair
   still playing, a steal open; a wheel or dice tile's own tool not spun or rolled, or landed on “Spin again”; the
-  Final's own 🤫 card not sent at Show question ▶, its typed answers still coming at 👁 Reveal answer (⏱ 10 more seconds `Shift+T`, and with the clock running ⏸ Pause the
-  clock `T`; the last one in while it's open, its line says “All phones answered”, teams “All teams answered”), else its think
-  clock still running there (“The clock is still running (27 s left).”: ⏱ Let it run, the `Enter` one, ⏸ Pause the
-  clock, `T` as outside, and 👁 Reveal anyway; paused or run out, it goes on at once), and the spotlit
+  Final's own 🤫 card not sent at Show question ▶, its typed answers still coming at 👁 Reveal answer (⏱ 10 more seconds `Shift+T`, and with the countdown running ⏸ Pause the
+  countdown `T`; the last one in while it's open, its line says “All phones answered”, teams “All teams answered”), else its
+  countdown still running there (“The countdown is still running (27 s left).”: ⏱ Let it run, the `Enter` one, ⏸ Pause the
+  countdown, `T` as outside, and 👁 Reveal anyway; paused or run out, it goes on at once), and the spotlit
   player not judged yet at Next player ▶ or Finish game ▶, a must whose ✔ Right `C` / ✘ Wrong `X` close the check, so
   the verdict lands on stream before `N` goes on, with no `Enter` and the likely one ringed; a board game's turn at Next
   turn ▶, where one check walks it: its roll (🎲 Roll `D`, `Enter`), “Rolling…” while the dice go, its move (▶ Move
@@ -894,7 +894,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   their wagers, or untick them to sit out”; with an audience window: in one window no toast shows on air). Each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
   `Shift+Enter`, 🔔 Open the buzzers `U`, 🎲 Roll for it `O`, ⏱ Start the countdown `T`, ✔ Judge all ▶ board, ✍ Judge
   them, ✘ The rest are wrong, 📤 Send it; a partner clue's 🎡 Spin for a partner `W`, the players by number, Solo, ↩ Put
-  back `Shift+Esc`, 📤 Send and start `Enter` (never within a second of the question), ⏱ Start the clock (`Enter`, or
+  back `Shift+Esc`, 📤 Send and start `Enter` (never within a second of the question), ⏱ Start the countdown (`Enter`, or
   `T` as outside), 📋 Copy, ✔ Got
   it ▶ reveal `Enter` / ✘ Missed `Shift+Enter`, who steals it; a tile's 🎡 Spin! `W` / 🎲 Roll! `D` / ↻ Spin again `W`, ✔ Give
   Ann +$100 ▶ question, or Choose in the box for a steal, a swap or nobody chosen (who a score effect is for is the game
@@ -1107,7 +1107,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      player is judged).
    - *Partner clue* (🤝, PARTNER-CLUES-SPEC.md §6): a PARTNER UP! splash with the picker, a wheel of the other players
      (`W`) or the host's choice (`1–9`) for their partner, then the question with who describes and who guesses, the
-     📤 list of who gets each 🤫 card (copied to them with 📋), ⏱ Start the clock, and ✔ Got it / ✘ Missed, which
+     📤 list of who gets each 🤫 card (copied to them with 📋), ⏱ Start the countdown, and ✔ Got it / ✘ Missed, which
      scores both in one step with the clue's points (the guesser picks next). The 🤝 box holds each of its actions, once,
      beside the choices it's an alternative to: its first line says what's next ("Next: 🎡 Spin for a partner, or choose
      one"; the pair set, "Pair set: Show question ▶ (the blue button, or N) puts the question up"), **🎡 Spin for a
@@ -1117,24 +1117,24 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      cards · 📋 you'll copy them": who each goes to, how they reach them and their files open on a click, this computer
      remembering it; it opens by itself, and stays open for the clue, when there's something to see first: a player a
      card goes to with no phone here, an older buzzer server, files that won't reach the phones), and its foot, in view
-     as the rest scrolls, has ✔ Got it / ✘ Missed, quiet until the clock runs, and while the cards are handed out, at its
-     right end, a 📋 for each card copied by hand and **📤 Send and start** (or ⏱ Start the clock, `Enter`); when that
+     as the rest scrolls, has ✔ Got it / ✘ Missed, quiet until the countdown runs, and while the cards are handed out, at its
+     right end, a 📋 for each card copied by hand and **📤 Send and start** (or ⏱ Start the countdown, `Enter`); when that
      goes nothing moves into its place. The action due now (🎡 Spin for a partner or for the describer, 📤 Send and
-     start or ⏱ Start the clock) wears the ring. The blue button is the show's next step only: **Show question ▶** on
+     start or ⏱ Start the countdown) wears the ring. The blue button is the show's next step only: **Show question ▶** on
      PARTNER UP! (`N`, `Enter`; **Next ▶** while the partner wheel is up, greyed while it turns, which puts it away and
      shows the pair: a click on the landed wheel does the same), then 👁 Reveal answer and ▦ Done ▶ board, asking first
      with something left (the check above: who picked it, the partner, who describes or nobody to partner with on
      PARTNER UP!; the cards not handed out, the pair still playing or a steal open at the reveal, where `N` never takes
      “anyway”; not judged at ▦ Done). PARTNER UP!'s ↩ Put back (keep tile) shows `⇧Esc`. A click on a box's button
      leaves the keys where they were; the rest of a double-click that redrew the box is dropped, and 📤 Send and start
-     (or ⏱ Start the clock), in the box or in the check, waits a second after the question, as Enter does. Once the
-     clock runs a verdict is due: ✔ Got it / ✘ Missed are an equal pair (neither blue), the blue 👁 Reveal answer asks
+     (or ⏱ Start the countdown), in the box or in the check, waits a second after the question, as Enter does. Once the
+     countdown runs a verdict is due: ✔ Got it / ✘ Missed are an equal pair (neither blue), the blue 👁 Reveal answer asks
      first, and the first line says "Did they get it? ✔ Got it or ✘ Missed" (the
-     keys are on the buttons; "Time's up: did they get it?" once it runs out). ⏱ Start the clock says what it counts down from
-     ("⏱ Start the clock (45 s)"). `T` or the status line's ⏱ Start while the cards are handed out: with no card waiting
-     for a phone (copied by hand, or all sent) it goes live as ⏱ Start the clock does, sending nothing, and the first
-     Enter after it only says "Clock is running: Enter again for ✔ Got it"; with phone cards still to send it starts
-     the clock only, the 🤝 box's foot reads **📤 Send the cards (clock running)** and the status line "Clock running:
+     keys are on the buttons; "Time's up: did they get it?" once it runs out). ⏱ Start the countdown says what it counts down from
+     ("⏱ Start the countdown (45 s)"). `T` or the status line's ⏱ Start while the cards are handed out: with no card waiting
+     for a phone (copied by hand, or all sent) it goes live as ⏱ Start the countdown does, sending nothing, and the first
+     Enter after it only says "Countdown running: Enter again for ✔ Got it"; with phone cards still to send it starts
+     the countdown only, the 🤝 box's foot reads **📤 Send the cards (countdown running)** and the status line "Countdown running:
      Enter sends the 2 cards", and Enter sends them (a card goes to a phone only by Enter on that step or a 📤 press).
      Under the box the Amount row folds behind **± Other points…** (✔ Got it / ✘ Missed give the points): it opens by
      itself once a player is picked (`1–9`, then Enter awards them as on any clue) or points were given by hand on the
@@ -1143,7 +1143,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      any clue for the tile's value: the buzzers open for them with the two locked out, or the host picks who steals
      (`1–9`), then Enter / Shift+Enter. Each steal is its own undo step, and undoing the miss closes the steal. A click
      on the stage never shows its answer before the pair has had their go: while the cards are handed out, or until the
-     clock runs out or it's judged, it opens the check instead, as the blue button would (`R` shows it any time, and in
+     countdown runs out or it's judged, it opens the check instead, as the blue button would (`R` shows it any time, and in
      the check `R` or a click on 👁 Reveal anyway); while a steal is open (until it's stolen or missed by everyone) it
      says how the steal goes on, as Enter does.
    - *✍ Everyone answers* (a standard tile with the box ticked, with phone buzzers): nobody buzzes; every player types
@@ -1157,8 +1157,8 @@ The mode isn't saved with the game: it's dual while the audience window is open.
      and as a partner clue's typed guess; `AnswerAsk.autoSend`, which a host from before leaves out, so its room takes
      none): as the countdown runs out (the box stays open: the phone says "⏱️ Sent when time ran out, unfinished: “…”.
      Finished? Tap Send answer to mark it done.", and Send answer sends them as the player's own, which only drops the
-     mark), and as the answers lock, whether the clock ran out or the host showed the answer first (the words as they
-     are then, if not what went at 0: "⏱️ Sent as answers locked, unfinished: “…”", even after the clock ran out, since
+     mark), and as the answers lock, whether the countdown ran out or the host showed the answer first (the words as they
+     are then, if not what went at 0: "⏱️ Sent as answers locked, unfinished: “…”", even after the countdown ran out, since
      they weren't in at 0; in place of "Yours: “…”" in the locked line; in the Final's, after the wager, "⏱️ Yours,
      unfinished: “…”" (or "Your team’s"), and a partner guess's, under its status, "⏱️ Sent, unfinished: “…”", short,
      so the words still show in its 3 lines). One pattern on every line, ⏱️ as the host's row has it; in the open box a
@@ -1223,7 +1223,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
    their phones, on unless the host unticks it in the round's editor), each player in it types their answer on their
    phone (a team: anyone on it) from the question until the answer shows; only the host sees them (in one window, not
    until each is revealed), and the stream shows ✍ and who has answered, never what. Words typed and not sent go by
-   themselves as the clock runs out and as the answer shows, marked unfinished, as a ✍ clue's do (the reveal rows put
+   themselves as the countdown runs out and as the answer shows, marked unfinished, as a ✍ clue's do (the reveal rows put
    ⏱ before the answer, or before ✍ hidden in one window, never the words before they're revealed). The host's ✍ box and the check at
    👁 Reveal answer count them one way (phoneAnswers, as a ✍ clue's do): those with a phone here, the rest answering out
    loud, “1 of 2 phones answered · Player 3 answers out loud” (teams: “teams”). With multiple choice (under the
@@ -1342,7 +1342,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   score change, then clicks **Confirm** or **Skip**. Confirmed actions are written to the score log with a reason
   ("Wheel: Punishment Wheel → Bankrupt"), so they can be undone like any other score change. Closing the wheel or dice
   with a card neither confirmed nor skipped says so first; closing again goes on without it.
-- **Timer**: start, pause, reset, and set a custom duration.
+- **Countdown** (`T`): start, pause, restart, and set a custom duration.
 - **Scoreboard overlay**: toggle a large standings view on the audience window.
 - **🤫 Send a card…** (PARTNER-CLUES-SPEC.md §12): a private card for chosen players' phones, in any round (a tile's
   card made in the editor, a quick one, or the slide on screen), lasting until the round ends or until taken back;
@@ -1433,7 +1433,7 @@ or `Space` presses it: `Shift+Enter` is always ✘ Missed or − Deduct, never a
 (✔ Got it, ＋ Award, ▦ Done ▶ board; a tile opens with `Enter` or `Space`, not `Shift+Enter`). `Enter` on the main button in
 a slides round, on a round's title card or its category reveals, does what the button says, as `N`; on a 🤝 partner
 clue's PARTNER UP! `Enter` is the blue button wherever the keys are, then the 🤝 box's 📤 Send and start (or ⏱ Start the
-clock), then ✔ Got it; in the Final's
+countdown), then ✔ Got it; in the Final's
 steps it says which key (or click) goes on (with the spotlit player's verdict due, “C: right · X: wrong”; in its wager
 boxes `Enter` is the next box to fill, then Show question ▶), and on a wheel or dice tile not spun or rolled yet
 the key that does it (“Spin the wheel first: W”). `Enter` in a Daily Double's Wager box is its Show question ▶; on its question, with nobody selected (its player's number

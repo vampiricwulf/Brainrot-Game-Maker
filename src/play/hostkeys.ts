@@ -61,7 +61,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['P then 1 – 9', 'Make player N the current picker'],
       ['Esc', 'Close the log, a tool, Who was who or a card; on a clue: back to the board (the tile is used up); else clear the selection'],
       ['K or B', 'Cover: viewers see only a “Be right back” card, and the countdown and the clue’s video wait (again: uncover)'],
-      ['T', 'Start / pause the countdown, anywhere (the seconds typed in the status line’s ⏱️ box, where a clock fits)'],
+      ['T', 'Start / pause the countdown, anywhere (the seconds typed in the status line’s ⏱️ box, where a countdown fits)'],
       ['Shift+T', '10 more seconds on the countdown (none up: start one, as T)'],
       ['Ctrl+Z', 'Undo the last change: a score, a move, a stat or item, a tile, the picker, the turn order, Players or the Final'],
       ['Ctrl+Shift+Z / Ctrl+Y', 'Redo'],
@@ -105,7 +105,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ],
       [
         'Click the stage',
-        'The blue button’s step, asking first as N does (PARTNER UP!, a Daily Double’s splash, the spotlit Final player’s card too), or what the stage shows: a title card, a wheel spins, dice roll (a board game’s landed dice move the token), a pop-up’s answer, a partner clue’s clock with no card for a phone. Where it can’t, the status line says what to do: the Final’s wagers, a card to copy first, and the last slide or finishing the Final take a second click',
+        'The blue button’s step, asking first as N does (PARTNER UP!, a Daily Double’s splash, the spotlit Final player’s card too), or what the stage shows: a title card, a wheel spins, dice roll (a board game’s landed dice move the token), a pop-up’s answer, a partner clue’s countdown with no card for a phone. Where it can’t, the status line says what to do: the Final’s wagers, a card to copy first, and the last slide or finishing the Final take a second click',
       ],
       [
         'Enter',
@@ -121,7 +121,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ['Esc in the check', 'Not yet: back as it was (a second Esc right after does nothing, so a bounced Esc never closes the clue)'],
       [
         'W, D, U, O, C, X, T in the check',
-        'The fix that shows that key (W spins, U opens the buzzers, O rolls for a tie, C / X judge, T pauses the Final’s clock…)',
+        'The fix that shows that key (W spins, U opens the buzzers, O rolls for a tie, C / X judge, T pauses the Final’s countdown…)',
       ],
       [
         '1 – 9, K, B, M, Space, ← / →, F in the check',
@@ -185,11 +185,11 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ],
       [
         'Enter on a partner clue',
-        'Show the question, send the cards to their phones and start the clock (📤 Send and start; copy them to anyone without a phone), then ✔ Got it (Shift+Enter: ✘ Missed)',
+        'Show the question, send the cards to their phones and start the countdown (📤 Send and start; copy them to anyone without a phone), then ✔ Got it (Shift+Enter: ✘ Missed)',
       ],
       [
         'T while a partner clue’s cards are handed out',
-        'Start the clock: with no card waiting for a phone the clue goes live (the first Enter after it only says so); with cards to send, Enter still sends them',
+        'Start the countdown: with no card waiting for a phone the clue goes live (the first Enter after it only says so); with cards to send, Enter still sends them',
       ],
       ['Esc on a partner clue before the question', 'Back to the board: the tile stays playable'],
       ['1–9, then Enter, in a partner clue’s steal', 'After ✘ Missed with steals on: who steals it, then right (Shift+Enter: wrong), as on any clue'],

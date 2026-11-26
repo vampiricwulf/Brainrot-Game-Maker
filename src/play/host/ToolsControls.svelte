@@ -469,7 +469,7 @@
           {#each outcomeActions(f.face.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${diceName} → ${label}`)}
               >{describeAction(game, a, undefined, teams)}</button
             >{/each}
-          {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱️ Start {f.face.timerSeconds}s</button
+          {#if f.face.timerSeconds}<button class="small" onclick={() => startTimer(app.live, f.face.timerSeconds!)}>⏱️ Start {f.face.timerSeconds} s</button
             >{/if}
         </div>
         {@const card = cards.get(`${actionKey}-die${f.i}`)}
@@ -485,7 +485,8 @@
             {#each outcomeActions(r.seg.actions) as a (a.id)}<button class="small" onclick={() => runOutcome(a, `${r.w.name} → ${label}`)}
                 >{describeAction(game, a, undefined, teams)}</button
               >{/each}
-            {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱️ Start {r.seg.timerSeconds}s</button>{/if}
+            {#if r.seg.timerSeconds}<button class="small" onclick={() => startTimer(app.live, r.seg.timerSeconds!)}>⏱️ Start {r.seg.timerSeconds} s</button
+              >{/if}
           </div>
           {@const card = cards.get(`${actionKey}-${r.w.key}`)}
           {#if card && !cardDone(card.key)}
@@ -542,7 +543,7 @@
             {/each}
           {/if}
           {#if outcome?.timerSeconds}
-            <button class="small" onclick={() => startTimer(app.live, outcome!.timerSeconds!)}>⏱️ Start {outcome.timerSeconds}s</button>
+            <button class="small" onclick={() => startTimer(app.live, outcome!.timerSeconds!)}>⏱️ Start {outcome.timerSeconds} s</button>
           {/if}
         </div>
       {/if}

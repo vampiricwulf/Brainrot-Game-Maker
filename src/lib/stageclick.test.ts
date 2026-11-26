@@ -78,12 +78,12 @@ describe('a click on the stage', () => {
     [
       'handing out, a card to copy by hand not copied: copy it first',
       { step: step('reveal'), partner: handing({ copyFor: ['Bob'], copyCards: 1 }) },
-      { do: 'say', say: 'Copy the card to Bob first (📋 in the 🤝 box), then click again to start the clock', arm: true, flash: 'copy' },
+      { do: 'say', say: 'Copy the card to Bob first (📋 in the 🤝 box), then click again to start the countdown', arm: true, flash: 'copy' },
     ],
     [
       'handing out, cards to copy for two',
       { step: step('reveal'), partner: handing({ copyFor: ['Bob', 'Cat'], copyCards: 2 }) },
-      { do: 'say', say: 'Copy the cards to Bob & Cat first (📋 in the 🤝 box), then click again to start the clock', arm: true, flash: 'copy' },
+      { do: 'say', say: 'Copy the cards to Bob & Cat first (📋 in the 🤝 box), then click again to start the countdown', arm: true, flash: 'copy' },
     ],
     [
       'handing out, not copied, clicked again: the clock starts',
@@ -195,6 +195,6 @@ describe('a click on the stage', () => {
 
   it('says only names and counts (in one window the status line is on stream)', () => {
     const r = stageClick(now({ step: step('reveal'), partner: handing({ copyFor: ['Bob'], copyCards: 3 }) }));
-    expect(r).toMatchObject({ say: 'Copy the cards to Bob first (📋 in the 🤝 box), then click again to start the clock' });
+    expect(r).toMatchObject({ say: 'Copy the cards to Bob first (📋 in the 🤝 box), then click again to start the countdown' });
   });
 });

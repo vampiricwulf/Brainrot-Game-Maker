@@ -478,7 +478,7 @@
     if (allPassed) return 'Answer hidden · everyone passed';
     // (T started the clock with phone cards still to send: Enter sends them.)
     if (partner?.stage === 'distribute' && partnerUnsent && clockRuns)
-      return `Clock running: Enter sends the ${partnerUnsent === 1 ? 'card' : `${partnerUnsent} cards`}`;
+      return `Countdown running: Enter sends the ${partnerUnsent === 1 ? 'card' : `${partnerUnsent} cards`}`;
     const sent = sentNote ? ` · ${sentNote}` : '';
     return partner?.stage === 'distribute' ? `Answer hidden · hand out the cards${sent}` : `Answer hidden${sent}`;
   });
@@ -2099,7 +2099,7 @@
       >
       <!-- The game's rules go with its players (Most players). -->
       <button onclick={onplayers} title={teams ? 'Teams' : 'Players'}>👥 <span class="txt">{teams ? 'Teams' : 'Players'}</span></button>
-      <button onclick={onrules} title="⚖ Game rules: scoring, most players, timers, the round intro">⚖ <span class="txt">Rules</span></button>
+      <button onclick={onrules} title="⚖ Game rules: scoring, most players, the countdown, the round intro">⚖ <span class="txt">Rules</span></button>
     </span>
     <span class="divider" aria-hidden="true"></span>
     <span class="group g-screen">

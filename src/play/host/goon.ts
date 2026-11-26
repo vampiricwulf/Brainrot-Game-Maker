@@ -782,11 +782,11 @@ function finalAnswersItems(c: GoCtx): LeftItem[] {
 
 /** ⏸ Pause the clock (T) in the Final's checks at 👁 Reveal answer: paused, the next 👁 Reveal answer goes on at once. */
 const pauseQuick = (c: GoCtx): Quick => ({
-  label: '⏸ Pause the clock',
+  label: '⏸ Pause the countdown',
   key: 'T',
   then: 'close',
   run: () => c.act.clock(false),
-  after: `Clock paused: ${FLOW.reveal.label}${keyNote('N')} shows it now`,
+  after: `Countdown paused: ${FLOW.reveal.label}${keyNote('N')} shows it now`,
 });
 
 /**
@@ -801,10 +801,10 @@ function finalClockItems(c: GoCtx): LeftItem[] {
     {
       id: 'clock',
       kind: 'first',
-      text: `The clock is still running (${t.left} s left).`,
+      text: `The countdown is still running (${t.left} s left).`,
       anyway: FLOW.reveal.anyway,
       quick: [
-        { label: '⏱️ Let it run', enter: true, then: 'close', run: () => {}, after: `The clock runs… then ${FLOW.reveal.label}${keyNote('N')}` },
+        { label: '⏱️ Let it run', enter: true, then: 'close', run: () => {}, after: `The countdown runs… then ${FLOW.reveal.label}${keyNote('N')}` },
         pauseQuick(c),
       ],
     },
@@ -1135,7 +1135,7 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
     enter: true,
     then: 'close',
     run: c.act.partnerClock,
-    after: `Clock running: ${PLAYING()}`,
+    after: `Countdown running: ${PLAYING()}`,
   });
   // (A ✓ once it was copied, for who gets it now.)
   const copyQ = p.copy.flatMap((k): Quick[] =>
@@ -1166,16 +1166,16 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
           ...hand,
           // (The room full: Enter says why, as the greyed 📤 does.)
           ...(p.full ? { enterSay: p.full } : {}),
-          text: `${cards} ${many ? 'haven’t' : 'hasn’t'} gone to ${phonesOf(c, to)}${running ? ' yet, though the clock is running' : ', and the clock hasn’t started: they haven’t played yet'}.${copied}`,
+          text: `${cards} ${many ? 'haven’t' : 'hasn’t'} gone to ${phonesOf(c, to)}${running ? ' yet, though the countdown is running' : ', and the countdown hasn’t started: they haven’t played yet'}.${copied}`,
           quick: [
             {
               label: verb.label,
               enter: true,
               then: 'close',
               run: c.act.partnerClock,
-              after: `${many ? 'Cards' : 'Card'} sent, clock running: ${PLAYING()}`,
+              after: `${many ? 'Cards' : 'Card'} sent, countdown running: ${PLAYING()}`,
               ...(p.full ? { why: p.full } : {}),
-              aria: running ? `Send ${cards} to their phones (the clock goes on)` : `Send ${cards} to their phones and start the clock`,
+              aria: running ? `Send ${cards} to their phones (the countdown goes on)` : `Send ${cards} to their phones and start the countdown`,
             },
             ...copyQ,
           ],
@@ -1189,16 +1189,16 @@ function partnerPlayItems(c: GoCtx): LeftItem[] {
       return [
         {
           ...hand,
-          text: `${nameList(p.copy.map((k) => k.name))} ${many ? 'are' : 'is'} for ${named(c, to)}${none}: copy ${many ? 'each to its player' : 'it to them'}, then start the clock.`,
+          text: `${nameList(p.copy.map((k) => k.name))} ${many ? 'are' : 'is'} for ${named(c, to)}${none}: copy ${many ? 'each to its player' : 'it to them'}, then start the countdown.`,
           quick: [clockQ(), ...copyQ],
         },
       ];
     }
-    return [{ ...hand, text: 'The clock hasn’t started: they haven’t played yet.', quick: [clockQ()] }];
+    return [{ ...hand, text: 'The countdown hasn’t started: they haven’t played yet.', quick: [clockQ()] }];
   }
   // Live: the pair still playing. (Time's up: revealing doesn't ask, they can still be judged after.)
   if (p.clock === 'out') return [];
-  if (!p.clock && !p.cards) return [{ ...hand, text: 'The clock hasn’t started: they haven’t played yet.', quick: [clockQ()] }];
+  if (!p.clock && !p.cards) return [{ ...hand, text: 'The countdown hasn’t started: they haven’t played yet.', quick: [clockQ()] }];
   const one = p.pair.length === 1;
   return [
     {
@@ -1916,7 +1916,7 @@ export function doneSay(c: GoCtx, id: string): string | undefined {
   // (At 0 s it's run out, a moment before the clock says so.)
   if (id === 'clock') {
     const t = c.final.clock;
-    return t === 'out' || (t?.running && t.left <= 0) ? 'Time’s up' : 'The clock stopped';
+    return t === 'out' || (t?.running && t.left <= 0) ? 'Time’s up' : 'The countdown stopped';
   }
   // (The Final's answers still coming, their time up while the check was open: N shows the answer now.)
   if (id === 'answers' && c.session.phase === 'final') {
@@ -1924,7 +1924,7 @@ export function doneSay(c: GoCtx, id: string): string | undefined {
     if (t === 'out' || (t?.running && t.left <= 0)) return 'Time’s up';
     const f = c.session.final;
     if (f && allIn(c, (p) => !!f.answers?.[p], f.players)) return allAnswered(c);
-    if (t && !t.running) return 'The clock is paused';
+    if (t && !t.running) return 'The countdown is paused';
   }
   // (A ✍ clue's answers: the last one came in while the check was open.)
   if (

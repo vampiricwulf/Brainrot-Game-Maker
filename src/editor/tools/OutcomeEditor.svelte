@@ -75,7 +75,7 @@
       >
     {/if}
     <!-- (Every row has one: its name for screen readers says whose it is, after the words in sight.) -->
-    <button class="ghost small" class:has={extras} onclick={() => (open = !open)} aria-expanded={open} title="Details, media, timer, score effect">
+    <button class="ghost small" class:has={extras} onclick={() => (open = !open)} aria-expanded={open} title="Details, media, countdown, score effect">
       {open ? '▾' : '▸'} More{#if name}<span class="sr-only">{` details for ${name}`}</span>{/if}{extras ? ' •' : ''}
     </button>
   </div>
@@ -126,7 +126,7 @@
             class="n"
             value={outcome.timerSeconds ?? ''}
             oninput={(e) => {
-              // Blank or 0: no timer. (Not below 0: "Start -5s" would mean nothing.)
+              // Blank or 0: no countdown. (Not below 0: "Start -5 s" would mean nothing.)
               const v = Math.round(+e.currentTarget.value);
               outcome.timerSeconds = v > 0 ? v : undefined;
             }}

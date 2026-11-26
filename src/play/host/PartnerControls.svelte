@@ -721,7 +721,7 @@
   /** The countdown is running (T, or the status line's ⏱️ Start): with cards still to send, only they're left to go. */
   const clockRuns = $derived(!!app.live.timer && app.live.timer.startedAt !== null && !app.live.timer.expired);
   /** What a click on 📤 Send and start (or ⏱️ Start the clock) says within a second of the question going up. */
-  const handSoon = $derived(`The question just went up: click again to ${unsentToGo.length ? 'send the cards' : 'start the clock'}`);
+  const handSoon = $derived(`The question just went up: click again to ${unsentToGo.length ? 'send the cards' : 'start the countdown'}`);
   /**
    * The cards handed out (until the clock runs, it's judged, or the answer shows): 📤 Send and start when phones get cards
    * not sent yet, else ⏱️ Start the clock: Enter's too (⏎). A click within a second of the question waits, as Enter does.
@@ -784,13 +784,15 @@
     if (handStep) {
       if (unsentToGo.length && clockRuns)
         return {
-          text: toCopy.length ? `Clock running: 📋 copy cards for ${noun}s without a phone, then 📤 Send the cards` : 'Clock running: 📤 Send the cards',
+          text: toCopy.length
+            ? `Countdown running: 📋 copy cards for ${noun}s without a phone, then 📤 Send the cards`
+            : 'Countdown running: 📤 Send the cards',
         };
       if (unsentToGo.length)
         return { text: toCopy.length ? `Next: 📋 copy cards for ${noun}s without a phone, then 📤 Send and start` : 'Next: 📤 Send and start' };
       // (Each 📋 pressed: the clock is next, and a click on the stage starts it.)
-      if (toCopy.length && !toCopy.every(({ card }) => copied(card))) return { text: `Next: 📋 copy each card to its ${noun}, then ⏱️ Start the clock` };
-      return { text: toCopy.length ? 'Next: ⏱️ Start the clock (the cards are copied)' : 'Next: ⏱️ Start the clock' };
+      if (toCopy.length && !toCopy.every(({ card }) => copied(card))) return { text: `Next: 📋 copy each card to its ${noun}, then ⏱️ Start the countdown` };
+      return { text: toCopy.length ? 'Next: ⏱️ Start the countdown (the cards are copied)' : 'Next: ⏱️ Start the countdown' };
     }
     // (The verdict due: ✔ Got it and ✘ Missed an equal pair at the foot, neither blue, the keys where they were.)
     return { text: app.live.timer?.expired ? 'Time’s up: did they get it?' : 'Did they get it? ✔ Got it or ✘ Missed' };
@@ -1035,7 +1037,7 @@
     {:else}
       <div class="row small" data-partner-cards>
         <span class="muted"
-          >🤫 No cards on this clue: {autoClock ? 'the question starts the clock' : 'start the clock yourself (T) once the question is up'}.</span
+          >🤫 No cards on this clue: {autoClock ? 'the question starts the countdown' : 'start the countdown yourself (T) once the question is up'}.</span
         >
       </div>
     {/if}
@@ -1282,7 +1284,7 @@
           class:ghost={!!handStep}
           onclick={guarded('got', () => onjudge(true))}
           disabled={verdict.judged}
-          title={verdict.judged ? 'Judged: Ctrl+Z takes it back' : judgeKeys ? 'Enter (nobody picked)' : 'Scores both now (Enter starts the clock first)'}
+          title={verdict.judged ? 'Judged: Ctrl+Z takes it back' : judgeKeys ? 'Enter (nobody picked)' : 'Scores both now (Enter starts the countdown first)'}
           >✔ Got it{#if judgeKeys}{' '}<kbd aria-hidden="true">⏎</kbd>{/if}</button
         >
         {#if !verdict.judged}<span class="small shares" data-judge-got>{sharesText(gotShares, name, sym)}{already}</span>{/if}

@@ -633,7 +633,7 @@ try {
   assert(true, 'Show question again: Player 1’s phone still says “✔ Sent.”, and the host still has it');
   // The answer on screen: answers lock, each phone keeping its own (after the wager it was locked with). Player 2's
   // phone sent none: 👁 Reveal answer asks first (⏱️ 10 more seconds, Enter). Once the clock has run out, N shows the
-  // answer: it doesn't ask again (its ⏱️ would only start the clock over, and the answer would never go up but by R).
+  // answer: it doesn't ask again (its ⏱️ would only start the countdown over, and the answer would never go up but by R).
   await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
   await checkItem(host, 'answers').waitFor();
   assert(
@@ -645,17 +645,17 @@ try {
   await goOnCheck(host).waitFor({ state: 'detached' });
   // The countdown on and his answer still missing, 👁 Reveal answer asks again: ⇧T gives 10 more seconds, and T pauses
   // the clock (as in the clock's own check), closing it; T outside starts it again.
-  await hostPanelIn(host).locator('.tc button[aria-label="Pause timer"]').waitFor();
+  await hostPanelIn(host).locator('.tc button[aria-label="Pause countdown"]').waitFor();
   await mainButton(host).filter({ hasText: '👁 Reveal answer' }).click();
   await checkItem(host, 'answers').waitFor();
-  assert((await quick(host, '⏸ Pause the clock').innerText()).includes('T'), 'the countdown on, the answers check offers ⏸ Pause the clock, its key T');
+  assert((await quick(host, '⏸ Pause the countdown').innerText()).includes('T'), 'the countdown on, the answers check offers ⏸ Pause the countdown, its key T');
   await goOnCheck(host, { ready: true }).waitFor();
   await host.keyboard.press('t');
   await goOnCheck(host).waitFor({ state: 'detached', timeout: 3000 });
-  await hostPanelIn(host).locator('.tc button[aria-label="Start timer"]').waitFor({ timeout: 3000 });
+  await hostPanelIn(host).locator('.tc button[aria-label="Start countdown"]').waitFor({ timeout: 3000 });
   assert((await big(ann).getByText('Answers locked').count()) === 0, 'T in it pauses the clock and closes it, the answers still open');
   await host.keyboard.press('t');
-  await hostPanelIn(host).locator('.tc button[aria-label="Pause timer"]').waitFor();
+  await hostPanelIn(host).locator('.tc button[aria-label="Pause countdown"]').waitFor();
   const less = hostPanelIn(host).getByRole('button', { name: '10 seconds less' });
   // (−10 until it's run out.)
   await less.waitFor();

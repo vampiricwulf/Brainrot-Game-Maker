@@ -442,7 +442,7 @@ export function createPartner(host: PartnerHost) {
     if (!s || s.stage === 'pick') return false;
     if (s.stage === 'live') return void clockKey(false);
     if (Date.now() - partnerShownAt < KEY_GUARD_MS) {
-      hint(`The question just went up: ${byKey ? 'press Enter' : 'click'} again to ${unsentCards().length ? 'send the cards' : 'start the clock'}`);
+      hint(`The question just went up: ${byKey ? 'press Enter' : 'click'} again to ${unsentCards().length ? 'send the cards' : 'start the countdown'}`);
       return false;
     }
     partnerClock();
@@ -476,7 +476,7 @@ export function createPartner(host: PartnerHost) {
     if (host.quickKey) {
       if (partnerLiveByT && got) {
         partnerLiveByT = false;
-        hint('Clock is running: Enter again for ✔ Got it');
+        hint('Countdown running: Enter again for ✔ Got it');
         return false;
       }
       if (partnerTooSoon(host.quickKey)) return false;
@@ -496,7 +496,9 @@ export function createPartner(host: PartnerHost) {
         ? 'press Shift+Enter again for ✘ Missed'
         : 'press Enter again to give ✔ Got it';
     // (A clue with no cards and ⚖ the countdown not starting by itself: only the question went up.)
-    hint(`${partnerSentWithClock ? 'The cards just went out' : app.live.timer?.startedAt ? 'The clock just started' : 'The question just went up'}: ${again}`);
+    hint(
+      `${partnerSentWithClock ? 'The cards just went out' : app.live.timer?.startedAt ? 'The countdown just started' : 'The question just went up'}: ${again}`,
+    );
     return true;
   }
 
@@ -591,7 +593,7 @@ export function createPartner(host: PartnerHost) {
             ? 'The answer is showing: click ✔ Got it or ✘ Missed, or Esc goes back to the board'
             : unsentCards().length
               ? 'Send the cards first (Enter), or click ✘ Missed'
-              : 'Start the clock first (Enter), or click ✘ Missed',
+              : 'Start the countdown first (Enter), or click ✘ Missed',
         );
       else if (session.revealed) hint('The answer is showing: Esc goes back to the board');
       // (A tool over it, from the tools row: Enter puts it away, as its blue Next ▶ does.)
@@ -602,7 +604,7 @@ export function createPartner(host: PartnerHost) {
     // (T made it live: its first Enter says so, and judges nothing.)
     if (partnerLiveByT && !e.shiftKey) {
       partnerLiveByT = false;
-      hint('Clock is running: Enter again for ✔ Got it');
+      hint('Countdown running: Enter again for ✔ Got it');
       return true;
     }
     if (!partnerTooSoon(e)) partnerJudge(!e.shiftKey);

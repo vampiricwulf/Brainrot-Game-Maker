@@ -18,7 +18,7 @@ Press **▶ Play** to open the pre-game screen. Everything you set here is saved
 
 ### Rules
 
-**⚖ Game rules** holds scoring, the wager limit, the most players, timers and the round intro. Mid-game, open it from **⚖ Rules** in the
+**⚖ Game rules** holds scoring, the wager limit, the most players, the countdown and the round intro. Mid-game, open it from **⚖ Rules** in the
 host panel.
 
 ### Before you start
@@ -65,7 +65,7 @@ game** and **Go to the editor** are under it, where the host panel is.
 
 The panel keeps the same layout in every round:
 
-1. **The status line**: what's happening and what to do next. Where a clock fits (a clue, the Final's wagers and
+1. **The status line**: what's happening and what to do next. Where a countdown fits (a clue, the Final's wagers and
    question, the tiebreaker, a board game's turns) it has **⏱ Start** and a box for other seconds; anywhere else `T`
    or ⏱ Start the countdown in the stage's right-click menu starts one, and its ⏱ shows while it's up.
 2. **Score chips** for each player.
@@ -164,10 +164,10 @@ player ▶** (there's no Show wager ▶ step).
 **Finish now…** ends early. In a single window, when the players' rows don't all fit, the tools row folds away during
 the reveals; **⋯ Tools** in the status line brings it back.
 
-Show question ▶ starts the think clock. While it's still running, 👁 Reveal answer (the blue button, `N`, a click on the
-screen or its menu) asks first: **⏱ Let it run** (`Enter`, or `Esc`) keeps it going, **⏸ Pause the clock** (`T`)
+Show question ▶ starts the countdown. While it's still running, 👁 Reveal answer (the blue button, `N`, a click on the
+screen or its menu) asks first: **⏱ Let it run** (`Enter`, or `Esc`) keeps it going, **⏸ Pause the countdown** (`T`)
 pauses it, **👁 Reveal anyway** (`R`) shows the answer. With typed answers still coming from phones it asks about them
-first: **⏱ 10 more seconds** (`Shift+T`) or **⏸ Pause the clock** (`T`). Once the clock has run out or is paused,
+first: **⏱ 10 more seconds** (`Shift+T`) or **⏸ Pause the countdown** (`T`). Once the countdown has run out or is paused,
 👁 Reveal answer shows the answer at once, even with a phone's typed answer still missing (the answers lock). `R` always
 shows it at once.
 

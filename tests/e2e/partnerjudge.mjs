@@ -148,7 +148,7 @@ async function picks(num) {
   await page.keyboard.press('p');
   await page.keyboard.press(String(num));
 }
-/** Open a partner tile, choose the partner by number, show the question and (unless `clock` is false) start the clock. */
+/** Open a partner tile, choose the partner by number, show the question and (unless `clock` is false) start the countdown. */
 async function play(cat, row, partnerNo, { clock = true } = {}) {
   await tile(cat, row).click();
   await stage('[data-partner-up]').waitFor();
@@ -197,7 +197,7 @@ try {
     'once the clock runs, ✔ Got it is Enter and ✘ Missed is Shift+Enter',
   );
   await page.keyboard.press('Enter');
-  assert(await toast('The clock just started: press Enter again to give ✔ Got it'), 'a second Enter right after the clock starts gives nothing, and says why');
+  assert(await toast('The countdown just started: press Enter again to give ✔ Got it'), 'a second Enter right after the clock starts gives nothing, and says why');
   assert(Object.values(await scores()).every((s) => s === '$0') && (await stage('.timer').count()) === 1, 'no score, and the countdown runs on');
   await page.screenshot({ path: resultsPath('partner-judge-live.png') });
   await panel.getByRole('button', { name: '⇄ Swap' }).first().click();
@@ -286,12 +286,12 @@ try {
   await page.keyboard.press('Shift+Enter');
   sc = await scores();
   assert(sc.Cat === '$0' && sc.Ann === '−$400', 'nor does Shift+Enter');
-  // No clock running (no cards): N asks first, ⏱️ Start the clock its fix; a click on the stage starts it, as ⏱️ Start the
+  // No clock running (no cards): N asks first, ⏱️ Start the countdown its fix; a click on the stage starts it, as ⏱️ Start the
   // clock does (the status line says so), and leaves the answer hidden.
   await page.keyboard.press('n');
   await checkItem(page, 'handout').waitFor();
   assert(
-    (await checkItem(page, 'handout').innerText()).includes('The clock hasn’t started: they haven’t played yet.') &&
+    (await checkItem(page, 'handout').innerText()).includes('The countdown hasn’t started: they haven’t played yet.') &&
       (await stage('[data-slide="answer"]').count()) === 0,
     'no clock: N asks first (the clock hasn’t started), and leaves the answer hidden',
   );
@@ -300,10 +300,10 @@ try {
   await wait(1100);
   await stage('[data-slide="1"]').click();
   await stage('.timer').waitFor();
-  await statusLineIn(page).locator('[data-click-note]', { hasText: 'Clock started' }).waitFor();
+  await statusLineIn(page).locator('[data-click-note]', { hasText: 'Countdown started' }).waitFor();
   assert(
     (await stage('[data-slide="answer"]').count()) === 0 && (await panel.locator('[data-judged]').count()) === 0,
-    'no clock: a click on the stage starts it (“Clock started” in the status line), and leaves the answer hidden',
+    'no clock: a click on the stage starts it (“Countdown started” in the status line), and leaves the answer hidden',
   );
   await wait(1100);
   await page.keyboard.press('Enter');
@@ -320,7 +320,7 @@ try {
   await play(1, 1, 2, { clock: false });
   await wait(1100);
   await page.keyboard.press('Shift+Enter');
-  assert(await toast('Start the clock first (Enter), or click ✘ Missed'), 'Shift+Enter while handing out the cards judges nothing');
+  assert(await toast('Start the countdown first (Enter), or click ✘ Missed'), 'Shift+Enter while handing out the cards judges nothing');
   assert((await scoreOf('Bob')) === '$0', 'and gives nothing');
   const amountRow = awardRowIn(page);
   assert(
@@ -353,7 +353,7 @@ try {
   assert(
     (await flat(judgeRow.locator('[data-judge-got]'))) === 'Ann +$200 · Bob already scored' &&
       (await flowIs(page, '👁 Reveal answer')) &&
-      (await boxHasAction(panel, '⏱️ Start the clock (45 s)')) === '',
+      (await boxHasAction(panel, '⏱️ Start the countdown (45 s)')) === '',
     'Ctrl+Z brings the buttons back (Bob still scored), and the clock to start (in the box’s foot too)',
   );
   await page.keyboard.press('Control+z');
@@ -449,10 +449,10 @@ try {
   await panel.waitFor();
   assert(
     (await flowIs(page, '👁 Reveal answer')) &&
-      (await boxHasAction(panel, '⏱️ Start the clock (45 s)')) === '' &&
+      (await boxHasAction(panel, '⏱️ Start the countdown (45 s)')) === '' &&
       (await chip('Card 1 to Cat').getAttribute('aria-pressed')) === 'true' &&
       (await panel.locator('[data-card="1"]').innerText()).includes('(changed)'),
-    'a reload while handing out the cards: the list as it was, the change kept, the box’s ⏱️ Start the clock next',
+    'a reload while handing out the cards: the list as it was, the change kept, the box’s ⏱️ Start the countdown next',
   );
   await page.keyboard.press('Enter');
   await stage('.timer').waitFor();
@@ -505,7 +505,7 @@ try {
   await boardIn(aud).waitFor();
 
   // Enter held down in the audience window (the host clicked it to allow sound, and kept typing there): its first press
-  // shows the question, and its repeats, even seconds later, neither start the clock nor score.
+  // shows the question, and its repeats, even seconds later, neither start the countdown nor score.
   await picks(1);
   const held = JSON.stringify(await scores());
   await tile(2, 3).click();
@@ -522,11 +522,11 @@ try {
   await wait(300);
   assert(
     (await flowIs(page, '👁 Reveal answer')) &&
-      (await boxHasAction(panel, '⏱️ Start the clock (45 s)')) === '' &&
+      (await boxHasAction(panel, '⏱️ Start the countdown (45 s)')) === '' &&
       (await aud.locator('.timer').count()) === 0 &&
       JSON.stringify(await scores()) === held &&
       (await panel.locator('[data-judged]').count()) === 0,
-    'Enter held down in the audience window shows the question once: its repeats don’t start the clock or score',
+    'Enter held down in the audience window shows the question once: its repeats don’t start the countdown or score',
   );
   await page.keyboard.press('Escape');
   await boardIn(aud).waitFor();

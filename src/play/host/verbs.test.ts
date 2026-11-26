@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { hostKeys } from '../hostkeys';
 import { CHECK, FLOW, VERBS, type Verb } from './verbs';
 
 /** What the moment-dependent words are filled in with here (else a name). */
@@ -32,8 +33,8 @@ describe('the host screen’s words for each step', () => {
       partnerChange: 'Another partner ▾',
       handOut: '📤 Hand out the cards',
       sendAndStart: '📤 Send and start [⏎]',
-      sendCards: '📤 Send the cards (clock running) [⏎]',
-      startClock: '⏱️ Start the clock (45 s) [⏎]',
+      sendCards: '📤 Send the cards (countdown running) [⏎]',
+      startClock: '⏱️ Start the countdown (45 s) [⏎]',
       tiebreakerClue: '❓ Tiebreaker clue',
       rollOff: '🎲 Tiebreaker roll-off [O]',
       keepPlaying: 'Keep playing',
@@ -57,6 +58,11 @@ describe('the host screen’s words for each step', () => {
       'W: the wheel spins over the other players',
       'Enter: the cards not sent yet go to their phones, and the countdown starts',
     ]);
+  });
+
+  it('calls the T countdown the countdown, in a step’s words and its tooltip, and in the keys list (never the clock or a timer)', () => {
+    const said = [...all().flatMap(([, v]) => [v.label, v.title ?? '']), ...[false, true].flatMap((p) => hostKeys(p).flatMap((g) => g.keys.flat()))];
+    expect(said.filter((w) => /\bclock\b|\btimer\b/i.test(w))).toEqual([]);
   });
 
   it('gives each step its own words, and a key cap a few signs long', () => {
@@ -103,7 +109,7 @@ describe('the host screen’s words for each step', () => {
       'Next turn ▶',
     ]);
     // (Spec 1.2: never on the main button.)
-    const never = /Spin|Roll|Move|Pick a way|Send|Start the clock|Open the buzzers|Award|Deduct|✔|✘|Close|Tiebreaker|co-winners|Done editing|→/;
+    const never = /Spin|Roll|Move|Pick a way|Send|Start the countdown|Open the buzzers|Award|Deduct|✔|✘|Close|Tiebreaker|co-winners|Done editing|→/;
     for (const l of flow) expect(l, l).not.toMatch(never);
     // The blue button's key cap is the step's (N where N presses it), never a box's key.
     for (const v of Object.values(FLOW)) if (typeof v !== 'function') expect('key' in v, v.label).toBe(false);

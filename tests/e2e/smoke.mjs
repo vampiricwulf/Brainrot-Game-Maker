@@ -1982,7 +1982,7 @@ await player.getByRole('button', { name: '▶ Play' }).click();
 await player.getByRole('button', { name: 'Start game ▶' }).waitFor();
 const rulesText = await player.evaluate(() => document.body.textContent);
 assert(
-  rulesText.includes('start a timer any time with T') && !rulesText.includes('clue editor'),
+  rulesText.includes('start a countdown any time with T') && !rulesText.includes('clue editor'),
   'the exported file’s ⚖ Game rules don’t send the host to a clue editor it doesn’t have',
 );
 await player.getByRole('button', { name: 'Start game ▶' }).click();

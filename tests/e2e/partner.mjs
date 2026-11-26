@@ -6,7 +6,7 @@
 // picture from this computer; and a second partner clue gets a card of its own, with a picture too.
 // Two windows: that game played with the audience and scores windows open. "Who picked it?", the host column listing
 // the cards, the wheel never drawing the picker (on either stage, all through the spin), overruling it with 2, a held
-// Enter and a double Enter that neither start the clock nor score, a card given to someone else and 📋 Copy words,
+// Enter and a double Enter that neither start the countdown nor score, a card given to someone else and 📋 Copy words,
 // ✔ Got it with the default shares and the guesser picking next, Ctrl+Z taking both back, ✘ Missed costing the guesser
 // half and never the partner. Neither viewer window ever shows a card's words or its picture's name.
 // One window: the second clue from tile open to ▦ Done, with a reload before the spin and once paired. The host page (on
@@ -733,9 +733,9 @@ try {
   await page.keyboard.up('Enter');
   assert(
     (await flowIs(page, '👁 Reveal answer')) &&
-      (await stepButton(panel, '⏱️ Start the clock (45 s)').count()) === 1 &&
+      (await stepButton(panel, '⏱️ Start the countdown (45 s)').count()) === 1 &&
       (await aud.locator('.timer').count()) === 0,
-    'Enter held down shows the question once, and its repeats (even a second later) don’t start the clock (the box’s ⏱️ Start the clock next)',
+    'Enter held down shows the question once, and its repeats (even a second later) don’t start the countdown (the box’s ⏱️ Start the countdown next)',
   );
   assert((await flat(aud.locator('[data-partner-badge]'))) === '🗣️ Bob describes → 🎯 Ann guesses', 'the stream shows who plays which part');
   await never(viewers, hidden, 'the question');
@@ -765,7 +765,7 @@ try {
   assert((await page.evaluate(() => navigator.clipboard.readText())) === `🤫 For Cat only (Movies $400, card 2): ${ONIONS}`, 'and copies the card for Cat');
   await never(viewers, hidden, 'handing out the cards');
 
-  // ---------- ⏱️ Start the clock, then Enter again at once, then held down: no score ----------
+  // ---------- ⏱️ Start the countdown, then Enter again at once, then held down: no score ----------
   // (The keys back to back: the guard is the second after the clock starts.)
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
@@ -881,8 +881,8 @@ try {
   await stage('[data-partner-badge]').waitFor();
   const shownAt = Date.now();
   assert(
-    await toast('The question just went up: press Enter again to start the clock'),
-    'Enter shows the question; Enter again at once doesn’t start the clock',
+    await toast('The question just went up: press Enter again to start the countdown'),
+    'Enter shows the question; Enter again at once doesn’t start the countdown',
   );
   const row = panel.locator('[data-card="1"]');
   assert((await flat(row)).includes('Card 1 · 1 line of words, 1 picture'), `the list counts what’s on the card, and never says it (${await flat(row)})`);

@@ -143,9 +143,9 @@ export const VERBS = {
   handOut: { label: '📤 Hand out the cards' },
   sendAndStart: { label: '📤 Send and start', key: '⏎', title: 'Enter: the cards not sent yet go to their phones, and the countdown starts' },
   /** The clock started already (T) with cards still to send: Enter sends them, the clock going on. */
-  sendCards: { label: '📤 Send the cards (clock running)', key: '⏎', title: 'Enter: the cards not sent yet go to their phones (the countdown goes on)' },
+  sendCards: { label: '📤 Send the cards (countdown running)', key: '⏎', title: 'Enter: the cards not sent yet go to their phones (the countdown goes on)' },
   /** (Its seconds: what the countdown starts from.) */
-  startClock: (secs: number): Verb => ({ label: `⏱️ Start the clock (${secs} s)`, key: '⏎' }),
+  startClock: (secs: number): Verb => ({ label: `⏱️ Start the countdown (${secs} s)`, key: '⏎' }),
   gotIt: { label: '✔ Got it', key: '⏎' },
   missed: { label: '✘ Missed', key: '⇧⏎' },
 

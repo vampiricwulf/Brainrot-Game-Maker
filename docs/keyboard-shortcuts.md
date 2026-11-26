@@ -37,11 +37,11 @@ See [Hosting a game](hosting.md) for how the show runs.
 | `Enter` / `Shift+Enter` | Award / deduct (on one player at the clue's value: ✔ / ✘, where the other one switches a verdict already given) |
 | `C` / `X` | Final reveal: right / wrong |
 
-## Tools and timers
+## Tools and the countdown
 
 | Key | Action |
 |---|---|
-| `T` / `Shift+T` | Start or pause the timer / 10 more seconds |
+| `T` / `Shift+T` | Start or pause the countdown / 10 more seconds |
 | `D` | Roll the dice again |
 | `W` | Wheel (on a partner clue: spin for a partner) |
 | `O` | Roll-off (on a tie for first, or a buzzer tie) |

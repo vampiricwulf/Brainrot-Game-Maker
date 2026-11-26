@@ -687,7 +687,7 @@ async function crowd() {
   // TIME'S UP slams in once, when the countdown runs out: an audience window reloaded during its moment joins it where
   // it is by then, and one reloaded after it (or the scores window) shows only the red 0 clock. (On a clue: the board's
   // status line has no ⏱️ box, no clock fits there.)
-  const secs = host.getByLabel('Timer seconds');
+  const secs = host.getByLabel('Countdown seconds');
   const crowdTile = (id) => boardIn(stageBoxIn(host)).locator(`.tile[data-clue="${id}"]`);
   assert((await secs.count()) === 0, 'the board’s status line has no ⏱️ seconds box');
   await crowdTile('q2_1').click();
@@ -718,7 +718,7 @@ async function crowd() {
 
   // Seconds typed in the ⏱️ box are for that moment only: 60 typed on one clue, the next clue's ⏱️ Start (and T) is that
   // clue's own countdown again, not 60.
-  await host.getByRole('button', { name: 'Hide timer' }).click();
+  await host.getByRole('button', { name: 'Hide countdown' }).click();
   await secs.fill('60');
   await host.locator('.tc button', { hasText: 'Start 60s' }).waitFor();
   await secs.press('Enter');
@@ -736,7 +736,7 @@ async function crowd() {
   await crowdTile('q1_0').waitFor();
   await crowdTile('q1_0').click();
   await statusLineIn(host, { hasText: 'Answer hidden' }).waitFor();
-  if (await host.getByRole('button', { name: 'Hide timer' }).isVisible()) await host.getByRole('button', { name: 'Hide timer' }).click();
+  if (await host.getByRole('button', { name: 'Hide countdown' }).isVisible()) await host.getByRole('button', { name: 'Hide countdown' }).click();
   await host.locator('.tc button', { hasText: /^Start \d+s$/ }).waitFor();
   assert(
     (await host.locator('.tc button', { hasText: /^Start \d+s$/ }).innerText()) === 'Start 45s' && (await secs.inputValue()) === '',

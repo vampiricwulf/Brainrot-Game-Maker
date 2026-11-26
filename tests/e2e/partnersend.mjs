@@ -811,7 +811,7 @@ try {
   assert(await row(2).getByRole('button', { name: '📋 Copy picture' }).isVisible(), 'and its row offers 📋 Copy picture');
   const upBefore = uploads.length;
   // The status line's ⏱️ Start (as T) with cards still to send: the clock only. The box's foot reads 📤 Send the cards
-  // (clock running), the status line that Enter sends them, and nothing goes until then.
+  // (countdown running), the status line that Enter sends them, and nothing goes until then.
   await statusLineIn(host)
     .getByRole('button', { name: /^Start \d+s$/ })
     .click();
@@ -819,15 +819,15 @@ try {
   await sleep(300);
   assert(
     (await flowIs(host, '👁 Reveal answer')) &&
-      (await boxHasAction(panel, '📤 Send the cards (clock running)')) === '' &&
-      /Clock running: Enter sends the \d+ cards/.test(await textOf(statusLineIn(host))) &&
+      (await boxHasAction(panel, '📤 Send the cards (countdown running)')) === '' &&
+      /Countdown running: Enter sends the \d+ cards/.test(await textOf(statusLineIn(host))) &&
       !sends().length &&
       uploads.length === upBefore,
-    `the clock started with cards to send: 📤 Send the cards (clock running) in the box only, and nothing sent (“${await textOf(statusLineIn(host))}”)`,
+    `the clock started with cards to send: 📤 Send the cards (countdown running) in the box only, and nothing sent (“${await textOf(statusLineIn(host))}”)`,
   );
   // (A click within a second of the question going up sends nothing.)
   await sleep(1100);
-  await stepButton(panel, '📤 Send the cards (clock running)').click();
+  await stepButton(panel, '📤 Send the cards (countdown running)').click();
   // (About 11 MB going up, one file at a time.)
   assert(await until(() => answers.some((a) => a.status === 409 && a.read), 120000), 'sent: the room turns an upload down once it holds 10 MB');
   const turned = answers.find((a) => a.status === 409);

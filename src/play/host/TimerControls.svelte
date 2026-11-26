@@ -1,4 +1,4 @@
-<!-- Host countdown controls (spec §6.6): in the status line where a clock fits, and while one is up (T starts one any time). -->
+<!-- Host countdown controls (spec §6.6): in the status line where a countdown fits, and while one is up (T starts one any time). -->
 <script lang="ts">
   import { tick } from 'svelte';
   import { app } from '../../lib/app.svelte';
@@ -9,7 +9,7 @@
   /**
    * custom: the seconds typed in the box (bound, so T uses them too). onstart: a countdown was started or went on from
    * here (Start, ▶, ↺, Enter in the box), as T does: a 🤝 partner clue handing out its cards goes on with it. onhidden:
-   * ✕ put the countdown away and these controls went with it (no clock fits the moment), so the focus is the panel's.
+   * ✕ put the countdown away and these controls went with it (no countdown fits the moment), so the focus is the panel's.
    */
   let {
     defaultSeconds,
@@ -65,15 +65,20 @@
          status line's other parts are (not run on from the words before it). -->
     {#if t.expired}<span class="sr-only">{'· '}</span>{/if}
     <b class="left" class:done={t.expired} data-quiet={t.expired ? undefined : ''}>{t.expired ? "Time's up" : `${left}s`}</b>
-    <button class="small" onclick={toggle} disabled={t.expired} title="T" aria-label={t.startedAt === null ? 'Start timer' : 'Pause timer'}
+    <button
+      class="small"
+      onclick={toggle}
+      disabled={t.expired}
+      title={t.startedAt === null ? 'Go on with the countdown (T)' : 'Pause the countdown (T)'}
+      aria-label={t.startedAt === null ? 'Start countdown' : 'Pause countdown'}
       >{#if t.startedAt === null}▶{:else}<span class="bars" aria-hidden="true"></span>{/if}</button
     >
     <!-- Change the time left without starting over. -->
     <button class="small ghost" onclick={() => more(-10)} disabled={t.expired} title="10 seconds less" aria-label="10 seconds less">−10</button>
     <button class="small ghost" onclick={() => more(10)} title="10 seconds more (Shift+T)" aria-label="10 seconds more">+10</button>
-    <button class="small ghost" onclick={() => start(t.start ?? t.total)} title="Restart" aria-label="Restart timer">↺</button>
-    <!-- (The timer box's corner ✕, as a notice's: no word, so the status line never wraps and shrinks the stage.) -->
-    <button class="small ghost" onclick={hide} title="Hide timer" aria-label="Hide timer">✕</button>
+    <button class="small ghost" onclick={() => start(t.start ?? t.total)} title="Restart the countdown" aria-label="Restart countdown">↺</button>
+    <!-- (The countdown box's corner ✕, as a notice's: no word, so the status line never wraps and shrinks the stage.) -->
+    <button class="small ghost" onclick={hide} title="Hide the countdown" aria-label="Hide countdown">✕</button>
   {:else}
     <button class="small" onclick={() => start(secs)} title="T">Start {secs}s</button>
   {/if}
@@ -84,7 +89,7 @@
     max="3600"
     placeholder="secs"
     bind:value={custom}
-    aria-label="Timer seconds"
+    aria-label="Countdown seconds"
     onkeydown={(e) => {
       if (e.key === 'Enter') start(secs);
       if (e.key === 'Enter' || e.key === 'Escape') e.currentTarget.blur();

@@ -2113,7 +2113,7 @@
       s.stage = stage;
       partners.partnerClockAt = 0;
       partners.partnerLiveByT = false;
-      announce('Clock taken back: the cards are handed out again');
+      announce('Countdown taken back: the cards are handed out again');
     });
   }
 

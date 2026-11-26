@@ -234,7 +234,7 @@ try {
     (await p2.locator('#s-buzz.squeezed').count()) === 0 && (await p2.locator('#answer-err').evaluate((e) => e.getBoundingClientRect().height)) > 0,
     'a short question: the room for a line under the box is kept',
   );
-  const secs = host.getByLabel('Timer seconds');
+  const secs = host.getByLabel('Countdown seconds');
   await secs.fill('1');
   await secs.press('Enter');
   await p2.locator('#answer-clock').getByText('Time’s up').waitFor({ timeout: 10_000 });
@@ -253,7 +253,7 @@ try {
   // (Player 3's words go at 0 and are left as they are.)
   await p3.getByLabel(/Your answer/).fill('Persian');
   // (A new countdown: the one run out put away first.)
-  await host.getByRole('button', { name: 'Hide timer' }).click();
+  await host.getByRole('button', { name: 'Hide countdown' }).click();
   await p1.locator('#answer-clock').waitFor({ state: 'hidden' });
   // (Player 3's network slow: the host's clock running out reaches the phone a while after its own countdown did.)
   net3.delay = 1500;

@@ -709,7 +709,7 @@
             onchange={(e) => (e.currentTarget.value = clue.value === null ? '' : String(clue.value))}
           />
         </label>
-        <label class="field" title="Countdown when this clue opens. Blank = game default, 0 = no timer.">
+        <label class="field" title="Countdown when this clue opens. Blank = game default, 0 = no countdown.">
           ⏱️ Countdown (s)
           <!-- Whole seconds, at least 1 (blank: the game's default, 0: none). -->
           <input

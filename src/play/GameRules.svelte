@@ -1,5 +1,5 @@
 <!--
-  ⚖ Game rules (scoring, most players, timers, the round intro; the buzzers are on the 📱 Phone buzzers card). On the
+  ⚖ Game rules (scoring, most players, the countdown, the round intro; the buzzers are on the 📱 Phone buzzers card). On the
   pre-game screen, folded away until opened (this computer remembers whether it was open); mid-game, the same rules
   open in a window from the host panel (`folded={false}`). Saved with the game: the play screen keeps the editor's copy
   of it in step (an undoable change in its history).
@@ -136,7 +136,7 @@
       <p class="muted small">While hosting, the number keys 1–{s.maxPlayers} pick {nouns}.</p>
     {/if}
 
-    <h3>Timers</h3>
+    <h3>Countdown</h3>
     <div class="grid">
       <label class="field">
         Default clue countdown (seconds, blank = none)
@@ -156,7 +156,7 @@
       <label class="check"><input type="checkbox" bind:checked={s.timerAutoStart} /> Start the countdown automatically when a clue opens</label>
     </div>
     <!-- (A play-only page has no clue editor.) -->
-    <p class="muted small">You can also start a timer any time with <b>T</b>{app.playerOnly ? '' : ", and set any clue's own time in the clue editor"}.</p>
+    <p class="muted small">You can also start a countdown any time with <b>T</b>{app.playerOnly ? '' : ", and set any clue's own time in the clue editor"}.</p>
 
     <h3>Round intro</h3>
     <div class="grid">

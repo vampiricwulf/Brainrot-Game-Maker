@@ -206,7 +206,7 @@ export function describeAction(game: Game, a: Action, on?: ActionOn, teams = fal
     case 'shop':
       return `Open ${game.shops?.find((s) => s.id === a.shop)?.name ?? 'shop'}`;
     case 'timer':
-      return `Timer ${a.seconds}s`;
+      return `Countdown ${a.seconds} s`;
     case 'note':
       return `📝 ${a.text}`;
     case 'goto': {

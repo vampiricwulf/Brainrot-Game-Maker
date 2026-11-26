@@ -223,7 +223,7 @@ words. The other rows are this spec's proposals; the ones marked **ask** are in 
 | Undo | Setting up (opening, spinning, overruling, Show question) and handing out cards are not undo steps; judging is one undo step for both players. | The same as a Daily Double (toolset.ts:387). A card can't be un-seen. |
 | How a card reaches a phone | P1: by hand (📋). P2: two new room features, `cards` (words and links, with a late rule) and `files` (the host's files, uploaded when the card is sent). A server without `cards` gets no card content: the host copies. Card words never go in the status line. | The Worker deploys from `main`, so the public server gets both with the app. Draft 2's status-line fallback had no late rule and carried no pictures (§24). |
 | Files on the public server | On from P2, with caps and a daily budget set from a measurement on a Free Cloudflare account, done before P2 ships (§13.5). | The owner wants the host's files in the first phone release. The measurement keeps one busy day from using up the free plan for every room. |
-| Judging keys | ✔ Got it on Enter and ✘ Missed on Shift+Enter, once the cards went out, while nobody is selected by hand. Enter and N don't act on a key repeat and don't send within 1 second of the question showing; Enter and Shift+Enter don't judge or award within 1 second of the send, of ⏱ Start the clock, or of Show question when the clue has no cards (times noted locally, not saved). The main button (N) never scores. | A held or double Enter can't send the default cards before the host has looked at the list, or turn the send (or the clock's start) into ✔ Got it. Selecting players by hand (1–9) still gives the normal award row. |
+| Judging keys | ✔ Got it on Enter and ✘ Missed on Shift+Enter, once the cards went out, while nobody is selected by hand. Enter and N don't act on a key repeat and don't send within 1 second of the question showing; Enter and Shift+Enter don't judge or award within 1 second of the send, of ⏱ Start the countdown, or of Show question when the clue has no cards (times noted locally, not saved). The main button (N) never scores. | A held or double Enter can't send the default cards before the host has looked at the list, or turn the send (or the clock's start) into ✔ Got it. Selecting players by hand (1–9) still gives the normal award row. |
 | When the countdown starts | With the send (📤 Send and start), not when the question shows. **ask** | The giver needs the card before the clock runs. |
 | Milestones | P1 is the app only; P2 adds phones with every kind of media (§21). | Smaller steps. P1 changes nothing on the buzzer server. |
 
@@ -597,12 +597,12 @@ Card 2 · 1 line of words
 ```
 
 The last row is the box's foot, in view as the list scrolls: ✔ Got it / ✘ Missed, quiet until the clock runs, and at
-its right end the step (📤 Send and start, or ⏱ Start the clock when no card goes to a phone), ringed while it's due,
+its right end the step (📤 Send and start, or ⏱ Start the countdown when no card goes to a phone), ringed while it's due,
 after a 📋 for each card the host copies by hand (📋 Copy words, or 📋 Card 1, 📋 Card 2… for several), so the card to
 copy is in view even when its row has scrolled under the foot. When the step goes, nothing moves into its place: a click
 there again never judges. The first line says what's next ("Next: 📋 copy each card to its player, then ⏱ Start the
 clock" when the host copies them), on one line, cut short (…) when the row is full, the whole of it in its tooltip. A
-click on 📤 Send and start (or ⏱ Start the clock), in the box or in the check, within a second of the question going up
+click on 📤 Send and start (or ⏱ Start the countdown), in the box or in the check, within a second of the question going up
 sends nothing and says why, as Enter does; the rest of a double-click on Show question ▶, landing on what took its
 place, is dropped. The blue button, 👁 Reveal answer, asks first while the cards are out or the clock hasn't started
 (📤 Send and start ⏎ first, with 📋 Copy for the cards copied by hand): N then never reveals, R or 👁 Reveal anyway does.
@@ -616,7 +616,7 @@ place, is dropped. The blue button, 👁 Reveal answer, asks first while the car
   back until that is pressed).
 - **📤 Send and start** (Enter or a click; N goes through the check) sends every card not sent yet to its recipients and starts the countdown
   (`autoTimer()`). The stage becomes `'live'`. When every card is already out, or none has anyone to go to, it reads
-  ⏱ Start the clock.
+  ⏱ Start the countdown.
 - **One card at a time.** A row's 📤 Send sends that card now and doesn't start the countdown.
 - **After a card is sent** its row reads "sent", then "✓ seen" for each phone that opened it, with ↻ Send again and
   ✖ Take back. Changing the chips of a sent card sends nothing by itself: the row then reads "changed: [📤 Send
@@ -629,7 +629,7 @@ place, is dropped. The blue button, 👁 Reveal answer, asks first while the car
   only for a card sent to them. It is offered from the moment the tile opens.
 - **No phone, P1, or an older server.** A recipient without a phone has 📵 on their chip, and the row offers 📋 Copy
   words and 📋 Copy picture (§13.6). In P1 every row works this way: there is no 📤 Send, and the foot's step is
-  ⏱ Start the clock. The chips still matter: the copied words name who they're for, and the two-window host column
+  ⏱ Start the countdown. The chips still matter: the copied words name who they're for, and the two-window host column
   lists who gets what.
 - **Lines that count, never name.** The list says "Card 1 · 1 line of words, 1 picture", never what's on it or an
   item's name: in one window this panel is on stream. The two-window host column shows each card's content next to its
@@ -639,9 +639,9 @@ place, is dropped. The blue button, 👁 Reveal answer, asks first while the car
   the parts. Anyone else the host wants to score gets points by hand (§9.4).
 - **The double-Enter guard.** Today Enter awards whenever the award row is open (Play.svelte:2940-2946), and the only
   double-press guard, `clickNext`, covers mouse double-clicks (HostPanel.svelte:333-338). In the Distribute step, Enter
-  with nobody selected presses 📤 Send and start (or ⏱ Start the clock), and:
+  with nobody selected presses 📤 Send and start (or ⏱ Start the countdown), and:
   - do nothing on a key repeat (`e.repeat`);
-  - don't send (or start the clock) within 1 second of `shownAt`. The press shows "The question just went up: press
+  - don't send (or start the countdown) within 1 second of `shownAt`. The press shows "The question just went up: press
     Enter again to send the cards" instead, so a double press can't send the default list before the host has looked
     at it;
   - the guard is for keys only: clicking 📤 Send and start has no delay.
@@ -653,8 +653,8 @@ place, is dropped. The blue button, 👁 Reveal answer, asks first while the car
   Show question, so a click judges in the Distribute step too; cards not sent by then are never sent. The keys don't:
   in the Distribute step Shift+Enter does nothing but hint "Send the cards first, or click ✘ Missed" (§6.11).
 - **The guard, again.** Enter and Shift+Enter do nothing on a key repeat, and don't judge or award within 1 second of
-  the send, of ⏱ Start the clock, or of Show question when the clue has no cards (times noted locally, not saved). The
-  press shows "The cards just went out: press Enter again to give ✔ Got it" (after ⏱ Start the clock, or on a clue
+  the send, of ⏱ Start the countdown, or of Show question when the clue has no cards (times noted locally, not saved). The
+  press shows "The cards just went out: press Enter again to give ✔ Got it" (after ⏱ Start the countdown, or on a clue
   with no cards: "The clock just started: press Enter again to give ✔ Got it"). Clicking ✔ Got it or ✘ Missed has no
   delay.
 - **An equal pair.** Once the clock runs (not judged, no steal) ✔ Got it ⏎ and ✘ Missed ⇧⏎ look alike in weight,
@@ -670,7 +670,7 @@ place, is dropped. The blue button, 👁 Reveal answer, asks first while the car
   played yet" with 📤 Send and start ⏎): only 📤 or Enter sends a card. With a card to copy by hand not 📋 copied yet
   (for who gets it now) the status line says "Copy the card to Bob first (📋 in the 🤝 box), then click again to start
   the clock", and the box's 📋 flash; the next click (or once each is copied, the first) starts the clock, as ⏱ Start
-  the clock does, and the status line says "Clock started" with ↶ Undo for a few seconds (it takes the clock back
+  the clock does, and the status line says "Countdown started" with ↶ Undo for a few seconds (it takes the clock back
   while nothing has happened since). A click within a second of the question says to click again. A clue with no
   cards, its clock not started, starts it the same way. Once the cards are out, until the clock runs out or the clue
   is judged: the check, ✔ Got it / ✘ Missed ▶ reveal. While a steal is on (§8.3), until it's
@@ -796,12 +796,12 @@ In one window there is no card preview anywhere, ever: only the counts.
 | Partner up | **N** / **Enter** | The blue button: Next ▶ while the wheel is up (it goes, the pair shows), else Show question ▶. With no picker or no partner yet it asks first (the check: W or Enter spins there, 1–9 choose, Esc is Not yet). Never spins by itself. |
 | Partner up | **1–9** | With no picker yet: who picked it. Otherwise: choose the partner (overrules the wheel). |
 | Partner up | **Esc**, **Shift+Esc** | Close the wheel, or go back to the board with the tile kept (↩ Put back). |
-| Distributing | **Enter**, nobody selected | 📤 Send and start (or ⏱ Start the clock). Not on a key repeat, and not within 1 second of Show question. |
+| Distributing | **Enter**, nobody selected | 📤 Send and start (or ⏱ Start the countdown). Not on a key repeat, and not within 1 second of Show question. |
 | Distributing or playing | **N** | The blue button, 👁 Reveal answer: with the cards not handed out or the pair still playing it asks first, and N again never reveals (R does). |
-| Distributing | **Shift+Enter**, nobody selected | Nothing; hint "Send the cards first, or click ✘ Missed" (P1: "Start the clock first, or click ✘ Missed"). |
-| Playing | **Enter** / **Shift+Enter**, nobody selected | ✔ Got it / ✘ Missed. Not on a key repeat, and not within 1 second of the send, of ⏱ Start the clock, or of Show question when the clue has no cards. |
+| Distributing | **Shift+Enter**, nobody selected | Nothing; hint "Send the cards first, or click ✘ Missed" (P1: "Start the countdown first, or click ✘ Missed"). |
+| Playing | **Enter** / **Shift+Enter**, nobody selected | ✔ Got it / ✘ Missed. Not on a key repeat, and not within 1 second of the send, of ⏱ Start the countdown, or of Show question when the clue has no cards. |
 | Distributing or playing | **1–9**, then Enter / Shift+Enter | Award / deduct the Amount to the selected players, as today (with the same guard). The Amount row, folded behind ± Other points… in a partner clue, opens with the pick and stays open once points were given by hand. |
-| Distributing | **T** (or the status line's ⏱ Start) | Starts the clock. No card waiting for a phone: the clue goes live, as ⏱ Start the clock (45 s) does, sending nothing, and the first Enter after it only says "Clock is running: Enter again for ✔ Got it". Phone cards still to send: the clock only; the main button reads 📤 Send the cards (clock running), the status line "Clock running: Enter sends the 2 cards", and Enter sends them. |
+| Distributing | **T** (or the status line's ⏱ Start) | Starts the clock. No card waiting for a phone: the clue goes live, as ⏱ Start the countdown (45 s) does, sending nothing, and the first Enter after it only says "Countdown running: Enter again for ✔ Got it". Phone cards still to send: the clock only; the main button reads 📤 Send the cards (countdown running), the status line "Countdown running: Enter sends the 2 cards", and Enter sends them. |
 | Playing | **R**, **T**, **Esc**, **Shift+Esc** | As for any clue. N never scores, sends or spins. |
 | Distributing or playing | **U** | Hint: "Nobody buzzes on a partner clue". |
 
@@ -1467,7 +1467,7 @@ Each card's row in the Distribute list offers, for a recipient without a phone, 
   links.
 - **Copied ✓:** each 📋 press is noted with who the card was for then (`PartnerState.copied`, saved with the game), and
   its 📋 shows ✓ (in the row, at the box's foot and in the check) while it still goes to them; given to someone else
-  since, it's to copy again. Once each card to copy is copied, the first line reads "Next: ⏱ Start the clock (the cards
+  since, it's to copy again. Once each card to copy is copied, the first line reads "Next: ⏱ Start the countdown (the cards
   are copied)", and a click on the stage starts the clock (§6.6).
 - **🪟 Card window** (P3): a window like the scores window that shows only the live card, full size, local files
   included. The host can share just that window with one player (a Discord DM call), turn a laptop round, or put it on a
@@ -1777,7 +1777,7 @@ The phone has the same token and so the same seat time (or `teamAt`): the card s
 | A recipient switches to another phone | The host frees the seat for the new phone, which is new for the card: ↻ Send again. |
 | Enter pressed twice, or held, after Show question | The question shows once; the second press doesn't send (§6.5). |
 | Enter pressed twice, or held, at the send | The cards go once; the second press doesn't score (§6.6). |
-| Enter pressed twice at Show question on a clue with no cards | The second press doesn't score (§6.6). The same at ⏱ Start the clock. |
+| Enter pressed twice at Show question on a clue with no cards | The second press doesn't score (§6.6). The same at ⏱ Start the countdown. |
 | The partner is changed after a card was sent to them | The panel asks before moving it (§7.4). |
 | ⇄ Swap after a card that follows a part was sent | The panel asks first. Bob keeps what he saw; the row reads "changed", and nothing moves until 📤 Send changes (§7.4). |
 | A card is edited after it was sent (Resume with my edits) | It's taken off the phones until the host sends it again (§15.4). |
@@ -2310,7 +2310,7 @@ P2 into one phone release, P2.
 
 | # | Milestone | Contents |
 |---|---|---|
-| P1 | **🤝 Partner clue** (app only; works with any buzzer server, or none; nothing new reaches the server) | The type, rules and games; the points per clue with the ready-made choices and ☑ The partner never loses points; the 🤫 Card tabs (＋ Card, Goes to, ⧉ Same as the answer, "This card shows the answer"), the walkers (with `clueHasContent`) and checks, the history label; PARTNER UP!; the partner wheel with the picker off from the first frame, the result applied on landing, and a spinning roll hidden in 📜 Log › Rolls; the overrule chips, ⇄ Swap and Solo; ▶ Show question; the 📤 Distribute step with its recipient chips and the 📋 copy buttons (no phone sending yet), and ⏱ Start the clock; buzzers off for everyone through `ownPlayers()` at the sites in §8.1; the phones' roles lines through today's status line (no card content); the stream's splash, pair card, badge and caption; ✔ Got it / ✘ Missed in one step with the double-Enter guard (at Show question and at the send), the shares, the guesser picking next and the countdown in `timerSteps`; the quick chips with Deduct on wrong; team against team; the counts in the panel; the cards as text in the two-window host column, their items listed by `cardItems` in phonecard.ts; keys; undo, reload and resume. |
+| P1 | **🤝 Partner clue** (app only; works with any buzzer server, or none; nothing new reaches the server) | The type, rules and games; the points per clue with the ready-made choices and ☑ The partner never loses points; the 🤫 Card tabs (＋ Card, Goes to, ⧉ Same as the answer, "This card shows the answer"), the walkers (with `clueHasContent`) and checks, the history label; PARTNER UP!; the partner wheel with the picker off from the first frame, the result applied on landing, and a spinning roll hidden in 📜 Log › Rolls; the overrule chips, ⇄ Swap and Solo; ▶ Show question; the 📤 Distribute step with its recipient chips and the 📋 copy buttons (no phone sending yet), and ⏱ Start the countdown; buzzers off for everyone through `ownPlayers()` at the sites in §8.1; the phones' roles lines through today's status line (no card content); the stream's splash, pair card, badge and caption; ✔ Got it / ✘ Missed in one step with the double-Enter guard (at Show question and at the send), the shares, the guesser picking next and the countdown in `timerSteps`; the quick chips with Deduct on wrong; team against team; the counts in the panel; the cards as text in the two-window host column, their items listed by `cardItems` in phonecard.ts; keys; undo, reload and resume. |
 | P2 | **🤫 Cards on phones, with every kind of media** (buzzer server update: `cards` and `files`; the public server gets it on the push) | `HostState.cards`, the room's whitelist, per-seat and per-person views, the late rule with `seatedAt` and `Member.teamAt`, and `cardSeen`; the phone's card panel with words, pictures, GIFs, video, sound and YouTube, Drive and Streamable embeds, Tap to see and Hide; greyed phones with the roles line (`status.off`); 📤 Send, Send and start, ✓ seen, ↻ Send again, 📤 Send changes and ✖ Take back, each for one card (one id per send); the files: shrinking pictures, uploading on a send or ⇡ Get it ready (never by itself), the upload and download routes before the `/api/` 404, storage keys, caps, the `FILE_LIMIT` binding, the daily byte budget in `RoomCounter`, the alarm shared with the room's end, and clean-up; **measuring CPU time and rows written on a Free account before it ships, then setting the default budget and confirming the caps**; the phone lines per part and the card hints; the 📱 preview and `phoneCard()`, which the host column then uses; picture thumbnails in the host column; the member wheel, and one person describing to their team; the guesser typing their guess (✍ answers for one seat, asked from Show question on, never in 'pick'); the content policy; the comment and README changes of §14.9, Costs included. |
 | P3 | **🤫 Cards anywhere** | 🤫 Send a card… in the tools row; the list of cards out, with app-made labels; `forViewers` dropping `cards`; a card on standard and Daily Double tiles; the action `do: 'card'` for RPG objects, items, wheel slices and board spaces, sent when the host confirms; 🪟 Card window on its own channel. |
 | P4 | **More games** | 🎭 Deals (secret roles for everyone, random and secret parts, cards drawn from a wheel), whose list in one window doesn't say who got which; a "Who was who" reveal on stream; steal on a miss; an optional per-round count and 🔀 Randomize for partner tiles; a Partner Double, if wanted. |
