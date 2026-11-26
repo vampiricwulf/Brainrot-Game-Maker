@@ -1,4 +1,4 @@
-// 📊 Stats & Items › 📥 Import CSV…: a table of items (name, price, stackable, wearable, description), saved by a
+// 📊 Stats & items › 📥 Import CSV…: a table of items (name, price, stackable, wearable, description), saved by a
 // spreadsheet with commas, semicolons (Excel where the decimal mark is a comma) or tabs.
 import { parseTable, parseValue, tableSeparator } from './clueimport';
 

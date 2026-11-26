@@ -219,7 +219,7 @@ describe('Find: 🤫 cards', () => {
 });
 
 describe('Find: 🎭 deals', () => {
-  it('finds a deal by its name, a part’s name or its card’s words, and goes to it in 🎡 Wheels, Dice & Deals', () => {
+  it('finds a deal by its name, a part’s name or its card’s words, and goes to it in 🎡 Wheels, dice & deals', () => {
     const game = newGame();
     game.deals = [
       {
@@ -234,7 +234,7 @@ describe('Find: 🎭 deals', () => {
     for (const q of ['mystery', 'spy', 'quietly']) {
       const hits = findAll(game, q);
       expect(hits).toHaveLength(1);
-      expect(hits[0]).toMatchObject({ icon: '🎭', where: 'Wheels, Dice & Deals › Deal', place: { tab: 'tools', deal: 'd1' } });
+      expect(hits[0]).toMatchObject({ icon: '🎭', where: 'Wheels, dice & deals › Deal', place: { tab: 'tools', deal: 'd1' } });
     }
   });
 });

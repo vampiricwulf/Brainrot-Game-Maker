@@ -189,7 +189,7 @@
   }
   const game = $derived(app.game);
   /**
-   * 📊 Stats & Items is in use: an RPG or board game round plays with it, or it has anything in it. Until then the
+   * 📊 Stats & items is in use: an RPG or board game round plays with it, or it has anything in it. Until then the
    * sidebar lists it muted, "(optional)", as the Tiebreaker before it's turned on.
    */
   const statsUsed = $derived(
@@ -642,7 +642,7 @@
     tab = line.round ? at : line.tab;
     const round = line.round ? game.rounds[at] : undefined;
     const place = exact ?? ((round && isBoard(round) && boardPlace(game, round)) || line.place);
-    // A stat, an item or a shop in 📊 Stats & Items, a wheel or dice in 🎡 Wheels, Dice & Deals, a card in 🤫 Cards: it
+    // A stat, an item or a shop in 📊 Stats & items, a wheel or dice in 🎡 Wheels, dice & deals, a card in 🤫 Cards: it
     // flashes there, and the keys go to it (out of the checklist). An empty 🤫 card: its words box, ready to type (as
     // ＋ Add card does).
     if (place?.tab === 'stats' || place?.tab === 'tools' || place?.tab === 'cards') {
@@ -1612,7 +1612,7 @@
           onclick={() => openTab('tools')}
           title="Wheels, custom dice and 🎭 deals (a secret part for each player)"
         >
-          🎡 Wheels, Dice & Deals
+          🎡 Wheels, dice & deals
         </button>
         <button
           class:active={tab === 'cards'}
@@ -1630,7 +1630,7 @@
           title={statsUsed
             ? 'Player stats, items and shops (RPG and board game rounds)'
             : 'Optional: player stats, items and shops, for RPG and board game rounds'}
-          >📊 Stats & Items{#if !statsUsed}{' '}<span class="opt">(optional)</span>{/if}</button
+          >📊 Stats & items{#if !statsUsed}{' '}<span class="opt">(optional)</span>{/if}</button
         >
         <button class:active={tab === 'media'} aria-current={tab === 'media' ? 'page' : undefined} onclick={() => openTab('media')}
           >🖼️ Media ({libraryMedia(game).length})</button

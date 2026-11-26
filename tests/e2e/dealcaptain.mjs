@@ -145,7 +145,7 @@ try {
   const scrolls = await dialog.evaluate((m) => m.scrollHeight > m.clientHeight + 20);
   assert(scrolls, `🐺 Secret roles: more than the menu holds at 1280×720 (it scrolls)`);
   assert(await clickable(dialog.getByRole('button', { name: '🎭 Deal', exact: true })), 'scrolled to the top, 🎭 Deal is still in view and takes a click');
-  assert(await dialog.getByText('Make your own in the editor’s 🎡 Wheels, Dice & Deals tab.').isVisible(), 'the menu says where one’s own deals are made');
+  assert(await dialog.getByText('Make your own in the editor’s 🎡 Wheels, dice & deals tab.').isVisible(), 'the menu says where one’s own deals are made');
   await pick.selectOption('tpl:captain');
   assert(await dialog.getByText('Not a teams game: dealt to the players.').isVisible(), '🧢 Team captain, not a teams game: dealt to the players');
   assert((await dialog.getByLabel('How many get Captain').inputValue()) === '1', 'one Captain');

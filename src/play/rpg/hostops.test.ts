@@ -485,7 +485,7 @@ describe('objects and items on the RPG stage', () => {
     const { game, session, st, gold } = withLoot();
     game.statFields = [];
     gold.role.field = undefined as never;
-    expect(pickUp(game, session, st, gold, 'p1')).toBe('Gold gives no currency: add one in 📊 Stats & Items');
+    expect(pickUp(game, session, st, gold, 'p1')).toBe('Gold gives no currency: add one in 📊 Stats & items');
     expect(st.objects[gold.id]).toBeUndefined();
   });
 

@@ -232,7 +232,7 @@ try {
 
   // ---------- The editor: 📋 Ready-made deal… → 🕵️ Odd one out, with its 🗺️ Locations wheel ----------
   section('Editor');
-  await host.getByRole('button', { name: /Wheels, Dice & Deals/ }).click();
+  await host.getByRole('button', { name: /Wheels, dice & deals/ }).click();
   await host.getByRole('button', { name: '📋 Ready-made deal…' }).click();
   await host.getByRole('menuitem', { name: /Odd one out/ }).click();
   const deals = host.getByRole('list', { name: 'Deals' });

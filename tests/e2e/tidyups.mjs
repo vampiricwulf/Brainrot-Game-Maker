@@ -106,7 +106,7 @@ try {
       rounds.some((t) => t.startsWith(`${icon}${VS} ${name}`)),
       `＋ Add round: ${icon} ${name} asks for the colour emoji`,
     );
-  await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
+  await page.getByRole('button', { name: '🎡 Wheels, dice & deals' }).click();
   await page.getByRole('button', { name: '📋 Ready-made wheel…' }).click();
   const ready = await menuIcons();
   await page.keyboard.press('Escape');
@@ -150,6 +150,12 @@ try {
   // (The sidebar lists 🖼️ Media under the rounds, beside 🖼️ Slides ones.)
   const mediaTab = (await page.locator('nav > button', { hasText: 'Media (' }).innerText()).trim();
   assert(mediaTab.startsWith(`🖼${VS} Media (`), `the sidebar: 🖼️ Media too (${mediaTab})`);
+  // Its Game list is in sentence case, like every other heading and button: no Title Case names.
+  const gameTabs = (await page.locator('nav > button').allInnerTexts()).map((t) => t.trim());
+  assert(
+    gameTabs.includes('🎡 Wheels, dice & deals') && gameTabs.some((t) => t.startsWith('📊 Stats & items')),
+    `the sidebar says 🎡 Wheels, dice & deals and 📊 Stats & items, in sentence case (${JSON.stringify(gameTabs)})`,
+  );
 
   // ---------- ⚙ Settings › Undo says what it did: snapped into range, and the changes it forgot ----------
   await roundTabsIn(page).first().click();

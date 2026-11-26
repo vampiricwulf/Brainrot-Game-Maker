@@ -376,7 +376,7 @@ describe('step labels', () => {
     expect(file).toMatchObject({ label: 'Added file “clip.mp4”', icon: '🎞️', place: { tab: 'media', media: 'm2' } });
     expect(step((g) => g.media.pop()).label).toBe('Removed file “a.png”');
     const slice = step((g) => g.wheels[0].segments.push({ ...g.wheels[0].segments[0], id: 's-new', label: 'Sing a song' }));
-    expect(slice).toMatchObject({ label: 'Added slice “Sing a song”', where: 'Wheels, Dice & Deals › Punishments', icon: '🎡' });
+    expect(slice).toMatchObject({ label: 'Added slice “Sing a song”', where: 'Wheels, dice & deals › Punishments', icon: '🎡' });
     expect(step((g) => (g.wheels[0].segments[0].label = 'Dance')).label).toBe('Renamed slice “Dance”');
     // A 🎭 deal's part renamed is the part's change, not the deal's.
     const dealt = sample();
@@ -390,7 +390,7 @@ describe('step labels', () => {
     // What's done in a part's Edit card… is its card's (a picture added or deleted is not the part added or deleted).
     const pictured = structuredClone(dealt);
     pictured.deals![0].parts[0].card.elements.push(newImageEl('m1'));
-    const where = `Wheels, Dice & Deals › Secret roles › ${dealt.deals[0].parts[0].name}’s card`;
+    const where = `Wheels, dice & deals › Secret roles › ${dealt.deals[0].parts[0].name}’s card`;
     expect(describeStep(diff(dealt, pictured), dealt, pictured)).toMatchObject({
       label: 'Added image “a.png”',
       where,
@@ -442,9 +442,9 @@ describe('step labels', () => {
   it('names the first of a kind added as an add (the game had no list of them yet)', () => {
     const stat = step((g) => (g.statFields = [newStatField('HP')]));
     const id = stat.after.statFields![0].id;
-    expect(stat).toMatchObject({ label: 'Added stat “HP”', where: 'Stats & Items', place: { tab: 'stats', stat: id }, undoPlace: { tab: 'stats' } });
+    expect(stat).toMatchObject({ label: 'Added stat “HP”', where: 'Stats & items', place: { tab: 'stats', stat: id }, undoPlace: { tab: 'stats' } });
     const items = step((g) => (g.items = ['Potion', 'Hat', 'Key'].map((name) => ({ id: name, name, stackable: true }))));
-    expect(items).toMatchObject({ label: 'Added 3 items', where: 'Stats & Items', place: { tab: 'stats' } });
+    expect(items).toMatchObject({ label: 'Added 3 items', where: 'Stats & items', place: { tab: 'stats' } });
     const look = step((g) => (screens(g)[1].variants = [newVariant(undefined, screens(g)[1], 'Night')]));
     expect(look.label).toBe('Added look “Night”');
     expect(look.place).toMatchObject({ screen: screens(look.after)[1].id, look: screens(look.after)[1].variants![0].id });
@@ -527,7 +527,7 @@ describe('step labels', () => {
     after.statFields!.push(newStatField('HP'));
     screens(after).push(forest);
     expect(describeStep(diff(before, after), before, after, 'Pasted screen “Forest”')).toMatchObject({ place: { tab: 'world', screen: forest.id } });
-    // On its own, a stat added still shows on Stats & Items; so does an item deleted with the buttons that gave it.
+    // On its own, a stat added still shows on Stats & items; so does an item deleted with the buttons that gave it.
     expect(
       describeStep(
         diff(before, after).filter((o) => o.p[0] === 'statFields'),

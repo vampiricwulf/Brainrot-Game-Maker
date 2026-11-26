@@ -63,7 +63,7 @@
   {#if made && shop?.id === made}
     Made “{shop.name}”, selling {shop.stock.length ? `all ${shop.stock.length} item${shop.stock.length === 1 ? '' : 's'}` : 'nothing yet (add items)'}.
   {:else}
-    Shops (what they sell, and the prices) are set up in 📊 Stats & Items.
+    Shops (what they sell, and the prices) are set up in 📊 Stats & items.
   {/if}
   {#if !app.editGame}
     <button class="link" onclick={() => void goTo(shop ? { tab: 'stats', shop: shop.id } : { tab: 'stats' })}

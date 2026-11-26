@@ -14,7 +14,7 @@ function shopName(game: Game, base?: string): string {
 
 /**
  * A new shop in the game, selling every item in the catalog (no stock limit), charging the first currency. Its prices
- * and what it sells are changed in 📊 Stats & Items.
+ * and what it sells are changed in 📊 Stats & items.
  */
 export function newShop(game: Game, name?: string): Shop {
   const s: Shop = {

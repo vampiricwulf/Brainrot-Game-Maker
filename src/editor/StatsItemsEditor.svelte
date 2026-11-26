@@ -1,5 +1,5 @@
 <!--
-  📊 Stats & Items: the game's player stats (HP, Gold, Vibes… host-defined), the item catalog, and shops. Used by
+  📊 Stats & items: the game's player stats (HP, Gold, Vibes… host-defined), the item catalog, and shops. Used by
   RPG rounds, and shown on the stats strip in any mode.
 -->
 <script lang="ts">
@@ -312,7 +312,7 @@
 {/snippet}
 
 <PageHeader
-  title="Stats & Items"
+  title="Stats & items"
   sub="Player stats, the item catalog and shops, for RPG rounds (the stats strip shows in any round). Nothing is enforced: every number can be changed in play."
 />
 

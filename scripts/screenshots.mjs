@@ -74,9 +74,9 @@ try {
   await page.locator('nav > button.round-tab').first().click();
   await shot('editor');
 
-  // An RPG world (📊 Stats & Items shows once there is one): stats and an item, for it and the board game.
+  // An RPG world (📊 Stats & items shows once there is one): stats and an item, for it and the board game.
   await addRound(/RPG/);
-  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.getByRole('button', { name: '📊 Stats & items' }).click();
   await page.getByRole('button', { name: /HP \(bar/ }).click();
   await page.getByRole('button', { name: /Gold \(currency/ }).click();
   await page.getByRole('button', { name: '＋ Add item', exact: true }).click();

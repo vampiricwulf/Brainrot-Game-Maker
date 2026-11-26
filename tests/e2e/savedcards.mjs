@@ -2,7 +2,7 @@
 // The editor's 🤫 Cards, end to end (docs/PARTNER-CLUES-SPEC.md §12.2, §14.2, milestone P5): private cards made before
 // the show, then sent in play against the real buzzer room (buzzer/ under `wrangler dev`, local), with three phones on
 // the real phone page.
-// In the editor, 🤫 Cards (2) sits right after 🎡 Wheels, Dice & Deals: ＋ Add card opens a new one with its words box in
+// In the editor, 🤫 Cards (2) sits right after 🎡 Wheels, dice & deals: ＋ Add card opens a new one with its words box in
 // focus, the checklist's line about an empty card goes to it (it flashes, its words box taking the keys), typing and renaming are named undo steps, a
 // name that repeats what's on the card says so, and the list's right-click ⧉ Duplicate, Alt+↓, F2 and Delete (with ↶ Undo)
 // work as they do for wheels (a rename there ended by a click elsewhere leaves the keys where the click put them). 📱 On their phone shows a card as a phone gets it, 🔍 Find finds one by its words, and 🖼️ Media
@@ -187,8 +187,8 @@ try {
   const navTexts = await host.locator('nav > button').allInnerTexts();
   const at = (re) => navTexts.findIndex((t) => re.test(t.trim()));
   assert(
-    at(/^🤫 Cards \(2\)$/) >= 0 && at(/^🤫 Cards \(2\)$/) === at(/Wheels, Dice & Deals/) + 1,
-    `🤫 Cards (2) sits right after 🎡 Wheels, Dice & Deals (${navTexts.join(' | ')})`,
+    at(/^🤫 Cards \(2\)$/) >= 0 && at(/^🤫 Cards \(2\)$/) === at(/Wheels, dice & deals/) + 1,
+    `🤫 Cards (2) sits right after 🎡 Wheels, dice & deals (${navTexts.join(' | ')})`,
   );
   const cardsTab = host.locator('nav > button', { hasText: '🤫 Cards' });
   await cardsTab.click();

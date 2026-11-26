@@ -1,6 +1,6 @@
 <!--
   A wheel or dice made right where it's picked (a wheel or dice tile, the board game's Move by), edited over that
-  window without leaving it. It's the same wheel or dice as in the 🎡 Wheels, Dice & Deals tab.
+  window without leaving it. It's the same wheel or dice as in the 🎡 Wheels, dice & deals tab.
 -->
 <script lang="ts" module>
   import { app } from '../../lib/app.svelte';
@@ -60,7 +60,7 @@
     <header class="modal-head">
       <h2 class="modal-title"
         >{kind === 'wheel' ? '🎡 Wheel' : '🎲 Dice'}
-        <span class="hint">Also in the 🎡 Wheels, Dice & Deals tab, for every tile and board that uses it.</span></h2
+        <span class="hint">Also in the 🎡 Wheels, dice & deals tab, for every tile and board that uses it.</span></h2
       >
       <button class="primary" onclick={done}>Done</button>
       <button class="ghost modal-x" onclick={done} aria-label="Close" title="Close (Esc)">✕</button>

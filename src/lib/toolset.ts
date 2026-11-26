@@ -288,7 +288,7 @@ export function statRangeProblem(f: StatField): string | null {
   return null;
 }
 
-/** Checklist items for 📊 Stats & Items: stats whose range doesn't add up, shops that charge a deleted stat. */
+/** Checklist items for 📊 Stats & items: stats whose range doesn't add up, shops that charge a deleted stat. */
 export function statsProblems(game: Game): Problem[] {
   const out: Problem[] = [];
   for (const f of statFields(game)) {

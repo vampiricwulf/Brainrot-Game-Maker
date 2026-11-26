@@ -698,7 +698,7 @@ RPG toolset: avatars, stats, items, shops, actions, wheels and the host-confirme
   reorder, duplicated, or have their mode changed (only while empty).
 - New nav entries appear only when they're used:
   - **🌍 Worlds:** shows once there is an RPG round or a world.
-  - **📊 Stats & Items:** the stat fields; the item catalog also lives per world.
+  - **📊 Stats & items:** the stat fields; the item catalog also lives per world.
 - The players list (on the **▶ Play** pre-game screen) gains avatars (§7.6) and starting stats.
 - The checklist gains RPG checks:
   - a doorway with no target;

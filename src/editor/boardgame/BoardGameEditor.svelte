@@ -828,7 +828,7 @@
           oninput={(e) => setMoverDice(e.currentTarget.value)}
           placeholder="d6, 2d6"
           list="bg-dice"
-          title="Standard dice (d6, 2d6…), or the name of dice saved in 🎡 Wheels, Dice & Deals"
+          title="Standard dice (d6, 2d6…), or the name of dice saved in 🎡 Wheels, dice & deals"
         />
       </label>
       <datalist id="bg-dice"

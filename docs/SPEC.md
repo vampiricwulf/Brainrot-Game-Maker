@@ -1351,7 +1351,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   keeps their place on the cards (a ↻ Send again meanwhile too), left out of the list while they're out; once they're back (Ctrl+Z, ↩ Restore)
   ↻ Send again sends theirs.
 - **🎭 Deal…** (PARTNER-CLUES-SPEC.md §11): secret parts for everyone (a spy, a wolf, a captain, a prompt each), from a
-  deal saved with the game (the 🎡 Wheels, Dice & Deals tab, where a part's Edit card… opens its card as the 🤫 Cards
+  deal saved with the game (the 🎡 Wheels, dice & deals tab, where a part's Edit card… opens its card as the 🤫 Cards
   are laid out: its words, the slide editor and 📱 On their phone, with its part line and, for a part that draws, a sample
   slice of the wheel, "+ a slice of Locations: Beach") or a ready-made one (one the game has its own copy of, by name,
   is marked "· already in this game" in the list, and so is a ready-made wheel). Each player gets one part at random (or the host's pick,

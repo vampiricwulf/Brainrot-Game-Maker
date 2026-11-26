@@ -271,7 +271,7 @@
           <option
             value={k.kind}
             disabled={k.kind === 'shop' && !game.shops?.length}
-            title={k.kind === 'shop' && !game.shops?.length ? 'The game has no shop yet (make one in 📊 Stats & Items)' : k.hint}>{k.label}</option
+            title={k.kind === 'shop' && !game.shops?.length ? 'The game has no shop yet (make one in 📊 Stats & items)' : k.hint}>{k.label}</option
           >
         {/each}
       </select>

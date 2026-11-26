@@ -230,11 +230,11 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
       }
 
   for (const it of game.items ?? [])
-    look('🎒', [it.name, it.description, it.hostNotes, ...buttonWords(it.onUse)], 'Stats & Items › Item', { tab: 'stats', item: it.id });
-  for (const f of game.statFields ?? []) look('📊', [f.name], 'Stats & Items › Stat', { tab: 'stats', stat: f.id });
-  for (const sh of game.shops ?? []) look('🛒', [sh.name], 'Stats & Items › Shop', { tab: 'stats', shop: sh.id });
+    look('🎒', [it.name, it.description, it.hostNotes, ...buttonWords(it.onUse)], 'Stats & items › Item', { tab: 'stats', item: it.id });
+  for (const f of game.statFields ?? []) look('📊', [f.name], 'Stats & items › Stat', { tab: 'stats', stat: f.id });
+  for (const sh of game.shops ?? []) look('🛒', [sh.name], 'Stats & items › Shop', { tab: 'stats', shop: sh.id });
   for (const w of game.wheels)
-    look('🎡', [w.name, ...w.segments.flatMap((s) => [s.label, s.details, ...buttonWords(s.actions)])], 'Wheels, Dice & Deals › Wheel', {
+    look('🎡', [w.name, ...w.segments.flatMap((s) => [s.label, s.details, ...buttonWords(s.actions)])], 'Wheels, dice & deals › Wheel', {
       tab: 'tools',
       wheel: w.id,
     });
@@ -246,11 +246,11 @@ export function findAll(game: Game, query: string, limit = 200): Hit[] {
         ...d.dice.flatMap((x) => (x.customFaces ?? []).flatMap((f) => [f.label, f.details, ...buttonWords(f.actions)])),
         ...(d.totalOutcomes ?? []).flatMap((t) => [t.outcome.label, ...buttonWords(t.outcome.actions)]),
       ],
-      'Wheels, Dice & Deals › Dice',
+      'Wheels, dice & deals › Dice',
       { tab: 'tools', dice: d.id },
     );
   for (const d of game.deals ?? [])
-    look('🎭', [d.name, ...d.parts.flatMap((p) => [p.name, ...slideWords(p.card)])], 'Wheels, Dice & Deals › Deal', { tab: 'tools', deal: d.id });
+    look('🎭', [d.name, ...d.parts.flatMap((p) => [p.name, ...slideWords(p.card)])], 'Wheels, dice & deals › Deal', { tab: 'tools', deal: d.id });
   // 🤫 Cards: found by its name, the name box gets the focus; else its words box.
   (game.cards ?? []).forEach((c, i) =>
     look(

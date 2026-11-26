@@ -331,7 +331,7 @@
                   ? '⚠ Deleted stat — pick another'
                   : numbers.length
                     ? '— choose —'
-                    : 'Add a number stat in 📊 Stats & Items'}</option
+                    : 'Add a number stat in 📊 Stats & items'}</option
               >
             {/if}
             {#each numbers as f (f.id)}<option value={f.id}>{f.name}</option>{/each}
@@ -359,7 +359,7 @@
           />
           <select bind:value={a.item} onchange={(e) => (a.qty = itemQty(game, e.currentTarget.value, a.qty))} aria-label="Item">
             {#if !game.items?.some((it) => it.id === a.item)}
-              <option value={a.item}>{a.item ? '⚠ Deleted item — pick another' : game.items?.length ? '— choose —' : 'Add items in 📊 Stats & Items'}</option>
+              <option value={a.item}>{a.item ? '⚠ Deleted item — pick another' : game.items?.length ? '— choose —' : 'Add items in 📊 Stats & items'}</option>
             {/if}
             {#each game.items ?? [] as it (it.id)}<option value={it.id}>{it.name}</option>{/each}
           </select>

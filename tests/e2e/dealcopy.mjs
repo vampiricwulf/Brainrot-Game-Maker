@@ -195,7 +195,7 @@ try {
   await pick.getByRole('button', { name: 'Import 1 deal' }).click();
   await host.getByText('Imported 1 deal from “Other night”').waitFor({ timeout: 3000 });
   assert(JSON.stringify(await tabs()) === JSON.stringify(tabsBefore), 'Import 1 deal: the toast says so, and no round comes in');
-  await host.getByRole('button', { name: /Wheels, Dice & Deals/ }).click();
+  await host.getByRole('button', { name: /Wheels, dice & deals/ }).click();
   const dealList = host.getByRole('list', { name: 'Deals' });
   const wheelList = host.getByRole('list', { name: 'Wheels' });
   assert(

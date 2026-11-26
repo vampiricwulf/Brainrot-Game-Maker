@@ -16,7 +16,7 @@
 
   // (A game of one round has it ticked already.)
   let picked = $state<string[]>(untrack(() => (source.rounds.length === 1 ? [source.rounds[0].id] : [])));
-  /** The other game's 🎭 deals (made in its 🎡 Wheels, Dice & Deals tab), ticked by id. */
+  /** The other game's 🎭 deals (made in its 🎡 Wheels, dice & deals tab), ticked by id. */
   const deals = $derived(source.deals ?? []);
   let pickedDeals = $state<string[]>([]);
   const all = $derived(source.rounds.length + deals.length);

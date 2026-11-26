@@ -315,7 +315,7 @@
 
 <div class="page">
   <PageHeader
-    title="Wheels, Dice & Deals"
+    title="Wheels, dice & deals"
     sub="Saved with the game: the host spins or rolls any of them during play, and a tile can be a wheel or dice tile. 🎭 Deals hand everyone a secret part."
   />
 

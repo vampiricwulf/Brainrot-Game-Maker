@@ -601,7 +601,7 @@ export function objectActs(game: Game, session: Session, elId: string, run: Obje
     acts.push({
       id: 'pick',
       label: `✋ ${pickerName} picks up ${what}`,
-      ...(role.class === 'currency' && !f ? { disabled: true, title: 'Add a currency in 📊 Stats & Items first' } : {}),
+      ...(role.class === 'currency' && !f ? { disabled: true, title: 'Add a currency in 📊 Stats & items first' } : {}),
       run: () => {
         if (!picker) return { text: 'Pick who picks it up' };
         const before = session.actionLog?.at(-1)?.id;
@@ -762,7 +762,7 @@ export function pickUp(game: Game, session: Session, st: WorldState, el: SlideEl
   // Currency: only what fits under the player's max; the rest stays on the screen.
   const f = role?.class === 'currency' ? (statFields(game).find((x) => x.id === role.field) ?? currencyFields(game)[0]) : undefined;
   // (No currency in the game: nothing to give, so the pile stays where it is.)
-  if (role?.class === 'currency' && !f) return `${objectName(el)} gives no currency: add one in 📊 Stats & Items`;
+  if (role?.class === 'currency' && !f) return `${objectName(el)} gives no currency: add one in 📊 Stats & items`;
   const amount = pileAmount(st, el);
   const fits = f ? Math.min(amount, statRoom(game, session, playerId, f)) : amount;
   // What they got ("3 × Potion", "🪙10"), and the object's name when it says something else ("(Treasure)").

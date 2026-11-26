@@ -119,9 +119,9 @@ Slide items and whole slides copy and paste between clues, rounds and games, wit
 | **👥 Players & rules ▶** | Opens the play screen to set players, game rules and phone buzzers. Nothing starts until **Start game ▶**. |
 | **🔊 Sounds** | The sounds played on stream: preview, replace or switch off each one. |
 | **🎨 Theme** | Presets, colors, fonts (including your own font file) and background images. Click something in the preview to jump to its setting. |
-| **🎡 Wheels, Dice & Deals** | Weighted wheels, custom dice and deals (a secret part for everyone). Outcomes can change scores or add buttons. |
+| **🎡 Wheels, dice & deals** | Weighted wheels, custom dice and deals (a secret part for everyone). Outcomes can change scores or add buttons. |
 | **🤫 Cards** | Private cards made ahead of time. During the show, **🤫 Send a card…** sends one to chosen players' phones. |
-| **📊 Stats & Items** | HP bars, currencies, items, wearable gear and shops for RPG and board game rounds. |
+| **📊 Stats & items** | HP bars, currencies, items, wearable gear and shops for RPG and board game rounds. |
 
 ### Themes
 

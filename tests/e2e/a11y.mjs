@@ -455,19 +455,19 @@ try {
 
   // ---------- Landmarks and headings ----------
   assert((await page.getByRole('main').getByRole('heading', { level: 1 }).count()) === 1, 'the editor has a main part with a heading naming the game');
-  // 📊 Stats & Items is always in the sidebar: muted, "(optional)", until an RPG or board game round is there to use it.
-  const statsNav = page.getByRole('button', { name: /^📊 Stats & Items/ });
+  // 📊 Stats & items is always in the sidebar: muted, "(optional)", until an RPG or board game round is there to use it.
+  const statsNav = page.getByRole('button', { name: /^📊 Stats & items/ });
   assert(
     (await statsNav.innerText()).includes('(optional)') && (await statsNav.evaluate((b) => b.classList.contains('optional'))),
-    'a game of Jeopardy boards lists 📊 Stats & Items muted, “(optional)”',
+    'a game of Jeopardy boards lists 📊 Stats & items muted, “(optional)”',
   );
   const roundTabs = await roundTabsIn(page).count();
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /RPG/ }).click();
-  await page.waitForFunction(() => ![...document.querySelectorAll('nav > button.optional')].some((b) => b.textContent.includes('Stats & Items')));
+  await page.waitForFunction(() => ![...document.querySelectorAll('nav > button.optional')].some((b) => b.textContent.includes('Stats & items')));
   assert(!(await statsNav.innerText()).includes('(optional)'), 'with an RPG round it is no longer marked optional');
   await statsNav.click();
-  assert((await page.locator('[role="list"]:not(:has([role="listitem"]))').count()) === 0, 'Stats & Items has no empty lists (nothing added yet)');
+  assert((await page.locator('[role="list"]:not(:has([role="listitem"]))').count()) === 0, 'Stats & items has no empty lists (nothing added yet)');
   await page.keyboard.press('Control+z');
   await page.waitForFunction((n) => document.querySelectorAll('nav > button.round-tab').length === n, roundTabs);
   // 🤫 Cards: no empty list either (no card made yet), and one tab marked as the one on screen; nor with a card in it.

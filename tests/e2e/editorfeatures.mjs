@@ -1,5 +1,5 @@
 // Editor features: the sample game and round templates, Import clues (and a column pasted on a category), Find
-// (Ctrl+F), Copy / Paste round, Most players, my theme (and its contrast warning), the Wheels, Dice & Deals tab's whole
+// (Ctrl+F), Copy / Paste round, Most players, my theme (and its contrast warning), the Wheels, dice & deals tab's whole
 // name, its ready-made menus' whole names (described in their tooltips) and what its number boxes keep, the Media and
 // shortcuts filters, and the board-game spaces that move players back, skip a turn or roll again (played, with undo).
 import { copyFileSync, readFileSync, writeFileSync } from 'node:fs';
@@ -500,11 +500,11 @@ try {
   assert((await page.getByText(/The values are hard to read on the tiles/).count()) === 0, '…and the warning goes once they’re apart');
   assert((await page.getByLabel('Tile glow color').count()) === 1, 'the tile glow colour box has a name');
 
-  // ---------- Wheels, Dice & Deals: its tab's whole name, the ready-made menus, what the number boxes keep ----------
-  const toolsTab = page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' });
+  // ---------- Wheels, dice & deals: its tab's whole name, the ready-made menus, what the number boxes keep ----------
+  const toolsTab = page.getByRole('button', { name: '🎡 Wheels, dice & deals' });
   assert(
     await toolsTab.evaluate((b) => b.scrollWidth <= b.clientWidth && !!b.title),
-    'the 🎡 Wheels, Dice & Deals tab shows its whole name (on two lines where it must), with a tooltip',
+    'the 🎡 Wheels, dice & deals tab shows its whole name (on two lines where it must), with a tooltip',
   );
   await toolsTab.click();
   {

@@ -1025,12 +1025,12 @@ try {
 
   // Stats & items: in the sidebar, muted "(optional)" until there's an RPG (or board game) round to use them.
   assert(
-    (await page.getByRole('button', { name: '📊 Stats & Items' }).innerText()).includes('(optional)'),
-    'a game of Jeopardy rounds lists 📊 Stats & Items as optional',
+    (await page.getByRole('button', { name: '📊 Stats & items' }).innerText()).includes('(optional)'),
+    'a game of Jeopardy rounds lists 📊 Stats & items as optional',
   );
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /RPG/ }).click();
-  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.getByRole('button', { name: '📊 Stats & items' }).click();
   await page.getByRole('button', { name: /HP \(bar/ }).click();
   await page.getByRole('button', { name: /Gold \(currency/ }).click();
   // Gold starts at 10, enough to try a shop; this game starts everyone broke (the shop below asks when they're short).
@@ -1303,7 +1303,7 @@ try {
   await page.getByLabel('Object class').selectOption('npc');
   await page.getByLabel('Shop', { exact: true }).selectOption({ label: 'Shop 2' });
   await page.getByRole('button', { name: '◀ Back to the map' }).click();
-  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.getByRole('button', { name: '📊 Stats & items' }).click();
   await page.getByRole('button', { name: 'Delete shop' }).nth(1).click();
   await roundTabsIn(page, { hasText: 'Adventure' }).click();
   await page.getByRole('button', { name: 'Screen Start' }).click();
@@ -1340,7 +1340,7 @@ try {
   await page.getByRole('button', { name: '✎ Edit screen' }).click();
   await page.getByRole('button', { name: '🧙 Character' }).click();
   await page.getByPlaceholder('e.g. Old Man, Cave door').fill('Old Man');
-  assert((await page.locator('[data-shop-hint]').innerText()).includes('Stats & Items'), 'the Shop box says shops are set up in 📊 Stats & Items');
+  assert((await page.locator('[data-shop-hint]').innerText()).includes('Stats & items'), 'the Shop box says shops are set up in 📊 Stats & items');
   await page.getByLabel('Shop', { exact: true }).selectOption({ label: '＋ New shop…' });
   const madeShop = await page.getByLabel('Shop', { exact: true }).locator('option:checked').innerText();
   assert(
@@ -1358,8 +1358,8 @@ try {
     '👹 Enemy places a character with its own HP and Power',
   );
   assert((await page.locator('[data-action]').count()) === 2, 'with a roll and an HP −1 button for the fight');
-  // Leaving for 📊 Stats & Items and coming back opens the same screen again.
-  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  // Leaving for 📊 Stats & items and coming back opens the same screen again.
+  await page.getByRole('button', { name: '📊 Stats & items' }).click();
   await roundTabsIn(page, { hasText: 'Adventure' }).click();
   assert(await page.getByRole('button', { name: '◀ Back to the map' }).isVisible(), 'coming back to the round opens the screen being edited');
   // (The game below has neither of them.)

@@ -52,7 +52,7 @@ export interface RecentGame {
 }
 
 /**
- * Something in the game worth keeping: a round, a player, a file, a wheel, the Stats & Items catalog, a 🎭 deal, a 🤫
+ * Something in the game worth keeping: a round, a player, a file, a wheel, the Stats & items catalog, a 🎭 deal, a 🤫
  * card, a title, a theme, a rule or a sound changed from a new game's… A game just as New makes it is a scratch game:
  * New and Open… replace it without asking, and it isn't kept in Recent games.
  */

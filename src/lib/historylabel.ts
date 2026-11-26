@@ -392,7 +392,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       break;
     case 'wheels':
     case 'dice': {
-      at.crumbs.push('Wheels, Dice & Deals');
+      at.crumbs.push('Wheels, dice & deals');
       at.icon = path[0] === 'wheels' ? '🎡' : '🎲';
       go({ tab: 'tools' });
       const tool = byId<{ id: string; name: string; segments?: Game['wheels'][number]['segments'] }>(game[path[0]], path[1]);
@@ -406,7 +406,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
       break;
     }
     case 'deals': {
-      at.crumbs.push('Wheels, Dice & Deals');
+      at.crumbs.push('Wheels, dice & deals');
       at.icon = '🎭';
       go({ tab: 'tools' });
       const deal = byId<NonNullable<Game['deals']>[number]>(game.deals, path[1]);
@@ -439,7 +439,7 @@ export function placeAt(game: Game, path: readonly Seg[]): At {
     case 'statFields':
     case 'items':
     case 'shops': {
-      at.crumbs.push('Stats & Items');
+      at.crumbs.push('Stats & items');
       const kind = ({ statFields: ['stat', '📊'], items: ['item', '📦'], shops: ['shop', '🏪'] } as const)[path[0]];
       at.icon = kind[1];
       go({ tab: 'stats' });
@@ -556,11 +556,11 @@ export function placeWhere(place: Place): string | null {
     case 'theme':
       return 'Theme';
     case 'tools':
-      return 'Wheels, Dice & Deals';
+      return 'Wheels, dice & deals';
     case 'cards':
       return 'Cards';
     case 'stats':
-      return 'Stats & Items';
+      return 'Stats & items';
     case 'media':
       return 'Media';
     case 'tiebreaker':
@@ -801,7 +801,7 @@ export function describe(all: readonly Op[], before: Game, after: Game, explicit
   const shown = all.filter((o) => opPath(o)[0] !== 'media');
   let ops = shown.length ? shown : all;
   // The same for wheels, dice, items, shops and stats added with what uses them (a screen pasted from another game, a
-  // new item put on a screen): the step shows there, not on 🎡 Wheels, Dice & Deals or 📊 Stats & Items. What uses them can be
+  // new item put on a screen): the step shows there, not on 🎡 Wheels, dice & deals or 📊 Stats & items. What uses them can be
   // a kit's own buttons too (a wheel slice's, a die face's, an item's Use).
   const uses = (o: Op) => {
     const p = opPath(o);

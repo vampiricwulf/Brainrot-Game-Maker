@@ -138,7 +138,7 @@
         />
         <select bind:value={r.item} onchange={(e) => (r.qty = itemQty(game, e.currentTarget.value, r.qty ?? 1))} aria-label="Item">
           {#if !game.items?.some((it) => it.id === r.item)}
-            <option value={r.item}>{r.item ? '⚠ Deleted item — pick another' : game.items?.length ? '— choose —' : 'Add items in 📊 Stats & Items'}</option>
+            <option value={r.item}>{r.item ? '⚠ Deleted item — pick another' : game.items?.length ? '— choose —' : 'Add items in 📊 Stats & items'}</option>
           {/if}
           {#each game.items ?? [] as it (it.id)}<option value={it.id}>{it.name}</option>{/each}
         </select>
@@ -152,7 +152,7 @@
             <option value={r.field}>{game.statFields?.find((f) => f.id === r.field)?.name ?? '⚠ Deleted currency — pick another'}</option>
           {/if}
           {#each currencyFields(game) as f (f.id)}<option value={f.id}>{f.name}</option>{:else}<option value={undefined}
-              >Add a currency in 📊 Stats & Items</option
+              >Add a currency in 📊 Stats & items</option
             >{/each}
         </select>
       </div>

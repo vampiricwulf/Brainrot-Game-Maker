@@ -1,6 +1,6 @@
 <!--
   🎭 Deal… (partner-clues spec §11, §12.2), from the tools row in any round: secret parts for everyone. The host chooses
-  a deal saved with the game (made in the editor's 🎡 Wheels, Dice & Deals tab) or a ready-made one, changes its numbers
+  a deal saved with the game (made in the editor's 🎡 Wheels, dice & deals tab) or a ready-made one, changes its numbers
   for this deal if they like, and presses 🎭 Deal: each player dealt in gets one part, at random (with the audience
   window open, the host can choose who gets a part), and a part's card can show a slice of a saved wheel. Nothing goes
   anywhere until 📤 Send: then each player's card goes to their phone as a card of its own (through the same path as
@@ -456,7 +456,7 @@
         {#each DEAL_TEMPLATES as t (t.key)}<option value="tpl:{t.key}">{t.icon} {t.name}{dealInGame(t.name) ? IN_GAME : ''} · {t.hint}</option>{/each}
       </optgroup>
     </select>
-    {#if !app.playerOnly}<div class="muted small">Make your own in the editor’s 🎡 Wheels, Dice & Deals tab.</div>{/if}
+    {#if !app.playerOnly}<div class="muted small">Make your own in the editor’s 🎡 Wheels, dice & deals tab.</div>{/if}
     {#if work}
       <div class="head">Parts</div>
       <!-- (Side by side where there's room: one window's wider 🎭 Deal… holds two.) -->

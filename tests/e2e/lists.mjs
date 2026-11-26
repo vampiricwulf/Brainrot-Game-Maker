@@ -21,12 +21,12 @@ const texts = async (loc) => (await loc.allInnerTexts()).map((t) => t.trim());
 try {
   await page.goto(pathToFileURL(file).href);
   await addClassicRounds(page);
-  // (📊 Stats & Items is in the sidebar once an RPG or board game round uses it.)
+  // (📊 Stats & items is in the sidebar once an RPG or board game round uses it.)
   await page.getByRole('button', { name: '＋ Add round' }).click();
   await page.getByRole('menuitem', { name: /RPG/ }).click();
 
   // ---------- Stats ----------
-  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.getByRole('button', { name: '📊 Stats & items' }).click();
   for (const p of [/HP \(bar/, /Gold \(currency/, /Power/]) await page.getByRole('button', { name: p }).click();
   const statNames = page.getByLabel('Stat name');
   await statNames.first().focus();
@@ -208,7 +208,7 @@ try {
         () => true,
         () => false,
       );
-  await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
+  await page.getByRole('button', { name: '🎡 Wheels, dice & deals' }).click();
   await page.getByRole('button', { name: '＋ Add wheel' }).click();
   assert(await typingIn('Wheel name', 'Wheel 1'), '＋ Add wheel types in its name (all of it selected)');
   const labels = page.locator('.seg input.label');

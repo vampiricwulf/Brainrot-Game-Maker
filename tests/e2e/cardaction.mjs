@@ -195,7 +195,7 @@ try {
   await host.getByText(/^Opened “/).waitFor();
 
   // ---------- In the editor: an item's 🤫 Send a card button ----------
-  await host.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await host.getByRole('button', { name: '📊 Stats & items' }).click();
   await host
     .locator('.item-row', { has: host.getByRole('button', { name: 'Delete Secret scroll' }) })
     .getByRole('button', { name: /^▸ More/ })

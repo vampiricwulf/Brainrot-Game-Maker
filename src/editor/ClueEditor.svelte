@@ -468,7 +468,7 @@
         else game.dice.push(item);
         c[key] = item.id;
       },
-      // (Undone or redone, it shows on the clue it was made from, not on the Wheels, Dice & Deals tab.)
+      // (Undone or redone, it shows on the clue it was made from, not on the Wheels, dice & deals tab.)
       { place: { tab: 'round', round: round.id, part: { kind: 'clue', category: cat.id, clue: c.id } } },
     );
     tool = { kind, id: item.id };
@@ -625,7 +625,7 @@
                   {#each app.game.wheels as w (w.id)}<option value={w.id}>{w.name}</option>{/each}
                 </optgroup>
               {/if}
-              <!-- (Picked, one is added to the game: as 🎡 Wheels, Dice & Deals › 📋 Ready-made wheel… does.) -->
+              <!-- (Picked, one is added to the game: as 🎡 Wheels, dice & deals › 📋 Ready-made wheel… does.) -->
               <optgroup label="Ready-made (adds a copy to the game)">
                 {#each WHEEL_TEMPLATES as t (t.key)}<option value="{TPL}{t.key}">{t.icon} {t.name}</option>{/each}
               </optgroup>

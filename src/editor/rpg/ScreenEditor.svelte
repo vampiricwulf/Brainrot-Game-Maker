@@ -73,7 +73,7 @@
     name?.select();
   }
 
-  /** A new item in the catalog (“Item 1”), put on this screen in one step: its name and price are set in 📊 Stats & Items. */
+  /** A new item in the catalog (“Item 1”), put on this screen in one step: its name and price are set in 📊 Stats & items. */
   function newItemHere(add: (el: SlideElement) => void): void {
     const it: ItemDef = { id: newId(), name: `Item ${(game.items?.length ?? 0) + 1}`, stackable: true, price: 1 };
     const make = () => {
@@ -116,7 +116,7 @@
 
   /**
    * The catalog's items, under the button (a second click, Esc or a click elsewhere closes it). With none yet, it
-   * makes one here, or goes to 📊 Stats & Items.
+   * makes one here, or goes to 📊 Stats & items.
    */
   function itemMenu(e: MouseEvent, add: (el: SlideElement) => void): void {
     const items = game.items ?? [];
@@ -126,12 +126,12 @@
         ? [
             ...items.map((it) => ({ label: it.name, onclick: () => add(itemObject(it.id)) })),
             { sep: true as const },
-            { label: '＋ Add new item…', hint: 'Into the catalog (📊 Stats & Items) and onto this screen', onclick: () => newItemHere(add) },
+            { label: '＋ Add new item…', hint: 'Into the catalog (📊 Stats & items) and onto this screen', onclick: () => newItemHere(add) },
           ]
         : [
             { heading: 'No items yet' },
-            { label: '＋ Add new item here', hint: 'Into the catalog (📊 Stats & Items) and onto this screen', onclick: () => newItemHere(add) },
-            ...(app.editGame ? [] : [{ label: '📊 Go to Stats & Items', onclick: () => void goTo({ tab: 'stats' }) }]),
+            { label: '＋ Add new item here', hint: 'Into the catalog (📊 Stats & items) and onto this screen', onclick: () => newItemHere(add) },
+            ...(app.editGame ? [] : [{ label: '📊 Go to Stats & items', onclick: () => void goTo({ tab: 'stats' }) }]),
           ],
     );
   }

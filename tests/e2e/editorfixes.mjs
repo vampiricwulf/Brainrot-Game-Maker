@@ -7,7 +7,7 @@
 // sidebar at 1280×720, pages opening at their top, and a round's name on a tablet; its round pages at 1920 (one header
 // width; the slide of a slides round, a Final and the tiebreaker filling it, and the clue editor the window), the slide's
 // buttons all one size, and the board's two count lines level. And a reload mid-edit coming back on the page, round and
-// clue it left. And on a phone, 🔊 Sounds, 📊 Stats & Items, the board game and the slide tabs not scrolling sideways.
+// clue it left. And on a phone, 🔊 Sounds, 📊 Stats & items, the board game and the slide tabs not scrolling sideways.
 import { pathToFileURL } from 'node:url';
 import {
   appFile,
@@ -217,7 +217,7 @@ try {
     lines.filter((l) => /^⚠ Jeopardy!:/.test(l)).length === 1 && lines.some((l) => /^⚠ Jeopardy!: 30 clues to finish/.test(l)),
     `the checklist has one line a round (${lines.join(' | ')})`,
   );
-  // (👥 Players & rules ▶ and 📊 Stats & Items (optional) are always listed now: the list may scroll in its own box, by
+  // (👥 Players & rules ▶ and 📊 Stats & items (optional) are always listed now: the list may scroll in its own box, by
   // about those two rows at most. The third board's checklist line, “⚠ Jeopardy! 3: 30 clues to finish”, takes two
   // lines as “⚠ Double Jeopardy!: …” does: 72px became 86px when the third board stopped being called “Round 3”.)
   const navOver = await page.locator('nav').evaluate((n) => n.scrollHeight - n.clientHeight);
@@ -229,7 +229,7 @@ try {
   const cut = await page.locator('nav > button').evaluateAll((bs) => bs.filter((b) => b.scrollWidth > b.clientWidth).map((b) => b.textContent.trim()));
   assert(cut.length === 0, `no sidebar label is cut short (${cut.join(' | ')})`);
   const opt = await page.locator('nav > button.optional .opt').evaluateAll((os) => os.map((o) => getComputedStyle(o).display));
-  assert(opt.length === 2 && opt.every((d) => d === 'block'), `“(optional)” goes on a line of its own under ＋ Add tiebreaker and 📊 Stats & Items (${opt})`);
+  assert(opt.length === 2 && opt.every((d) => d === 'block'), `“(optional)” goes on a line of its own under ＋ Add tiebreaker and 📊 Stats & items (${opt})`);
   // The checklist is pinned to the bottom of the sidebar, its heading counting what's left, in view however the
   // sidebar is scrolled; a button Tab reaches isn't hidden under it.
   const pinned = async () =>
@@ -487,7 +487,7 @@ try {
   await page.getByRole('button', { name: '✎ Edit wheel' }).click();
   await pop.getByRole('button', { name: 'Done' }).click();
   await page.getByLabel('Type').selectOption('dice');
-  // ＋ Add dice… undone, and redone, stays on the clue it was made from (not the Wheels, Dice & Deals tab).
+  // ＋ Add dice… undone, and redone, stays on the clue it was made from (not the Wheels, dice & deals tab).
   const clueBox = page.getByRole('dialog', { name: 'Edit clue' });
   const whichDice = page.getByLabel('Which dice');
   const diceShows = (t) =>
@@ -549,8 +549,8 @@ try {
   );
   const ddTile = page.locator('.tile', { has: page.locator('.dd', { hasText: 'DD' }) }).first();
   assert((await tileLabel(ddTile)).includes(', Daily Double: '), `a Daily Double's name says so (${await tileLabel(ddTile)})`);
-  await page.getByRole('button', { name: '🎡 Wheels, Dice & Deals' }).click();
-  assert(await page.getByRole('button', { name: 'Spicy Wheel' }).isVisible(), 'and the wheel made there is in Wheels, Dice & Deals');
+  await page.getByRole('button', { name: '🎡 Wheels, dice & deals' }).click();
+  assert(await page.getByRole('button', { name: 'Spicy Wheel' }).isVisible(), 'and the wheel made there is in Wheels, dice & deals');
   // A slice's weight: named after its slice, and never 0 or less (the slice would drop off the wheel).
   await page.getByRole('button', { name: 'Spicy Wheel' }).click();
   const weight = page.getByLabel('Option 1 weight');
@@ -579,7 +579,7 @@ try {
   );
 
   // ---------- Stat presets ----------
-  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.getByRole('button', { name: '📊 Stats & items' }).click();
   await page.getByRole('button', { name: /HP \(bar/ }).click();
   assert(await page.getByRole('button', { name: /HP \(bar/ }).isDisabled(), 'a stat preset can only be added once');
   const hp = await typingIn();
@@ -599,11 +599,11 @@ try {
   assert((await page.getByLabel('Object class').inputValue()) === 'doorway', 'the 🚪 Doorway button places a doorway');
   assert(await page.getByLabel('Leads to: screen').evaluate((s) => s === document.activeElement), 'and its screen list has the focus');
   await page.getByLabel('Leads to: screen').selectOption({ label: 'Screen B1' });
-  // 📦 Item ▾ with no items yet: make one here, or go to 📊 Stats & Items.
+  // 📦 Item ▾ with no items yet: make one here, or go to 📊 Stats & items.
   await page.getByRole('button', { name: '📦 Item ▾' }).click();
   const itemMenu = await page.getByRole('menu').getByRole('menuitem').allInnerTexts();
   assert(
-    itemMenu.some((t) => t.includes('Add new item here')) && itemMenu.some((t) => t.includes('Stats & Items')),
+    itemMenu.some((t) => t.includes('Add new item here')) && itemMenu.some((t) => t.includes('Stats & items')),
     `📦 Item ▾ with no items offers to make one (${itemMenu.join(', ')})`,
   );
   await page
@@ -657,7 +657,7 @@ try {
   );
 
   // ---------- ＋ Add item and ＋ Add shop put the typing in the new one's name ----------
-  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.getByRole('button', { name: '📊 Stats & items' }).click();
   await page.getByRole('button', { name: '＋ Add item' }).click();
   const item = await typingIn();
   assert(item.label === 'Item name' && item.value === 'Item 2' && item.all, `＋ Add item puts the typing in its name (${JSON.stringify(item)})`);
@@ -789,7 +789,7 @@ try {
   await editorReady(page);
   await page.locator('.first-round .mode', { hasText: 'RPG' }).click();
   // (A game with a stat already: the ones the screen brings are added to it.)
-  await page.getByRole('button', { name: '📊 Stats & Items' }).click();
+  await page.getByRole('button', { name: '📊 Stats & items' }).click();
   await page.getByRole('button', { name: /HP \(bar/ }).click();
   const adventure = tabs.filter({ hasText: 'Adventure' });
   await adventure.click();
@@ -798,7 +798,7 @@ try {
   await page.keyboard.press('Control+v');
   const forest = page.getByRole('button', { name: 'Screen Forest' });
   await forest.waitFor();
-  // Undone and redone, it shows on the map it was pasted on (not on 📊 Stats & Items with what it brought).
+  // Undone and redone, it shows on the map it was pasted on (not on 📊 Stats & items with what it brought).
   const onMap = async (shown) => (await adventure.getAttribute('aria-current')) === 'page' && (await shown.isVisible());
   await page.keyboard.press('Control+z');
   await forest.waitFor({ state: 'detached' });
@@ -1136,10 +1136,10 @@ try {
     );
     assert(!outside.length, `and every sound's buttons are inside its row (${outside.join(', ')})`);
 
-    await pageButton(/Stats & Items/).click();
+    await pageButton(/Stats & items/).click();
     const gold = pp.locator('.field-row').first();
     await gold.waitFor();
-    await fits('📊 Stats & Items');
+    await fits('📊 Stats & items');
     const [who, color, tools, name] = await Promise.all([
       box(gold.locator('.who')),
       box(gold.locator('input[type="color"]')),
@@ -1195,7 +1195,7 @@ try {
     await clue.waitFor({ state: 'detached' });
     // On a laptop a stat's row is still one line: name, kind, who sees it, color, ⋯ 🗑.
     await pp.setViewportSize({ width: 1280, height: 720 });
-    await pageButton(/Stats & Items/).click();
+    await pageButton(/Stats & items/).click();
     await gold.waitFor();
     const wide = await Promise.all([box(gold.locator('.name')), box(gold.locator('.who')), box(gold.locator('input[type="color"]'))]);
     assert(
