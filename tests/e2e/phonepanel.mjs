@@ -262,7 +262,7 @@ async function tidyStatus(page, where, moment, w, one = true) {
     statusLineIn(page).evaluate((s) => {
       const shown = (/** @type {Element} */ e) => {
         const cs = getComputedStyle(e);
-        return cs.visibility !== 'hidden' && cs.display !== 'none' && e.getBoundingClientRect().width > 0;
+        return cs.visibility !== 'hidden' && cs.display !== 'none' && cs.opacity !== '0' && e.getBoundingClientRect().width > 0;
       };
       /** 3 characters of this element's words (as the panel reckons them: 0.6em each). */
       const threeCh = (/** @type {HTMLElement} */ e) => 1.8 * parseFloat(getComputedStyle(e).fontSize);
@@ -440,9 +440,13 @@ try {
         statusLineIn(page).evaluate((st) => {
           const say = /** @type {HTMLElement} */ (st.querySelector(':scope > .say'));
           const sep = /** @type {HTMLElement} */ (st.querySelector(':scope > .sep'));
+          // (Out of sight only: still laid out, and read whole by screen readers.)
+          const look = (/** @type {HTMLElement} */ e) => (getComputedStyle(e).opacity === '0' ? 'hidden' : 'visible');
+          const cs = getComputedStyle(say);
           return {
-            say: getComputedStyle(say).visibility,
-            sep: getComputedStyle(sep).visibility,
+            say: look(say),
+            sep: look(sep),
+            readable: cs.visibility === 'visible' && cs.display !== 'none',
             tiny: say.hasAttribute('data-tiny'),
             w: say.clientWidth,
           };
@@ -455,8 +459,8 @@ try {
       let squeezed;
       await until(async () => (squeezed = await seen()).say === 'hidden', 3000);
       assert(
-        squeezed.say === 'hidden' && squeezed.sep === 'hidden' && squeezed.tiny,
-        `${where}: a Daily Double's words cut to a sliver are hidden, with the "·" before them (${JSON.stringify(squeezed)})`,
+        squeezed.say === 'hidden' && squeezed.sep === 'hidden' && squeezed.tiny && squeezed.readable,
+        `${where}: a Daily Double's words cut to a sliver are out of sight (still read by screen readers), with the "·" before them (${JSON.stringify(squeezed)})`,
       );
       await statusLineIn(page).evaluate((st) => (st.style.paddingRight = ''));
       /** @type {any} */

@@ -3098,11 +3098,12 @@
   .clicknote button {
     flex-shrink: 0;
   }
-  /* A status-line span cut to a sliver (tinyCut): hidden, with the "·" before it, rather than a stray letter. (It keeps
-     its place, so it's measured again as the line's room changes.) */
+  /* A status-line span cut to a sliver (tinyCut): hidden, with the "·" before it, rather than a stray letter. (Out of
+     sight only: it keeps its place, so it's measured again as the line's room changes, and screen readers still read
+     it whole.) */
   .status > :global([data-tiny]),
   .status > .sep:has(+ :global([data-tiny])) {
-    visibility: hidden;
+    opacity: 0;
   }
   /* (A chip, never wrapping: the status line keeps one line.) */
   .viewers {
