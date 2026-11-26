@@ -10,13 +10,15 @@ import {
   goToRound,
   newSession,
   redo,
+  redoStep,
   removePlayer,
   score,
+  toggleEvent,
   toggleStep,
   undo,
 } from './session';
 import { addStat, buy, logged, newStatField, redoAction, redoFrom, redoOrder, SCORE_CURRENCY, startStep, undoAction, type Undone } from './toolset';
-import { nextUndo, stillUndone, timelineRows, undoOrder } from './timeline';
+import { nextUndo, redoStepBlocker, stillUndone, timelineRows, undoOrder } from './timeline';
 
 function setup(): { game: Game; session: Session } {
   const game = jeopardyGame();
@@ -302,6 +304,143 @@ describe('the undone rows', () => {
     }
     expect(order.map((u) => u.id)).toEqual(taken);
     expect(order).toHaveLength(4);
+  });
+});
+
+describe('↷ Redo just this (an undone score)', () => {
+  /** Score steps a second apart, each its own Undo. */
+  function scores(list: [string, number, string?][]) {
+    const { game, session } = setup();
+    const ids = list.map(([who, d, clue]) => {
+      later();
+      return applyScore(session, game, [who], d, `+${d}`, clue)[0].batchId!;
+    });
+    return { game, session, ids };
+  }
+  /** Play's ↷ Redo just this: the step, and its Undo off play's list. */
+  function redoJust(session: Session, undone: Undone[], id: string) {
+    const events = redoStep(session, id);
+    undone.splice(
+      undone.findIndex((u) => u.id === id),
+      1,
+    );
+    return events;
+  }
+
+  it('brings back only that step; Redo goes on with the others, Ctrl+Z then Ctrl+Y take and bring back the same one', () => {
+    const { game, session, ids } = scores([
+      ['a', 100],
+      ['b', 200],
+      ['a', 300],
+    ]);
+    const undone: Undone[] = [];
+    for (let i = 0; i < 3; i++) undoOnce(session, game, undone);
+    expect(redoStepBlocker(session, ids[0], undone, '$')).toBe('It’s next: ↷ Redo brings it back');
+    expect(redoStepBlocker(session, ids[1], undone, '$')).toBeNull();
+    expect(redoJust(session, undone, ids[1]).map((e) => e.delta)).toEqual([200]);
+    expect([score(session, 'a'), score(session, 'b')]).toEqual([0, 200]);
+    const rows = () => timelineRows(session, game, '$', false, undone).map((r) => [r.text, r.kind === 'roll' ? '' : r.state, r.steps]);
+    expect(rows()).toEqual([
+      ['+$300 (Ann) · +300', 'redo', 2],
+      ['+$100 (Ann) · +100', 'redo', 1],
+      ['+$200 (Bob) · +200', 'done', 0],
+    ]);
+    // Ctrl+Z takes it back, Ctrl+Y brings back that same one.
+    undoOnce(session, game, undone);
+    expect(rows()[2]).toEqual(['+$200 (Bob) · +200', 'redo', 1]);
+    redoOnce(session, game, undone);
+    expect([score(session, 'a'), score(session, 'b')]).toEqual([0, 200]);
+    // Then the oldest, then the newest.
+    redoOnce(session, game, undone);
+    expect(score(session, 'a')).toBe(100);
+    redoOnce(session, game, undone);
+    expect([score(session, 'a'), score(session, 'b')]).toEqual([400, 200]);
+  });
+
+  it('leaves a part turned off in 📜 Log › Scores off', () => {
+    const { game, session } = setup();
+    later();
+    const both = applyScore(session, game, ['a', 'b'], 100, 'Both');
+    toggleEvent(session, both[1].id);
+    later();
+    applyScore(session, game, ['a'], 50, 'Later');
+    const undone: Undone[] = [];
+    undoOnce(session, game, undone);
+    undoOnce(session, game, undone);
+    redoJust(session, undone, both[0].batchId!);
+    expect([score(session, 'a'), score(session, 'b')]).toEqual([100, 0]);
+  });
+
+  it('is refused, naming the step, when it depends on one Redo brings back before it', () => {
+    // A mark on the same clue (a verdict switched, the buzzers…).
+    let { game, session, ids } = scores([
+      ['a', 100, 'clue1'],
+      ['b', -100, 'clue1'],
+      ['a', 300],
+    ]);
+    let undone: Undone[] = [];
+    for (let i = 0; i < 3; i++) undoOnce(session, game, undone);
+    expect(redoStepBlocker(session, ids[1], undone, '$')).toBe('It depends on “+$100 (Ann) · +100”, undone before it: use ↷ Redo to here');
+    expect(redoStepBlocker(session, ids[2], undone, '$')).toBeNull();
+
+    // Its player, added by a step undone before it.
+    ({ game, session } = setup());
+    undone = [];
+    later();
+    logged(session, 'Added Cy', () => session.players.push({ id: 'c', name: 'Cy', color: '#000', startScore: 0 }));
+    later();
+    const cy = applyScore(session, game, ['c'], 100, 'Cy')[0].batchId!;
+    later();
+    applyScore(session, game, ['a'], 100, 'Ann');
+    for (let i = 0; i < 3; i++) undoOnce(session, game, undone);
+    expect(redoStepBlocker(session, cy, undone, '$')).toBe('It depends on “Added Cy”, undone before it: use ↷ Redo to here');
+
+    // An award that made its player the picker, after a step that set the picker.
+    ({ game, session } = setup());
+    undone = [];
+    later();
+    logged(session, 'Bob picks next', () => (session.currentPickerId = 'b'));
+    later();
+    const award = applyScore(session, game, ['a'], 100, 'Ann right');
+    award[0].picker = { was: 'b', now: 'a' };
+    session.currentPickerId = 'a';
+    later();
+    applyScore(session, game, ['b'], 100, 'Bob');
+    for (let i = 0; i < 3; i++) undoOnce(session, game, undone);
+    expect(redoStepBlocker(session, award[0].batchId!, undone, '$')).toBe('It depends on “Bob picks next”, undone before it: use ↷ Redo to here');
+
+    // Two awards that each made their player the picker, on different clues: the newer after the older (redone on its
+    // own, the picker would end with the older's).
+    ({ game, session } = setup());
+    undone = [];
+    session.currentPickerId = 'x';
+    later();
+    applyScore(session, game, ['a'], 100, 'Ann right', 'clue1')[0].picker = { was: 'x', now: 'a' };
+    session.currentPickerId = 'a';
+    later();
+    const bob = applyScore(session, game, ['b'], 100, 'Bob right', 'clue2')[0];
+    bob.picker = { was: 'a', now: 'b' };
+    session.currentPickerId = 'b';
+    for (let i = 0; i < 2; i++) undoOnce(session, game, undone);
+    expect(session.currentPickerId).toBe('x');
+    expect(redoStepBlocker(session, bob.batchId!, undone, '$')).toBe('It depends on “+$100 (Ann) · Ann right”, undone before it: use ↷ Redo to here');
+  });
+
+  it('names the step it depends on as the list does: in one window, by its quiet text', () => {
+    const { game, session } = setup();
+    const undone: Undone[] = [];
+    later();
+    logged(session, 'Ann lands on Trap door', () => (session.currentPickerId = 'a'), game, 'Ann lands on ? (secret)');
+    later();
+    applyScore(session, game, ['b'], 100, 'Bob right')[0].picker = { was: 'a', now: 'b' };
+    session.currentPickerId = 'b';
+    later();
+    const id = applyScore(session, game, ['a'], 50, 'Ann')[0].batchId!;
+    for (let i = 0; i < 3; i++) undoOnce(session, game, undone);
+    const bob = session.scoreLog[0].batchId!;
+    expect(id).not.toBe(bob);
+    expect(redoStepBlocker(session, bob, undone, '$', true)).toBe('It depends on “Ann lands on ? (secret)”, undone before it: use ↷ Redo to here');
+    expect(redoStepBlocker(session, bob, undone, '$', false)).toBe('It depends on “Ann lands on Trap door”, undone before it: use ↷ Redo to here');
   });
 });
 

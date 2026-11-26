@@ -260,6 +260,22 @@ export function redo(session: Session): ScoreEvent[] {
 }
 
 /**
+ * ↷ Redo just this (📜 Log › 🕘 History): the score step `step` counts again, its changes still waiting for Redo (a
+ * part turned off in 📜 Log › Scores stays off), and nothing else: the steps undone before it stay undone, still on the
+ * redo list in their order. Returns its changes (empty: none were waiting). Check redoStepBlocker (timeline.ts) first.
+ */
+export function redoStep(session: Session, step: string): ScoreEvent[] {
+  const waiting = new Set(session.redoStack);
+  const events = session.scoreLog.filter((e) => stepOf(e) === step && waiting.has(e.id));
+  if (!events.length) return [];
+  const ids = new Set(events.map((e) => e.id));
+  for (const e of events) e.undone = false;
+  session.redoStack = session.redoStack.filter((id) => !ids.has(id));
+  follow(session, events);
+  return events;
+}
+
+/**
  * A ✍ clue's answer from `playerId` changed: their score changes on clue `clueId` that were undone (Ctrl+Z opened their
  * answer again) can't be redone any more, as they were for the words before.
  */

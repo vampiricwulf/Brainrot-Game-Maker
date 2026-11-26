@@ -59,6 +59,7 @@
     openClue,
     playerName,
     redo,
+    redoStep,
     restorePlayer,
     answerShowing,
     score,
@@ -257,7 +258,7 @@
     type Undone,
   } from '../lib/toolset';
   import { groupPops, stopsTimer } from './flow';
-  import { nextUndo, stillUndone, type TimelineRow } from '../lib/timeline';
+  import { nextUndo, redoStepBlocker, stillUndone, type TimelineRow } from '../lib/timeline';
   import {
     addLive,
     bigObject,
@@ -3430,6 +3431,28 @@
     if (n) toast(`Undid ${n} step${n === 1 ? '' : 's'} (back to ${clock(row.ts)})`, 4000);
   }
 
+  /**
+   * 🕘 History's ↷ Redo just this on an undone score row: only it counts again (its buzzers, steal and countdown follow,
+   * as a Redo of it would); the steps undone before it stay undone, and Ctrl+Y goes on with them as before.
+   */
+  function redoOne(row: TimelineRow): void {
+    const blocker = redoStepBlocker(session, row.id, undone, sym, !dual);
+    if (blocker) return void toast(blocker);
+    followPasses();
+    const events = redoStep(session, row.id);
+    if (!events.length) return void toast('Nothing to redo');
+    // (Not the next Redo any more: Ctrl+Y goes on with the Undo before it.)
+    for (let i = undone.length - 1; i >= 0; i--)
+      if (undone[i].log === 'score' && undone[i].id === row.id) {
+        undone.splice(i, 1);
+        break;
+      }
+    stealFollow(events);
+    buzzFollow(events, false);
+    timerFollow(events, false);
+    toast(`Redid ${describeStep(session, events, sym, !dual)}`);
+  }
+
   /** 🕘 History's ↷ Redo to here: redo until that row is back. */
   function redoUpTo(row: TimelineRow): void {
     let n = 0;
@@ -5802,6 +5825,7 @@
       onreopen={toggleTile}
       onback={undoBackTo}
       onredoto={redoUpTo}
+      onredoone={redoOne}
       onclose={() => (showLog = false)}
     />
   {/if}

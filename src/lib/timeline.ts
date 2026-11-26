@@ -129,6 +129,58 @@ export function timelineRows(session: Session, game: Game, sym: string, hide = f
   return [...redo.map((r, i): TimelineRow => ({ ...r, steps: redo.length - i })), ...rest.map((r): TimelineRow => ({ ...r, steps: back(r) }))];
 }
 
+/**
+ * Why ↷ Redo just this can't bring back the undone score step `step` on its own (null: it can), named as the list
+ * names the steps (`hide`: their quiet text, in one window). Refused when it's the next Redo anyway, or when it
+ * depends on a step ↷ Redo brings back before it: an Undo that took its player out of the game, a mark on the same
+ * clue (a switched verdict, the buzzers, the steal and the countdown follow the marks in order), the same player's
+ * Final verdict, or, for an award that made its player the picker or a Final verdict, a step that set the picker or the
+ * Final (or another award that made its player the picker: each moves it on from whoever the one before left).
+ */
+export function redoStepBlocker(session: Session, step: string, undone: readonly Undone[], sym: string, hide = false): string | null {
+  const waitingIds = new Set(session.redoStack);
+  const waiting = (id: string) => session.scoreLog.filter((e) => stepOf(e) === id && waitingIds.has(e.id));
+  const events = waiting(step);
+  if (!events.length) return 'It isn’t waiting for Redo';
+  const order = redoOrder(session, undone);
+  const at = order.findIndex((u) => u.log === 'score' && u.id === step);
+  if (at === 0) return 'It’s next: ↷ Redo brings it back';
+  const before = at < 0 ? order : order.slice(0, at);
+  const actions = new Map((session.actionRedo ?? []).map((a) => [a.id, a]));
+  const keys = (u: UndoStep) => Object.keys(JSON.parse(actions.get(u.id)?.after ?? '{}'));
+  const name = (u: UndoStep) => (u.log === 'action' ? stepText(actions.get(u.id) ?? { text: '?' }, hide) : describeStep(session, waiting(u.id), sym, hide));
+  const on = (u: UndoStep) => `It depends on “${name(u)}”, undone before it: use ↷ Redo to here`;
+  // (Newest first: the step nearest to it.)
+  const find = (test: (u: UndoStep) => boolean) => [...before].reverse().find(test);
+  const here = new Set(session.players.map((p) => p.id));
+  if (events.some((e) => !here.has(e.playerId))) {
+    const u = find((u) => u.log === 'action' && keys(u).includes('players'));
+    return u ? on(u) : 'Its player isn’t in the game';
+  }
+  const ids = new Set(events.map((e) => e.id));
+  const clash = find(
+    (u) =>
+      u.log === 'score' &&
+      waiting(u.id).some(
+        (x) =>
+          events.some((e) => e.switched?.includes(x.id)) ||
+          x.switched?.some((id) => ids.has(id)) ||
+          events.some((e) => !!e.clueId && e.clueId === x.clueId && (!e.clueId.startsWith('final:') || e.playerId === x.playerId)),
+      ),
+  );
+  if (clash) return on(clash);
+  if (events.some((e) => e.picker || e.clueId?.startsWith('final:'))) {
+    const u = find((u) => u.log === 'action' && keys(u).some((k) => k === 'currentPickerId' || k.startsWith('final:') || k.startsWith('step:')));
+    if (u) return on(u);
+  }
+  // (Each award moves the picker on from whoever the one before it left.)
+  if (events.some((e) => e.picker)) {
+    const u = find((u) => u.log === 'score' && waiting(u.id).some((x) => x.picker));
+    if (u) return on(u);
+  }
+  return null;
+}
+
 /** The row is still undone, so "Redo to here" goes on. */
 export function stillUndone(session: Session, row: TimelineRow): boolean {
   if (row.kind === 'action') return !!session.actionRedo?.some((a) => a.id === row.id);

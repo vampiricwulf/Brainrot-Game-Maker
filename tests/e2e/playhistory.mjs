@@ -238,6 +238,65 @@ try {
   assert((await scores()) === '$300 $400 $400', 'and ↷ Restore brings it back');
   await page.keyboard.press('Escape');
 
+  // ↷ Redo just this on an undone score: only it counts again, the ones undone before it stay undone. The undone rows
+  // are in the order ↷ Redo brings them back (the next at the bottom), with their counts, so Ctrl+Z then Ctrl+Y bring
+  // back the same score. (Four adjustments that add up to nothing: A +$10 Alice, B +$20 Player 2, C −$10 Alice, D −$20
+  // Player 2.)
+  // (Esc closed the log.)
+  for (const [who, amount, deduct] of /** @type {const} */ ([
+    ['1', '10', false],
+    ['2', '20', false],
+    ['1', '10', true],
+    ['2', '20', true],
+  ])) {
+    await page.keyboard.press(who);
+    await awardRowIn(page).locator('input').fill(amount);
+    if (deduct)
+      await awardRowIn(page)
+        .getByRole('button', { name: /Deduct/ })
+        .click();
+    else await awardRowIn(page).locator('input').press('Enter');
+    await statusLineIn(page).click();
+  }
+  assert((await scores()) === '$300 $400 $400', `four adjustments that add up to nothing (${await scores()})`);
+  for (let i = 0; i < 3; i++) await page.keyboard.press('Control+z');
+  assert((await scores()) === '$310 $400 $400', `three of them undone (${await scores()})`);
+  await page.keyboard.press('l');
+  const logRow = (text) => page.locator('aside .item', { hasText: text });
+  const undoneRows = async () =>
+    Promise.all(
+      (await page.locator('aside .item.redo').all()).map(
+        async (r) => `${(await r.locator('.text').innerText()).split(' (')[0]} ${await r.locator('.acts button').getAttribute('title')}`,
+      ),
+    );
+  await logRow('−$10 (Alice)').click({ button: 'right' });
+  await page.getByRole('menu').getByRole('menuitem', { name: '↷ Redo just this' }).click();
+  assert(
+    (await scores()) === '$300 $400 $400' && (await toast()).startsWith('Redid −$10 (Alice)'),
+    `↷ Redo just this brings back only that score (${await scores()}, ${await toast()})`,
+  );
+  await page.keyboard.press('Control+z');
+  assert(
+    JSON.stringify(await undoneRows()) ===
+      JSON.stringify(['−$20 Redo 3 steps, up to this one', '+$20 Redo 2 steps, up to this one', '−$10 Redo 1 step, up to this one']),
+    `undone again, it's the next Redo: at the bottom, 1 step away (${(await undoneRows()).join(' | ')})`,
+  );
+  await page.keyboard.press('Control+Shift+z');
+  assert((await scores()) === '$300 $400 $400' && (await toast()).startsWith('Redid −$10 (Alice)'), 'and Ctrl+Y brings back that same score');
+  // The next one's own item is greyed: ↷ Redo brings it back anyway.
+  await logRow('+$20 (Player 2)').click({ button: 'right' });
+  const nextItem = page.getByRole('menu').getByRole('menuitem', { name: '↷ Redo just this' });
+  const nextWhy = await nextItem.evaluate((b) => document.getElementById(b.getAttribute('aria-describedby') ?? '')?.textContent ?? '');
+  assert(
+    (await nextItem.isDisabled()) && nextWhy === 'It’s next: ↷ Redo brings it back' && !(await page.getByRole('menu').innerText()).includes('↷ Restore'),
+    `the next undone score's ↷ Redo just this is greyed, saying why, and it has no ↷ Restore (${nextWhy})`,
+  );
+  await page.keyboard.press('Escape');
+  await page.keyboard.press('Control+Shift+z');
+  await page.keyboard.press('Control+Shift+z');
+  assert((await scores()) === '$300 $400 $400' && (await page.locator('aside .item.redo').count()) === 0, 'Ctrl+Y brings back the rest');
+  await page.keyboard.press('Escape');
+
   // K covers the screen in any round, and the fixed bar's ⏸ Cover shows it (filled, saying ▶ Uncover).
   await page.keyboard.press('k');
   assert(

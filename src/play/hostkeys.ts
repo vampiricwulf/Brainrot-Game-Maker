@@ -75,7 +75,7 @@ export const hostKeys = (playerOnly: boolean): KeyGroup[] => [
       ],
       [
         'L',
-        'Log: the history (go back to any point), scores and rolls; right-click a row of its 🕘 History: ↶ Undo to here, ↶ Reopen tile, undo or restore just that score',
+        'Log: the history (go back to any point), scores and rolls; right-click a row of its 🕘 History: ↶ Undo to here, ↶ Reopen tile, undo just that score or redo just that undone score (↷ Restore one turned off in Scores)',
       ],
       [
         '↓ / ↑ on Go to round',

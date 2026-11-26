@@ -6,7 +6,7 @@
   import { formatPoints, roundName, type Game, type RollEvent, type ScoreEvent, type Session } from '../lib/model';
   import { ROUND_MODES } from '../lib/modes';
   import { nameList, reasonText, stepAmount, stepOf, switchChain, toggleEvent, toggleStep } from '../lib/session';
-  import { timelineRows, type TimelineRow } from '../lib/timeline';
+  import { redoStepBlocker, timelineRows, type TimelineRow } from '../lib/timeline';
   import type { Undone } from '../lib/toolset';
   import InlineAsk from './host/InlineAsk.svelte';
   import { onMount } from 'svelte';
@@ -22,6 +22,7 @@
     onreopen,
     onback,
     onredoto,
+    onredoone,
     onclose,
     area = null,
     beside = null,
@@ -39,6 +40,8 @@
     onback: (row: TimelineRow) => void;
     /** 🕘 History: redo up to this (undone) row. */
     onredoto: (row: TimelineRow) => void;
+    /** 🕘 History: ↷ Redo just this (an undone score row), the steps undone before it staying undone. */
+    onredoone?: (row: TimelineRow) => void;
     onclose: () => void;
     /** Single window: the host panel's box. The log shows in there, never over the stage viewers see. */
     area?: { top: number; left: number; width: number; height: number } | null;
@@ -154,15 +157,23 @@
     if (row.kind === 'score') {
       if (row.clueId && onreopen)
         items.push({ label: '↶ Reopen tile', onclick: () => onreopen(row.clueId!), disabled: !reopen, hint: 'Put this tile back on the board' });
-      items.push(
-        row.state === 'done'
-          ? { label: '↶ Undo just this score', onclick: () => toggleStep(session, row.id), hint: 'Only this one: the steps after it stay' }
-          : {
-              label: '↷ Restore',
-              onclick: () => toggleStep(session, row.id),
-              hint: held(session.scoreLog.filter((e) => stepOf(e) === row.id)) ?? 'Only this one',
-            },
-      );
+      if (row.state === 'done')
+        items.push({ label: '↶ Undo just this score', onclick: () => toggleStep(session, row.id), hint: 'Only this one: the steps after it stay' });
+      else if (row.state === 'redo' && onredoone) {
+        // Waiting for Redo: brought back on its own, when it doesn't depend on a step Redo brings back before it.
+        const blocker = redoStepBlocker(session, row.id, undos, sym, hide);
+        items.push({
+          label: '↷ Redo just this',
+          onclick: () => onredoone(row),
+          disabled: !!blocker,
+          ...(blocker ? { detail: blocker } : { hint: 'Only this one: the steps undone before it stay undone' }),
+        });
+      } else
+        items.push({
+          label: '↷ Restore',
+          onclick: () => toggleStep(session, row.id),
+          hint: held(session.scoreLog.filter((e) => stepOf(e) === row.id)) ?? 'Only this one',
+        });
     }
     showMenu(e, items);
   }
@@ -207,7 +218,7 @@
   {#if tab === 'history'}
     <p class="muted small intro">
       Newest first. <b>↶ Undo to here</b> undoes everything after a step, <b>↷ Redo to here</b> brings undone steps back. Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) go one
-      at a time.
+      at a time. Right-click an undone score to redo just that one.
     </p>
     <!-- (A list only with something in it: its rows, round names and ● Now are all its items.) -->
     <div class="list tl" role={items.length ? 'list' : undefined}>

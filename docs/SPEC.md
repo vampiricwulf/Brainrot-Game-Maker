@@ -1224,7 +1224,13 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   back: the next one at the bottom, each with how many Redos it is away (Ctrl+Y always brings back what the last Ctrl+Z
   took, even a step restored and undone again). **↶ Undo to here** on a row undoes every
   step after it; **↷ Redo to here** on an undone row redoes up to it (asking first for more than one step), the same
-  words as the editor's 🕘 History (§5.9).
+  words as the editor's 🕘 History (§5.9). A score row's menu has ↶ Undo just this score (the steps after it stay) and,
+  on an undone score, **↷ Redo just this**: only it counts again, the steps undone before it stay undone and Ctrl+Y goes
+  on with them; a Ctrl+Z then takes it back and the next Ctrl+Y brings back that same score. It's greyed, saying which
+  step it depends on, when a step Redo brings back before it must come first (one that brought its player back, a mark
+  on the same clue, the same player's Final verdict, or for an award that made its player the picker or a Final
+  verdict, a step that set the picker or the Final; for a picker award, another one), and for the next Redo. A score
+  turned off in 📜 Log › Scores keeps ↷ Restore. Steps (moves, items, tiles…) have no "just this".
 - Session state (scores, used tiles, round, log) is autosaved to IndexedDB after every change for **crash recovery**.
 
 ### 6.6 Global tools (available anytime from the toolbar)
