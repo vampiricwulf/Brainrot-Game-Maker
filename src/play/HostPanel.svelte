@@ -2173,11 +2173,11 @@
     flex: none;
     height: min(clamp(280px, 44vh, 440px), 62vh);
   }
-  /* A phone held upright, one window: the stage is as wide as the screen (16:9, the stage area exactly its height: see
-     Play's .stage-area), and the panel takes all the rest, the black that was above and under the stage. Still one
-     height the whole game (the window's, less the stage's), never less than it was. Nobody streams a phone's screen,
-     and the stage keeps its size and place. */
-  @media (orientation: portrait) and (max-width: 600px) {
+  /* A phone or a touch tablet held upright, one window: the stage is as wide as the screen (16:9, the stage area exactly
+     its height: see Play's .stage-area), and the panel takes all the rest, the black that was above and under the
+     stage. Still one height the whole game (the window's, less the stage's), never less than it was. The stage keeps
+     its size and place. (The short phone's fold below is for phones only.) */
+  @media (orientation: portrait) and (max-width: 600px), (orientation: portrait) and (pointer: coarse) {
     .panel:not(.dual):not(.side) {
       flex: 1 1 0;
       height: auto;

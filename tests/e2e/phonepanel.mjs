@@ -1,6 +1,6 @@
 // @ts-check
-// A phone held upright, hosting the sample game in one window (320×568, 360×640, 390×667, 360×740 and 390×844, a touch
-// screen): the stage is the screen's width, 16:9, one size and place all game, and the host panel under it takes the
+// A phone or a touch tablet held upright, hosting the sample game in one window (320×568, 360×640, 390×667, 360×740,
+// 390×844, and the tablets 768×1024 and 820×1180, a touch screen): the stage is the screen's width, 16:9, one size and place all game, and the host panel under it takes the
 // rest of the screen (no black above and under the stage), its fixed bar (↶ Undo … 🚪 Exit) on screen. Each moment's
 // own box has room: at least 60px (or all of it, when it's shorter), on a slide, a board round's title card and its
 // categories coming up, a clue, a clue with a player picked, a Daily Double's wager, after a 🎲 roll from the tools
@@ -9,8 +9,8 @@
 // title card), ↩ Put back on a clue and a Daily Double, the roll's own button, 🎲 Roll then ▶ Move in a board game,
 // Finish now… and its Finish. Up to 700px tall the tools row (with the round's ◀ / ▶) folds behind ⋯ Tools, out again
 // with a tap, and the status line's how-to keeps to one line (whole in its tooltip, at every moment); with the row
-// kept out (📊 Scoreboard on, at 320×568) the moment's box still has room and the panel scrolls. A phone on its side, a
-// tablet, a laptop (1280×720, 1920×1080) and a phone with an audience window keep the panel's height as it was, and so
+// kept out (📊 Scoreboard on, at 320×568) the moment's box still has room and the panel scrolls (a tablet never folds
+// it). A phone on its side, a laptop (1280×720, 1920×1080) and a phone with an audience window keep the panel's height as it was, and so
 // does a window held upright that's too short for the stage and more (320×454, 360×380, 600×600): its panel ends at the
 // window's foot, the fixed bar in reach. On these phones ⋯ Tools, the clock's buttons and the 🎲 Dice menu's are at
 // least 32px to tap, a clue's player chips are one line each (a 320px phone too), and the panel's words name taps,
@@ -221,9 +221,11 @@ try {
     [390, 667],
     [360, 740],
     [390, 844],
+    [768, 1024],
+    [820, 1180],
   ]) {
     const where = `${w}×${h}, one window`;
-    section(`A phone upright, ${where}`);
+    section(`${w > 600 ? 'A tablet' : 'A phone'} upright, ${where}`);
     const { ctx, page } = await sample({ viewport: { width: w, height: h }, hasTouch: true, isMobile: true });
     const tiny = h <= 700;
 
@@ -437,10 +439,9 @@ try {
   }
 
   // Elsewhere the panel is as tall as it was: min(clamp(280px, 44vh, 440px), 62vh).
-  section('A phone on its side, a tablet, a laptop, two windows: the panel as it was');
+  section('A phone on its side, a laptop, two windows: the panel as it was');
   for (const [what, opts, dual] of /** @type {[string, import('playwright-core').BrowserContextOptions, boolean][]} */ ([
     ['a phone on its side, 844×390', { viewport: { width: 844, height: 390 }, hasTouch: true, isMobile: true }, false],
-    ['a tablet upright, 768×1024', { viewport: { width: 768, height: 1024 }, hasTouch: true, isMobile: true }, false],
     ['a laptop, 1280×720', { viewport: { width: 1280, height: 720 } }, false],
     ['a big screen, 1920×1080', { viewport: { width: 1920, height: 1080 } }, false],
   ])) {
