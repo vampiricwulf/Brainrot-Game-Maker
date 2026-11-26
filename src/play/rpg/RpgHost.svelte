@@ -222,6 +222,9 @@
   let selEl = $state<HTMLElement>();
   /** The top row: in one window the selection line is on it, and it's what's pinned at the box's top. */
   let topEl = $state<HTMLElement>();
+  /** Their heights: a card's pad and map pin under whichever is pinned (two lines, when the top row wraps). */
+  let topH = $state(24);
+  let selH = $state(24);
   $effect(() => {
     if (!obj?.el.id) return;
     tick().then(() => {
@@ -474,7 +477,10 @@
   {#if selWords}
     {@const how = `drag one on the stage to move them all${touchScreen.on ? '' : ' · Esc clears'}`}
     <span class="words" title="{selWords} · {how}"><b>Selected:</b> {selWords} <span class="muted">— {how}</span></span>
-    <button class="ghost small x" onclick={() => onclear?.()} title="Esc">Clear selection</button>
+    <!-- (Just ✕ where the line is short: see .withsel's container query.) -->
+    <button class="ghost small x" onclick={() => onclear?.()} title="Esc" aria-label="Clear selection"
+      ><span class="word">Clear selection</span><span class="xx" aria-hidden="true">✕</span></button
+    >
   {:else if !again}
     {@const none = `Nothing selected · ${clickWord()} players, or drag a box on the stage to select several`}
     <span class="muted words" title={none}>{none}</span>
@@ -482,10 +488,10 @@
 {/snippet}
 
 {#if world && st}
-  <div class="rh">
+  <div class="rh" style:--pin="{dual ? selH : topH}px">
     <!-- (One window: the selection line is on it, so it stays in sight at the box's top as the box scrolls, and the pad
          and the minimap get the room a line of their own took.) -->
-    <div class="row top" class:withsel={!dual} bind:this={topEl}>
+    <div class="row top" class:withsel={!dual} bind:this={topEl} bind:offsetHeight={topH}>
       <b class="where">🗺️ {here ? `${here.map.name} · ${here.screen.name}` : 'Nowhere'}</b>
       <!-- One window: the notes' slot, there on every screen, note or none, and one line (cut short, the whole of it in
            its tooltip): a screen's note never pushes 🗺️ Map on stream to a second line, so the buttons, the pad and the
@@ -557,7 +563,7 @@
 
     <!-- (With an audience window, the selection line is a row of its own here; in one window it's on the top row.) -->
     {#if dual}
-      <div class="row sel" data-rpg-sel bind:this={selEl}>{@render selLine()}</div>
+      <div class="row sel" data-rpg-sel bind:this={selEl} bind:offsetHeight={selH}>{@render selLine()}</div>
     {/if}
 
     <!-- A party's new name, asked by its chip's menu: here, by the chips. -->
@@ -996,8 +1002,8 @@
   /* (The panel's own background, so the card scrolls out of sight under it.) */
   .nav.pinned {
     position: sticky;
-    /* (Under the selection line.) */
-    top: 24px;
+    /* (Under the selection line, or in one window the top row it's on: --pin, their height.) */
+    top: var(--pin, 24px);
     z-index: 2;
     background: var(--panel);
     padding-bottom: 6px;
@@ -1113,8 +1119,29 @@
     align-items: center;
     gap: 8px;
     flex: 1 1 0;
-    min-width: 0;
+    min-width: 5em;
+    overflow: hidden;
     height: auto;
+    container-type: inline-size;
+  }
+  /* (Short there, a crowded top row: Clear selection is just ✕, and ↩ Select them again is cut short.) */
+  .sel .x .xx {
+    display: none;
+  }
+  @container (max-width: 15em) {
+    .sel .x .word {
+      display: none;
+    }
+    .sel .x .xx {
+      display: inline;
+    }
+    .sel .again {
+      flex-shrink: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
   .notes-slot.empty {
     flex-grow: 0;
