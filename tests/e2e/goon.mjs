@@ -877,6 +877,25 @@ try {
     await ctx.close();
   }
 
+  {
+    // Two windows, the Final's wagers with the controls hidden (H): no box under it, so N's toast says whose too.
+    const { ctx, page } = await host('final, hidden, two windows', undefined, finalFile);
+    const [aud] = await Promise.all([page.waitForEvent('popup'), page.locator('.mode', { hasText: 'Separate audience window' }).click()]);
+    aud.on('pageerror', (e) => errors.push(`[audience] ${e.message}`));
+    await aud.waitForLoadState();
+    await page.getByRole('button', { name: 'Start game ▶' }).click();
+    await finalControlsIn(page).locator('.wagers').or(stageBoxIn(page).locator('.title-card')).first().waitFor();
+    if (await stageBoxIn(page).locator('.title-card').count()) await page.keyboard.press('n');
+    await finalControlsIn(page).locator('.wagers').waitFor();
+    await statusLineIn(page).click();
+    await page.keyboard.press('h');
+    await page.locator('.play > .panel').waitFor({ state: 'detached' });
+    await page.keyboard.press('n');
+    await toastsIn(page, { hasText: /^Waiting on .+: type their wagers?, or untick them to sit out$/ }).waitFor();
+    assert(true, 'two windows, the controls hidden at the Final’s wagers: N’s toast says whose and what to do');
+    await ctx.close();
+  }
+
   assert(errors.length === 0, `no page errors (${errors.join(' | ')})`);
   console.log('goon: all passed');
 } catch (e) {

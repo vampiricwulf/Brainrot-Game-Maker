@@ -865,7 +865,7 @@ The mode isn't saved with the game: it's dual while the audience window is open.
   box's first line already names whose (“Waiting on Bob's phone & Cat”), so there the status line says only what to do
   (“Type their wagers in the boxes below, or untick them to sit out”, “Type a whole number, 0 or more”, “Type less, or
   tick Ignore the limits”); with the controls hidden it's a toast that names them (“Waiting on Bob's phone & Cat: type
-  their wagers, or untick them to sit out”). Each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
+  their wagers, or untick them to sit out”; with an audience window: in one window no toast shows on air). Each item has its quick buttons (＋ Award Ann $200 ▶ board `Enter`, − Deduct
   `Shift+Enter`, 🔔 Open the buzzers `U`, 🎲 Roll for it `O`, ⏱ Start the countdown `T`, ✔ Judge all ▶ board, ✍ Judge
   them, ✘ The rest are wrong, 📤 Send it; a partner clue's 🎡 Spin for a partner `W`, the players by number, Solo, ↩ Put
   back `Shift+Esc`, 📤 Send and start `Enter` (never within a second of the question), ⏱ Start the clock (`Enter`, or

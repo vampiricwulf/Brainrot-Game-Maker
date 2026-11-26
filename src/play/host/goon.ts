@@ -346,8 +346,8 @@ export type GoCtx = {
   /** A board game's turn (null outside one). */
   board: BoardNow | null;
   /**
-   * One window, the controls hidden (the stage alone): what's said goes in a toast, with no box under it, so it names
-   * whom it waits on (left out: the controls show).
+   * The controls hidden (H): what's said goes in a toast (with an audience window; in one window, on air, none
+   * shows), with no box under it, so it names whom it waits on (left out: the controls show).
    */
   controlsHidden?: boolean;
   act: GoActs;
