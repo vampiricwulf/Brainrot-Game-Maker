@@ -327,12 +327,19 @@ try {
       (await page.locator('.hist .hr.current').innerText()).includes(label('Alpha')),
     `↶ Undo just this takes back only that step: it's the next undone one, the step after it stays (${(await undoneText()).join(' | ')})`,
   );
+  /** The focus is on that step's own row (it moved to the other side of ● Now, the keys go on from there). */
+  const focusOn = (t) =>
+    rowOf(t)
+      .locator('.pick')
+      .evaluate((b) => b === document.activeElement);
   await rowOf('Beta').locator('.pick').focus();
   await page.keyboard.press('r');
   await page.waitForTimeout(250);
+  assert(await focusOn('Beta'), 'after R the focus stays on the step brought back');
   await rowOf('Alpha').locator('.pick').focus();
   await page.keyboard.press('u');
   await page.waitForTimeout(250);
+  assert(await focusOn('Alpha'), 'after U the focus stays on the step taken back');
   assert(
     JSON.stringify(await undoneText()) === JSON.stringify(['Gamma', 'Alpha'].map(label)) &&
       (await page.locator('.hist .hr.current').innerText()).includes(label('Beta')),

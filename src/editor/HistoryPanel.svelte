@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
   import PageHeader from './PageHeader.svelte';
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { app, toast } from '../lib/app.svelte';
   import { announce } from '../lib/announce';
   import {
@@ -254,8 +254,13 @@
       if (!step || applied !== (e.key.toLowerCase() === 'u')) return;
       e.preventDefault();
       const blocker = applied ? undoJustBlocker(step.id) : redoJustBlocker(step.id);
-      if (blocker) toast(blocker);
-      else just(step, applied);
+      if (blocker) return void toast(blocker);
+      just(step, applied);
+      // (Its row moves to the other side of "● Now", which drops the focus: it stays on the step.)
+      const button = picks[at];
+      void tick().then(() => {
+        if (button.isConnected && (!document.activeElement || document.activeElement === document.body)) button.focus();
+      });
     }
   }
 </script>
